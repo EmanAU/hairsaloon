@@ -204,8 +204,9 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
     bool requiredField = false,
   }) {
     return DropdownButtonFormField<String>(
+      isExpanded: true,
       initialValue: value,
-      style: const TextStyle(
+      style: const TextStyle(fontFamily: 'Roboto', 
         fontSize: 12,
         fontWeight: FontWeight.w400,
         color: Colors.black,

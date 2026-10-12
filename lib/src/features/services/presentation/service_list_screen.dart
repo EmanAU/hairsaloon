@@ -157,6 +157,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               style: const TextStyle(
+                fontFamily: 'Roboto',
                 fontSize: 13,
                 fontWeight: FontWeight.w400,
                 color: Colors.black,
@@ -212,6 +213,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               style: const TextStyle(
+                fontFamily: 'Roboto',
                 fontSize: 13,
                 fontWeight: FontWeight.w400,
                 color: Colors.black,
@@ -256,6 +258,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               style: const TextStyle(
+                fontFamily: 'Roboto',
                 fontSize: 13,
                 fontWeight: FontWeight.w400,
                 color: Colors.black,
@@ -287,6 +290,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               style: const TextStyle(
+                fontFamily: 'Roboto',
                 fontSize: 13,
                 fontWeight: FontWeight.w400,
                 color: Colors.black,

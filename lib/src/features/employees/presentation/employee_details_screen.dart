@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/layout/adaptive_page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -59,134 +60,141 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF3F3F3),
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(CupertinoIcons.back, color: Colors.black),
-        ),
-        title: const Text(
-          'Employee Details',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => setState(() => _editing = !_editing),
-            child: Text(
-              _editing ? 'Cancel' : 'Edit',
-              style: const TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.w700,
+    return AdaptivePage(
+      form: true,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF3F3F3),
+        appBar: AppBar(
+          backgroundColor: AppColors.primary,
+          surfaceTintColor: Colors.transparent,
+          leading: IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(CupertinoIcons.back, color: Colors.black),
+          ),
+          title: const Text(
+            'Employee Details',
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => setState(() => _editing = !_editing),
+              child: Text(
+                _editing ? 'Cancel' : 'Edit',
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(12),
-        children: [
-          _field(_firstNameCtrl, 'First Name'),
-          const SizedBox(height: 10),
-          _field(_lastNameCtrl, 'Last Name'),
-          const SizedBox(height: 10),
-          _field(
-            _phoneCtrl,
-            'Phone Number',
-            keyboardType: TextInputType.phone,
-            inputFormatters: [_PhonePkFormatter()],
-          ),
-          const SizedBox(height: 10),
-          _field(
-            _cnicCtrl,
-            'CNIC Number',
-            keyboardType: TextInputType.number,
-            inputFormatters: [_CnicFormatter()],
-          ),
-          const SizedBox(height: 10),
-          _field(_addressCtrl, 'Home Address'),
-          const SizedBox(height: 10),
-          DropdownButtonFormField<String>(
-            initialValue: _specialistCategory,
-            isExpanded: true,
-            decoration: InputDecoration(
-              hintText: 'Specialist Category',
-              hintStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
-              ),
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 12,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              disabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
+          ],
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(12),
+          children: [
+            _field(_firstNameCtrl, 'First Name'),
+            const SizedBox(height: 10),
+            _field(_lastNameCtrl, 'Last Name'),
+            const SizedBox(height: 10),
+            _field(
+              _phoneCtrl,
+              'Phone Number',
+              keyboardType: TextInputType.phone,
+              inputFormatters: [_PhonePkFormatter()],
             ),
-            items: _specialistCategories
-                .map(
-                  (value) => DropdownMenuItem(
-                    value: value,
-                    child: Text(
-                      value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12),
+            const SizedBox(height: 10),
+            _field(
+              _cnicCtrl,
+              'CNIC Number',
+              keyboardType: TextInputType.number,
+              inputFormatters: [_CnicFormatter()],
+            ),
+            const SizedBox(height: 10),
+            _field(_addressCtrl, 'Home Address'),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              initialValue: _specialistCategory,
+              isExpanded: true,
+              decoration: InputDecoration(
+                hintText: 'Specialist Category',
+                hintStyle: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                disabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+              ),
+              items:
+                  <String>{
+                        ..._specialistCategories,
+                        if (_specialistCategory != null) _specialistCategory!,
+                      }
+                      .map(
+                        (value) => DropdownMenuItem(
+                          value: value,
+                          child: Text(
+                            value,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      )
+                      .toList(growable: false),
+              onChanged: _editing
+                  ? (v) => setState(() => _specialistCategory = v)
+                  : null,
+            ),
+            const SizedBox(height: 10),
+            _field(_specialityCtrl, 'Speciality'),
+            const SizedBox(height: 8),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              activeThumbColor: AppColors.primary,
+              title: const Text(
+                'Employee Active',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+              ),
+              value: _isActive,
+              onChanged: _editing
+                  ? (value) => setState(() => _isActive = value)
+                  : null,
+            ),
+            const SizedBox(height: 14),
+            if (_editing)
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                )
-                .toList(growable: false),
-            onChanged: _editing
-                ? (v) => setState(() => _specialistCategory = v)
-                : null,
-          ),
-          const SizedBox(height: 10),
-          _field(_specialityCtrl, 'Speciality'),
-          const SizedBox(height: 8),
-          SwitchListTile.adaptive(
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            activeThumbColor: AppColors.primary,
-            title: const Text(
-              'Employee Active',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
-            ),
-            value: _isActive,
-            onChanged: _editing
-                ? (value) => setState(() => _isActive = value)
-                : null,
-          ),
-          const SizedBox(height: 14),
-          if (_editing)
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  onPressed: _save,
+                  child: const Text('Save Changes'),
                 ),
-                onPressed: _save,
-                child: const Text('Save Changes'),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

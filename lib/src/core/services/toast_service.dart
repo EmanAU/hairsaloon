@@ -25,7 +25,12 @@ class ToastService {
         behavior: SnackBarBehavior.floating,
         backgroundColor: colors.surface,
         elevation: 6,
-        margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        width: MediaQuery.sizeOf(messenger.context).shortestSide >= 600
+            ? 560
+            : null,
+        margin: MediaQuery.sizeOf(messenger.context).shortestSide >= 600
+            ? null
+            : const EdgeInsets.fromLTRB(16, 8, 16, 16),
         padding: const EdgeInsets.fromLTRB(14, 8, 4, 8),
         duration: const Duration(seconds: 4),
         dismissDirection: DismissDirection.horizontal,

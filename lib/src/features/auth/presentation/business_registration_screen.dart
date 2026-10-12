@@ -367,11 +367,16 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
     required ValueChanged<T?> onChanged,
   }) {
     return DropdownButtonFormField<T>(
+      isExpanded: true,
       initialValue: value,
       dropdownColor: _C.surfaceHigh,
       iconEnabledColor: _C.textSecondary,
       icon: Icon(CupertinoIcons.chevron_down, size: 16.r),
-      style: TextStyle(color: _C.textPrimary, fontSize: 14.sp),
+      style: TextStyle(
+        fontFamily: 'Roboto',
+        color: _C.textPrimary,
+        fontSize: 14.sp,
+      ),
       decoration: _fieldDecoration(
         hint: '',
         prefix: Icon(icon, color: _C.textSecondary, size: 20.r),
@@ -384,7 +389,12 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
           .map(
             (e) => DropdownMenuItem<T>(
               value: e as T,
-              child: Text(e, style: TextStyle(color: _C.textPrimary)),
+              child: Text(
+                e,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: _C.textPrimary),
+              ),
             ),
           )
           .toList(),

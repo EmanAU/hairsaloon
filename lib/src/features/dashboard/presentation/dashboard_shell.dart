@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/layout/adaptive_page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -29,6 +30,7 @@ class _DashboardShellState extends State<DashboardShell> {
       _ => const DashboardScreen(),
     };
 
+    final tablet = AdaptivePage.isTablet(context);
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -36,13 +38,54 @@ class _DashboardShellState extends State<DashboardShell> {
         _handleBackPressed();
       },
       child: Scaffold(
-        extendBody: true,
+        extendBody: !tablet,
         drawer: const AppDrawer(),
-        body: body,
-        bottomNavigationBar: _BottomNav(
-          currentIndex: _currentIndex,
-          onTap: _onTap,
-        ),
+        body: tablet
+            ? Row(
+                children: [
+                  SafeArea(
+                    child: NavigationRail(
+                      selectedIndex: _currentIndex,
+                      onDestinationSelected: _onTap,
+                      labelType: NavigationRailLabelType.all,
+                      backgroundColor: Colors.white,
+                      indicatorColor: AppColors.primary,
+                      leading: Builder(
+                        builder: (context) => IconButton(
+                          tooltip: 'Open menu',
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                          icon: const Icon(Icons.menu_rounded),
+                        ),
+                      ),
+                      destinations: const [
+                        NavigationRailDestination(
+                          icon: Icon(CupertinoIcons.house),
+                          selectedIcon: Icon(CupertinoIcons.house_fill),
+                          label: Text('Home'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(CupertinoIcons.doc_plaintext),
+                          selectedIcon: Icon(CupertinoIcons.doc_text_fill),
+                          label: Text('Billing'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(CupertinoIcons.money_dollar_circle),
+                          selectedIcon: Icon(
+                            CupertinoIcons.money_dollar_circle_fill,
+                          ),
+                          label: Text('Expense'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const VerticalDivider(width: 1),
+                  Expanded(child: body),
+                ],
+              )
+            : body,
+        bottomNavigationBar: tablet
+            ? null
+            : _BottomNav(currentIndex: _currentIndex, onTap: _onTap),
       ),
     );
   }

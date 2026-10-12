@@ -27,7 +27,7 @@ class DashboardScreen extends StatelessWidget {
         : 'G-11 Markaz, Islamabad';
 
     return ListView(
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.only(bottom: 100),
       children: [
         // ── Header ────────────────────────────────────────────────────────
         Container(
@@ -90,13 +90,15 @@ class DashboardScreen extends StatelessWidget {
                       color: Colors.black.withValues(alpha: 0.45),
                     ),
                     SizedBox(width: 4.w),
-                    Text(
-                      address,
-                      style: TextStyle(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        fontSize: 12.5.sp,
-                        fontWeight: FontWeight.w400,
-                        letterSpacing: 0.1,
+                    Expanded(
+                      child: Text(
+                        address,
+                        style: TextStyle(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          fontSize: 12.5.sp,
+                          fontWeight: FontWeight.w400,
+                          letterSpacing: 0.1,
+                        ),
                       ),
                     ),
                   ],
@@ -112,13 +114,33 @@ class DashboardScreen extends StatelessWidget {
           child: Column(
             children: [
               GridView.count(
-                crossAxisCount: 2,
+                crossAxisCount: MediaQuery.sizeOf(context).shortestSide >= 600
+                    ? (MediaQuery.sizeOf(context).width >= 1000 ? 4 : 3)
+                    : 2,
                 crossAxisSpacing: 14.w,
                 mainAxisSpacing: 14.h,
                 childAspectRatio: 1.18,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
+                  _DashboardTile(
+                    label: 'Employees',
+                    assetPath: 'assets/employees.png',
+                    onTap: () =>
+                        Navigator.of(context).pushNamed(AppRoutes.employees),
+                  ),
+                  _DashboardTile(
+                    label: 'Rate List',
+                    assetPath: 'assets/ratelust.png',
+                    onTap: () =>
+                        Navigator.of(context).pushNamed(AppRoutes.serviceList),
+                  ),
+                  _DashboardTile(
+                    label: 'Customers',
+                    assetPath: 'assets/customers.png',
+                    onTap: () =>
+                        Navigator.of(context).pushNamed(AppRoutes.customers),
+                  ),
                   _DashboardTile(
                     label: 'Finance',
                     assetPath: 'assets/finance.png',
@@ -136,7 +158,7 @@ class DashboardScreen extends StatelessWidget {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
-                      'Made with ❤️ by ',
+                      'Made with care by ',
                       style: TextStyle(
                         color: Colors.black,
                         fontSize: 11.5.sp,

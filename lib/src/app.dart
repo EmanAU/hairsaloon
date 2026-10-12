@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/layout/adaptive_page.dart';
 import 'package:hairsaloon/src/features/auth/data/repositories/local_auth_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -66,7 +67,14 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
+    final size =
+        WidgetsBinding.instance.platformDispatcher.views.first.physicalSize /
+        WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
+    SystemChrome.setPreferredOrientations(
+      size.shortestSide >= 600
+          ? const []
+          : const [DeviceOrientation.portraitUp],
+    );
     _bootstrapFuture = _bootstrap();
   }
 
@@ -74,6 +82,10 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
   Widget build(BuildContext context) {
     return ScreenUtilInit(
       designSize: const Size(375, 812),
+      enableScaleWH: () =>
+          MediaQueryData.fromView(View.of(context)).size.shortestSide < 600,
+      enableScaleText: () =>
+          MediaQueryData.fromView(View.of(context)).size.shortestSide < 600,
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, _) {
@@ -118,6 +130,8 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                 ),
               ],
               child: MaterialApp(
+                builder: (context, child) =>
+                    AdaptivePage(child: child ?? const SizedBox.shrink()),
                 title: 'Business COMB',
                 debugShowCheckedModeBanner: false,
                 navigatorKey: ToastService.navigatorKey,
@@ -129,45 +143,68 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                   useMaterial3: true,
                 ),
                 initialRoute: AppRoutes.splash,
-                routes: {
-                  AppRoutes.splash: (_) => SplashScreen(
-                    hasBusinessProfile: bootstrap.hasBusinessProfile,
-                    hasAuthSession: bootstrap.hasAuthSession,
-                  ),
-                  AppRoutes.login: (_) => const AuthEntryScreen(),
-                  AppRoutes.phonePasswordLogin: (_) =>
-                      const PhonePasswordLoginScreen(),
-                  AppRoutes.register: (_) => const RegisterScreen(),
-                  AppRoutes.businessRegistration: (_) =>
-                      const BusinessRegistrationScreen(),
-                  AppRoutes.homeShell: (_) => const DashboardShell(),
-                  AppRoutes.appointments: (_) => const AppointmentsScreen(),
-                  AppRoutes.employees: (_) => const EmployeesScreen(),
-                  AppRoutes.employeeAgreement: (_) =>
-                      const EmployeeAgreementScreen(),
-                  AppRoutes.serviceList: (_) => const ServiceListScreen(),
-                  AppRoutes.newService: (_) => const NewServiceScreen(),
-                  AppRoutes.categories: (_) => const CategoriesScreen(),
-                  AppRoutes.subcategories: (_) => const SubcategoriesScreen(),
-                  AppRoutes.financeOverview: (_) =>
-                      const FinanceOverviewScreen(),
-                  AppRoutes.employeeEarnings: (_) =>
-                      const EmployeeEarningsScreen(),
-                  AppRoutes.financeSales: (_) => const SalesScreen(),
-                  AppRoutes.expenseTypes: (_) => const ExpenseTypesScreen(),
-                  AppRoutes.expenses: (_) => const ExpensesScreen(),
-                  AppRoutes.customers: (_) => const CustomersScreen(),
-                  AppRoutes.profileSettings: (_) =>
-                      const ProfileSettingsScreen(),
-                  AppRoutes.accountProfile: (_) => const AccountProfileScreen(),
-                  AppRoutes.savedBills: (_) => const SavedBillsScreen(),
-                },
+                routes:
+                    <String, WidgetBuilder>{
+                      AppRoutes.splash: (_) => SplashScreen(
+                        hasBusinessProfile: bootstrap.hasBusinessProfile,
+                        hasAuthSession: bootstrap.hasAuthSession,
+                      ),
+                      AppRoutes.login: (_) => const AuthEntryScreen(),
+                      AppRoutes.phonePasswordLogin: (_) =>
+                          const PhonePasswordLoginScreen(),
+                      AppRoutes.register: (_) => const RegisterScreen(),
+                      AppRoutes.businessRegistration: (_) =>
+                          const BusinessRegistrationScreen(),
+                      AppRoutes.homeShell: (_) => const DashboardShell(),
+                      AppRoutes.appointments: (_) => const AppointmentsScreen(),
+                      AppRoutes.employees: (_) => const EmployeesScreen(),
+                      AppRoutes.employeeAgreement: (_) =>
+                          const EmployeeAgreementScreen(),
+                      AppRoutes.serviceList: (_) => const ServiceListScreen(),
+                      AppRoutes.newService: (_) => const NewServiceScreen(),
+                      AppRoutes.categories: (_) => const CategoriesScreen(),
+                      AppRoutes.subcategories: (_) =>
+                          const SubcategoriesScreen(),
+                      AppRoutes.financeOverview: (_) =>
+                          const FinanceOverviewScreen(),
+                      AppRoutes.employeeEarnings: (_) =>
+                          const EmployeeEarningsScreen(),
+                      AppRoutes.financeSales: (_) => const SalesScreen(),
+                      AppRoutes.expenseTypes: (_) => const ExpenseTypesScreen(),
+                      AppRoutes.expenses: (_) => const ExpensesScreen(),
+                      AppRoutes.customers: (_) => const CustomersScreen(),
+                      AppRoutes.profileSettings: (_) =>
+                          const ProfileSettingsScreen(),
+                      AppRoutes.accountProfile: (_) =>
+                          const AccountProfileScreen(),
+                      AppRoutes.savedBills: (_) => const SavedBillsScreen(),
+                    }.map(
+                      (name, builder) => MapEntry(
+                        name,
+                        (context) => AdaptivePage(
+                          form: {
+                            AppRoutes.login,
+                            AppRoutes.phonePasswordLogin,
+                            AppRoutes.register,
+                            AppRoutes.businessRegistration,
+                            AppRoutes.newService,
+                            AppRoutes.expenseTypes,
+                            AppRoutes.accountProfile,
+                            AppRoutes.profileSettings,
+                            AppRoutes.employeeAgreement,
+                          }.contains(name),
+                          child: builder(context),
+                        ),
+                      ),
+                    ),
                 onGenerateRoute: (settings) {
                   if (settings.name == AppRoutes.billDetails) {
                     final billId = settings.arguments as String?;
                     if (billId == null) return null;
                     return MaterialPageRoute(
-                      builder: (_) => BillDetailsScreen(billId: billId),
+                      builder: (_) => AdaptivePage(
+                        child: BillDetailsScreen(billId: billId),
+                      ),
                     );
                   }
                   return null;

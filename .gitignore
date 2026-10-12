@@ -36,6 +36,9 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Local UI screenshots and preview archives
+/screenshots/
+
 # Symbolication related
 app.*.symbols
 

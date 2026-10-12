@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/layout/adaptive_page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
@@ -94,184 +95,196 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
     if (!employeeOptions.contains(_employee)) {
       _employee = employeeOptions.first;
     }
-    return Scaffold(
-      backgroundColor: const Color(0xFFF3F3F3),
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(CupertinoIcons.back, color: Colors.black),
-        ),
-        title: const Text(
-          'Create Bill',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
-        ),
-      ),
-      body: Column(
-        children: [
-          Container(
-            color: AppColors.primary,
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'Sub Total: ${_subTotal.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Tax: ${_taxPercent.toStringAsFixed(0)}%',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      'Total: Rs.${_grandTotal.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    widget.customerName.isEmpty
-                        ? widget.customerPhone
-                        : '${widget.customerName} • ${widget.customerPhone}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  initialValue: _employee,
-                  style: const TextStyle(fontSize: 12, color: Colors.black),
-                  decoration: _smallDecoration('Select Employee'),
-                  items: employeeOptions
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _employee = v ?? _employee),
-                ),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  initialValue: _paymentType,
-                  style: const TextStyle(fontSize: 12, color: Colors.black),
-                  decoration: _smallDecoration('Payment Type'),
-                  items: const ['Cash']
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
-                  onChanged: (v) =>
-                      setState(() => _paymentType = v ?? _paymentType),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: _saveBill,
-                    child: const Text(
-                      'Save Bill',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+    return AdaptivePage(
+      form: true,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF3F3F3),
+        appBar: AppBar(
+          backgroundColor: AppColors.primary,
+          surfaceTintColor: Colors.transparent,
+          leading: IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(CupertinoIcons.back, color: Colors.black),
           ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: services.length,
-              itemBuilder: (context, i) {
-                final s = services[i];
-                final selected = _selectedServiceIndexes.contains(i);
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
+          title: const Text(
+            'Create Bill',
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+          ),
+        ),
+        body: Column(
+          children: [
+            Container(
+              color: AppColors.primary,
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(
+                children: [
+                  Row(
                     children: [
-                      Checkbox(
-                        value: selected,
-                        onChanged: (v) {
-                          setState(() {
-                            if (v == true) {
-                              _selectedServiceIndexes.add(i);
-                            } else {
-                              _selectedServiceIndexes.remove(i);
-                            }
-                          });
-                        },
-                      ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              s.subcategory,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              s.category,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.blueGrey,
-                              ),
-                            ),
-                          ],
+                      Text(
+                        'Sub Total: ${_subTotal.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                      SizedBox(
-                        width: 100,
-                        child: TextField(
-                          controller: _amountControllers[i],
-                          keyboardType: TextInputType.number,
-                          style: const TextStyle(fontSize: 12),
-                          onChanged: (_) => setState(() {}),
-                          decoration: InputDecoration(
-                            prefixText: 'Rs.',
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 10,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Tax: ${_taxPercent.toStringAsFixed(0)}%',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'Total: Rs.${_grandTotal.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ],
                   ),
-                );
-              },
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      widget.customerName.isEmpty
+                          ? widget.customerPhone
+                          : '${widget.customerName} • ${widget.customerPhone}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    initialValue: _employee,
+                    style: const TextStyle(
+                      fontFamily: 'Roboto',
+                      fontSize: 12,
+                      color: Colors.black,
+                    ),
+                    decoration: _smallDecoration('Select Employee'),
+                    items: employeeOptions
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
+                    onChanged: (v) =>
+                        setState(() => _employee = v ?? _employee),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    initialValue: _paymentType,
+                    style: const TextStyle(
+                      fontFamily: 'Roboto',
+                      fontSize: 12,
+                      color: Colors.black,
+                    ),
+                    decoration: _smallDecoration('Payment Type'),
+                    items: const ['Cash']
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
+                    onChanged: (v) =>
+                        setState(() => _paymentType = v ?? _paymentType),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: _saveBill,
+                      child: const Text(
+                        'Save Bill',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(12),
+                itemCount: services.length,
+                itemBuilder: (context, i) {
+                  final s = services[i];
+                  final selected = _selectedServiceIndexes.contains(i);
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Checkbox(
+                          value: selected,
+                          onChanged: (v) {
+                            setState(() {
+                              if (v == true) {
+                                _selectedServiceIndexes.add(i);
+                              } else {
+                                _selectedServiceIndexes.remove(i);
+                              }
+                            });
+                          },
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                s.subcategory,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                s.category,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.blueGrey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(
+                          width: 100,
+                          child: TextField(
+                            controller: _amountControllers[i],
+                            keyboardType: TextInputType.number,
+                            style: const TextStyle(fontSize: 12),
+                            onChanged: (_) => setState(() {}),
+                            decoration: InputDecoration(
+                              prefixText: 'Rs.',
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 10,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
