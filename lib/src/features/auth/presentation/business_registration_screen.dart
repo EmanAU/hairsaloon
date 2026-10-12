@@ -1,27 +1,13 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:provider/provider.dart';
+import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/entities/business_profile.dart';
+import 'package:hairsaloon/src/features/business_profile/presentation/business_logo_picker.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
-import 'package:provider/provider.dart';
-
-// ─── Design tokens ────────────────────────────────────────────────────────────
-class _C {
-  static const bg = Color(0xFFFFFFFF);
-  static const surface = Color(0xFFF6F6F6);
-  static const surfaceHigh = Color(0xFFECECEC);
-  static const lime = Color(0xFFD4FF33);
-  static const limeDeep = Color(0xFFB8E000);
-  static const textPrimary = Color(0xFF0D0D0D);
-  static const textSecondary = Color(0xFF6E6E6E);
-  static const textHint = Color(0xFF9A9A9A);
-  static const divider = Color(0xFFE1E1E1);
-  static const error = Color(0xFFFF5C5C);
-}
-// ──────────────────────────────────────────────────────────────────────────────
+import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class BusinessRegistrationScreen extends StatefulWidget {
   const BusinessRegistrationScreen({super.key});
@@ -31,491 +17,326 @@ class BusinessRegistrationScreen extends StatefulWidget {
       _BusinessRegistrationScreenState();
 }
 
-class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
-    with SingleTickerProviderStateMixin {
+class _BusinessRegistrationScreenState
+    extends State<BusinessRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  String _businessName = '';
-  String _phoneNumber = '';
-  late final TextEditingController _phoneController;
-  bool _isPhoneLocked = false;
-  String _address = '';
-  String? _businessType;
-  String? _city;
-  String _area = '';
-
-  final List<String> _businessTypes = const ['Hair Salon'];
-  final List<String> _cities = const ['Islamabad'];
-
-  late final AnimationController _animController;
-  late final Animation<double> _fadeAnim;
-  late final Animation<Offset> _slideAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _phoneController = TextEditingController(text: '+92 ');
-    _phoneNumber = _phoneController.text.trim();
-
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
-        .animate(
-          CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
-        );
-
-    _animController.forward();
-  }
+  final _name = TextEditingController();
+  final _phone = TextEditingController(text: '+92 ');
+  final _city = TextEditingController(text: 'Islamabad');
+  final _area = TextEditingController();
+  final _address = TextEditingController();
+  String _businessType = 'Hair Salon';
+  String? _logo;
+  bool _initialized = false;
+  bool _phoneLocked = false;
+  bool _saving = false;
+  bool _exitDialogOpen = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final userPhone = context.read<AuthStore>().currentUser?.phone.trim();
-    if (userPhone == null || userPhone.isEmpty) return;
-    if (_isPhoneLocked) return;
-    _isPhoneLocked = true;
-    _phoneController.text = userPhone;
-    _phoneNumber = userPhone;
+    if (_initialized) return;
+    _initialized = true;
+    final profile = context.read<BusinessProfileNotifier>().profile;
+    if (profile != null) {
+      _name.text = profile.businessName;
+      _city.text = profile.city;
+      _area.text = profile.area;
+      _address.text = profile.address;
+      _logo = profile.logoBase64;
+    }
+    final phone = context.read<AuthStore>().currentUser?.phone;
+    _phoneLocked = phone != null && phone.isNotEmpty;
+    _phone.text = _phoneLocked ? phone! : profile?.phoneNumber ?? '+92 ';
   }
 
   @override
   void dispose() {
-    _phoneController.dispose();
-    _animController.dispose();
+    for (final controller in [_name, _phone, _city, _area, _address]) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
-  // ─── Shared decoration ────────────────────────────────────────────────────
-  InputDecoration _fieldDecoration({
-    required String hint,
-    Widget? prefix,
-    Widget? suffix,
-  }) {
-    final radius = BorderRadius.all(Radius.circular(14.r));
+  InputDecoration _decoration(String hint, {IconData? icon}) {
+    const radius = BorderRadius.all(Radius.circular(9));
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(
-        color: _C.textHint,
-        fontSize: 14.sp,
-        fontWeight: FontWeight.w400,
-      ),
-      prefixIcon: prefix,
-      suffixIcon: suffix,
-      isDense: false,
-      filled: true,
-      fillColor: _C.surface,
-      contentPadding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 18.h),
-      enabledBorder: OutlineInputBorder(
+      hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF9A9A9A)),
+      filled: false,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      suffixIcon: icon == null
+          ? null
+          : Icon(icon, size: 17, color: AppColors.textSecondary),
+      enabledBorder: const OutlineInputBorder(
         borderRadius: radius,
-        borderSide: const BorderSide(color: _C.divider, width: 1),
+        borderSide: BorderSide(color: Color(0xFFE1E1E1)),
       ),
-      focusedBorder: OutlineInputBorder(
+      focusedBorder: const OutlineInputBorder(
         borderRadius: radius,
-        borderSide: const BorderSide(color: _C.lime, width: 1.5),
+        borderSide: BorderSide(color: AppColors.primary, width: 1.5),
       ),
-      errorBorder: OutlineInputBorder(
+      errorBorder: const OutlineInputBorder(
         borderRadius: radius,
-        borderSide: const BorderSide(color: _C.error, width: 1),
+        borderSide: BorderSide(color: AppColors.danger),
       ),
-      focusedErrorBorder: OutlineInputBorder(
+      focusedErrorBorder: const OutlineInputBorder(
         borderRadius: radius,
-        borderSide: const BorderSide(color: _C.error, width: 1.5),
+        borderSide: BorderSide(color: AppColors.danger, width: 1.5),
       ),
-      errorStyle: TextStyle(color: _C.error, fontSize: 11.5.sp),
+      errorStyle: const TextStyle(fontSize: 11),
     );
   }
 
-  Widget _buildLabel(String text) => Padding(
-    padding: EdgeInsets.only(bottom: 8.h),
+  Widget _label(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
     child: Text(
       text,
-      style: TextStyle(
-        color: _C.textSecondary,
-        fontSize: 12.sp,
+      style: const TextStyle(
+        fontSize: 12,
         fontWeight: FontWeight.w500,
-        letterSpacing: 0.4,
+        color: AppColors.textSecondary,
       ),
     ),
   );
 
-  Widget _buildField(Widget child) => Padding(
-    padding: EdgeInsets.only(bottom: 16.h),
-    child: child,
-  );
-
-  // ─── Build ────────────────────────────────────────────────────────────────
-  @override
-  Widget build(BuildContext context) {
-    return Theme(
-      data: ThemeData.light().copyWith(
-        colorScheme: const ColorScheme.light(
-          primary: _C.lime,
-          onPrimary: _C.textPrimary,
-          surface: _C.surface,
-          onSurface: _C.textPrimary,
-        ),
-        inputDecorationTheme: const InputDecorationTheme(
-          filled: true,
-          fillColor: _C.surface,
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: _C.bg,
-        body: WillPopScope(
-          onWillPop: _onWillPop,
-          child: SafeArea(
-            child: FadeTransition(
-              opacity: _fadeAnim,
-              child: SlideTransition(
-                position: _slideAnim,
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(24.w, 16.h, 24.w, 40.h),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ── Header ──────────────────────────────────────────
-                        SizedBox(height: 12.h),
-                        _buildHeader(),
-                        SizedBox(height: 36.h),
-
-                        // ── Business Name ────────────────────────────────────
-                        _buildLabel('BUSINESS NAME'),
-                        _buildField(
-                          TextFormField(
-                            style: TextStyle(
-                              color: _C.textPrimary,
-                              fontSize: 14.sp,
-                            ),
-                            decoration: _fieldDecoration(
-                              hint: 'e.g. Glamour Studio',
-                              prefix: Icon(
-                                Icons.storefront_rounded,
-                                color: _C.textSecondary,
-                                size: 20.r,
-                              ),
-                            ),
-                            onChanged: (v) => _businessName = v.trim(),
-                            validator: (v) => (v == null || v.trim().isEmpty)
-                                ? 'Please enter business name.'
-                                : null,
-                          ),
-                        ),
-
-                        // ── Phone ────────────────────────────────────────────
-                        _buildLabel('PHONE NUMBER'),
-                        _buildField(
-                          TextFormField(
-                            controller: _phoneController,
-                            enabled: !_isPhoneLocked,
-                            style: TextStyle(
-                              color: _C.textPrimary,
-                              fontSize: 14.sp,
-                            ),
-                            decoration: _fieldDecoration(
-                              hint: '+92 3xx xxx xxxx',
-                              prefix: Icon(
-                                Icons.phone_rounded,
-                                color: _C.textSecondary,
-                                size: 20.r,
-                              ),
-                            ),
-                            keyboardType: TextInputType.phone,
-                            onChanged: (v) => _phoneNumber = v.trim(),
-                            validator: (v) {
-                              final val = v?.trim() ?? '';
-                              if (val.isEmpty || val == '+92') {
-                                return 'Please enter phone number.';
-                              }
-                              if (!val.startsWith('+92')) {
-                                return 'Phone number must start with +92.';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-
-                        // ── Business Type ─────────────────────────────────────
-                        _buildLabel('BUSINESS TYPE'),
-                        _buildField(
-                          _buildDropdown<String>(
-                            value: _businessType,
-                            hint: 'Select Business Type',
-                            items: _businessTypes,
-                            icon: Icons.category_rounded,
-                            onChanged: (v) => setState(() => _businessType = v),
-                          ),
-                        ),
-
-                        // ── City ──────────────────────────────────────────────
-                        _buildLabel('CITY'),
-                        _buildField(
-                          _buildDropdown<String>(
-                            value: _city,
-                            hint: 'Select City',
-                            items: _cities,
-                            icon: Icons.location_city_rounded,
-                            onChanged: (v) => setState(() => _city = v),
-                          ),
-                        ),
-
-                        // ── Area ──────────────────────────────────────────────
-                        _buildLabel('AREA'),
-                        _buildField(
-                          TextFormField(
-                            style: TextStyle(
-                              color: _C.textPrimary,
-                              fontSize: 14.sp,
-                            ),
-                            decoration: _fieldDecoration(
-                              hint: 'e.g. F-7, Blue Area',
-                              prefix: Icon(
-                                Icons.map_rounded,
-                                color: _C.textSecondary,
-                                size: 20.r,
-                              ),
-                            ),
-                            onChanged: (v) => _area = v.trim(),
-                            validator: (v) => (v == null || v.trim().isEmpty)
-                                ? 'Please enter area.'
-                                : null,
-                          ),
-                        ),
-
-                        // ── Address (optional) ────────────────────────────────
-                        _buildLabel('ADDRESS  •  OPTIONAL'),
-                        _buildField(
-                          TextFormField(
-                            style: TextStyle(
-                              color: _C.textPrimary,
-                              fontSize: 14.sp,
-                            ),
-                            decoration: _fieldDecoration(
-                              hint: 'Street / building details',
-                              prefix: Icon(
-                                Icons.pin_drop_rounded,
-                                color: _C.textSecondary,
-                                size: 20.r,
-                              ),
-                            ),
-                            onChanged: (v) => _address = v.trim(),
-                          ),
-                        ),
-
-                        SizedBox(height: 28.h),
-
-                        // ── Register Button ───────────────────────────────────
-                        _buildRegisterButton(),
-
-                        SizedBox(height: 16.h),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─── Header ───────────────────────────────────────────────────────────────
-  Widget _buildHeader() {
+  Widget _field(
+    String label,
+    TextEditingController controller,
+    String hint, {
+    bool required = true,
+    TextInputType? keyboard,
+    bool readOnly = false,
+    int lines = 1,
+  }) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Lime accent tag
-        Text(
-          'Business\nRegistration',
-          style: TextStyle(
-            color: _C.textPrimary,
-            fontSize: 32.sp,
-            fontWeight: FontWeight.w700,
-            height: 1.15,
-            letterSpacing: -0.5,
+        _label(label),
+        TextFormField(
+          controller: controller,
+          readOnly: readOnly,
+          enabled: !_saving,
+          maxLines: lines,
+          keyboardType: keyboard,
+          textInputAction: lines > 1
+              ? TextInputAction.newline
+              : TextInputAction.next,
+          style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+          decoration: _decoration(
+            hint,
+            icon: readOnly ? Icons.lock_outline_rounded : null,
           ),
-          textAlign: TextAlign.center,
+          validator: (value) {
+            final text = (value ?? '').trim();
+            if (required && text.isEmpty) return 'Required';
+            if (controller == _phone &&
+                !RegExp(
+                  r'^\+92\d{10}$',
+                ).hasMatch(text.replaceAll(RegExp(r'[\s()-]'), ''))) {
+              return 'Enter a valid +92 phone number';
+            }
+            return null;
+          },
         ),
-        SizedBox(height: 10.h),
-        Text(
-          'Set up your profile to start managing appointments & services.',
-          style: TextStyle(
-            color: _C.textSecondary,
-            fontSize: 13.5.sp,
-            height: 1.55,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        SizedBox(height: 20.h),
-        Container(height: 1.h, color: _C.divider),
       ],
     );
   }
 
-  // ─── Dropdown ─────────────────────────────────────────────────────────────
-  Widget _buildDropdown<T>({
-    required T? value,
-    required String hint,
-    required List<String> items,
-    required IconData icon,
-    required ValueChanged<T?> onChanged,
-  }) {
-    return DropdownButtonFormField<T>(
-      isExpanded: true,
-      initialValue: value,
-      dropdownColor: _C.surfaceHigh,
-      iconEnabledColor: _C.textSecondary,
-      icon: Icon(CupertinoIcons.chevron_down, size: 16.r),
-      style: TextStyle(
-        fontFamily: 'Roboto',
-        color: _C.textPrimary,
-        fontSize: 14.sp,
-      ),
-      decoration: _fieldDecoration(
-        hint: '',
-        prefix: Icon(icon, color: _C.textSecondary, size: 20.r),
-      ),
-      hint: Text(
-        hint,
-        style: TextStyle(color: _C.textHint, fontSize: 14.sp),
-      ),
-      items: items
-          .map(
-            (e) => DropdownMenuItem<T>(
-              value: e as T,
-              child: Text(
-                e,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: _C.textPrimary),
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: Navigator.of(context).canPop() && !_saving,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && !_saving) _confirmExit();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Set up your business',
+                    style: TextStyle(
+                      fontSize: 22,
+                      height: 1.2,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'A few details to make this space yours.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.5,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  BusinessLogoPicker(
+                    value: _logo,
+                    recoverLostImage: true,
+                    enabled: !_saving,
+                    onChanged: (value) => setState(() => _logo = value),
+                  ),
+                  const SizedBox(height: 20),
+                  _field('Business name', _name, 'e.g. Glamour Studio'),
+                  const SizedBox(height: 14),
+                  _field(
+                    'Phone number',
+                    _phone,
+                    '+92 3xx xxx xxxx',
+                    keyboard: TextInputType.phone,
+                    readOnly: _phoneLocked,
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _label('Business type'),
+                            DropdownButtonFormField<String>(
+                              initialValue: _businessType,
+                              isExpanded: true,
+                              style: const TextStyle(
+                                fontFamily: 'Roboto',
+                                fontSize: 13,
+                                color: AppColors.textPrimary,
+                              ),
+                              icon: const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 18,
+                              ),
+                              decoration: _decoration('Select type'),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'Hair Salon',
+                                  child: Text('Hair Salon'),
+                                ),
+                              ],
+                              onChanged: _saving
+                                  ? null
+                                  : (value) => setState(
+                                      () =>
+                                          _businessType = value ?? 'Hair Salon',
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: _field('City', _city, 'Your city')),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  _field('Area', _area, 'e.g. G-11 Markaz'),
+                  const SizedBox(height: 14),
+                  _field(
+                    'Address (optional)',
+                    _address,
+                    'Street or building details',
+                    required: false,
+                    lines: 2,
+                  ),
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: FilledButton(
+                      onPressed: _saving ? null : _save,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.onPrimary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                      ),
+                      child: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text(
+                              'Save & continue',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          )
-          .toList(),
-      onChanged: onChanged,
-    );
-  }
-
-  // ─── Register button ──────────────────────────────────────────────────────
-  Widget _buildRegisterButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 58.h,
-      child: ElevatedButton(
-        style:
-            ElevatedButton.styleFrom(
-              backgroundColor: _C.lime,
-              foregroundColor: Colors.black,
-              elevation: 0,
-              shadowColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.r),
-              ),
-            ).copyWith(
-              overlayColor: WidgetStateProperty.resolveWith(
-                (states) => states.contains(WidgetState.pressed)
-                    ? _C.limeDeep.withValues(alpha: 0.5)
-                    : null,
-              ),
-            ),
-        onPressed: _handleRegister,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Register Business',
-              style: TextStyle(
-                fontSize: 15.sp,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.2,
-              ),
-            ),
-            SizedBox(width: 8.w),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─── Logic (unchanged) ────────────────────────────────────────────────────
-  Future<void> _handleRegister() async {
-    final formState = _formKey.currentState;
-    if (formState == null) return;
-    if (!formState.validate()) return;
-
-    final businessName = _businessName;
-    final phoneNumber = _phoneNumber;
-    if (businessName.isEmpty || phoneNumber.isEmpty) return;
-
-    if (_businessType == null || _city == null || _area.trim().isEmpty) return;
-
-    final profile = BusinessProfile(
-      businessName: _businessName,
-      phoneNumber: _phoneNumber,
-      businessType: _businessType ?? '',
-      city: _city ?? '',
-      area: _area,
-      address: _address.isEmpty ? '$_area, ${_city ?? ''}' : _address,
-    );
-    final auth = context.read<AuthStore>();
-    await context.read<BusinessProfileNotifier>().save(profile);
-    await auth.loadCurrentUser();
-    if (!mounted) return;
-    Navigator.of(
-      context,
-    ).pushNamedAndRemoveUntil(AppRoutes.homeShell, (r) => false);
-  }
-
-  Future<bool> _onWillPop() async {
-    final shouldExit = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: _C.surfaceHigh,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18.r),
-        ),
-        title: const Text(
-          'Exit App',
-          style: TextStyle(color: _C.textPrimary, fontWeight: FontWeight.w600),
-        ),
-        content: const Text(
-          'Are you sure you want to exit the app?',
-          style: TextStyle(color: _C.textSecondary, fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: _C.textSecondary),
             ),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _C.lime,
-              foregroundColor: _C.bg,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.r),
-              ),
-            ),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(
-              'Exit',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _save() async {
+    if (_saving || !_formKey.currentState!.validate()) return;
+    final notifier = context.read<BusinessProfileNotifier>();
+    setState(() => _saving = true);
+    try {
+      await notifier.save(
+        BusinessProfile(
+          businessName: _name.text.trim(),
+          phoneNumber: _phone.text.replaceAll(RegExp(r'[\s()-]'), ''),
+          businessType: _businessType,
+          city: _city.text.trim(),
+          area: _area.text.trim(),
+          address: _address.text.trim().isEmpty
+              ? '${_area.text.trim()}, ${_city.text.trim()}'
+              : _address.text.trim(),
+          logoBase64: _logo,
+        ),
+      );
+      if (!mounted) return;
+      Navigator.of(
+        context,
+      ).pushNamedAndRemoveUntil(AppRoutes.homeShell, (route) => false);
+    } catch (_) {
+      if (mounted) {
+        ToastService.error('Could not save your business. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _confirmExit() async {
+    if (_exitDialogOpen) return;
+    _exitDialogOpen = true;
+    final exit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Exit app?'),
+        content: const Text('Your business setup has not been saved yet.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Stay'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Exit'),
           ),
         ],
       ),
     );
-    if (shouldExit == true) {
-      await SystemNavigator.pop();
-    }
-    return false;
+    _exitDialogOpen = false;
+    if (exit == true && mounted) await SystemNavigator.pop();
   }
 }

@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/features/business_profile/presentation/business_logo_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -58,6 +59,10 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 20.h),
+                if (profile?.logoBase64 != null) ...[
+                  BusinessLogo(value: profile!.logoBase64, size: 48),
+                  const SizedBox(height: 12),
+                ],
                 // Welcome label
                 Text(
                   'WELCOME BACK',

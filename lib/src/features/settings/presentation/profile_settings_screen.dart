@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/features/business_profile/presentation/business_logo_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/entities/business_profile.dart';
@@ -21,12 +22,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   final _areaCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
   bool _isEditing = false;
+  String? _logo;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final profile = context.read<BusinessProfileNotifier>().profile;
     if (profile == null || _nameCtrl.text.isNotEmpty) return;
+    _logo = profile.logoBase64;
     _nameCtrl.text = profile.businessName;
     _phoneCtrl.text = profile.phoneNumber;
     _typeCtrl.text = profile.businessType;
@@ -64,7 +67,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => setState(() => _isEditing = !_isEditing),
+            onPressed: () => setState(() {
+              if (_isEditing) _logo = profile?.logoBase64;
+              _isEditing = !_isEditing;
+            }),
             child: Text(
               _isEditing ? 'Cancel' : 'Edit',
               style: const TextStyle(
@@ -84,6 +90,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   key: _formKey,
                   child: Column(
                     children: [
+                      BusinessLogoPicker(
+                        value: _logo,
+                        enabled: _isEditing,
+                        onChanged: (value) => setState(() => _logo = value),
+                      ),
+                      const SizedBox(height: 16),
                       _field(_nameCtrl, 'Business Name'),
                       const SizedBox(height: 8),
                       _field(_phoneCtrl, 'Phone Number'),
@@ -170,8 +182,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       city: _cityCtrl.text.trim(),
       area: _areaCtrl.text.trim(),
       address: _addressCtrl.text.trim(),
+      logoBase64: _logo,
     );
     await context.read<BusinessProfileNotifier>().save(updated);
+    if (!mounted) return;
     setState(() => _isEditing = false);
   }
 }

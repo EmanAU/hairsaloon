@@ -68,7 +68,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final error = auth.error;
 
     InputDecoration fieldDecoration({required String hint, Widget? prefix}) {
-      final radius = BorderRadius.all(Radius.circular(14.r));
+      const radius = BorderRadius.all(Radius.circular(9));
       return InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(
@@ -77,9 +77,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           fontWeight: FontWeight.w400,
         ),
         prefixIcon: prefix,
-        filled: true,
-        fillColor: _C.surface,
-        contentPadding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 18.h),
+        filled: false,
+        fillColor: Colors.transparent,
+        contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 16.h),
         enabledBorder: OutlineInputBorder(
           borderRadius: radius,
           borderSide: const BorderSide(color: _C.divider, width: 1),
@@ -106,9 +106,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         text,
         style: TextStyle(
           color: _C.textSecondary,
-          fontSize: 12.sp,
+          fontSize: 13.sp,
           fontWeight: FontWeight.w500,
-          letterSpacing: 0.4,
+          letterSpacing: 0.1,
         ),
       ),
     );
@@ -122,8 +122,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onSurface: _C.textPrimary,
         ),
         inputDecorationTheme: const InputDecorationTheme(
-          filled: true,
-          fillColor: _C.surface,
+          filled: false,
+          fillColor: Colors.transparent,
         ),
       ),
       child: Scaffold(
@@ -137,40 +137,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(height: 12.h),
-                  Center(
-                    child: Text(
-                      'User\nRegistration',
-                      style: TextStyle(
-                        color: _C.textPrimary,
-                        fontSize: 32.sp,
-                        fontWeight: FontWeight.w700,
-                        height: 1.15,
-                        letterSpacing: -0.5,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  SizedBox(height: 10.h),
-                  Center(
-                    child: Text(
-                      'Create an account on this device to continue.',
-                      style: TextStyle(
-                        color: _C.textSecondary,
-                        fontSize: 13.5.sp,
-                        height: 1.55,
-                      ),
-                      textAlign: TextAlign.center,
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      tooltip: 'Back',
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      padding: EdgeInsets.zero,
+                      alignment: Alignment.centerLeft,
                     ),
                   ),
                   SizedBox(height: 20.h),
-                  Container(height: 1.h, color: _C.divider),
-                  SizedBox(height: 36.h),
+                  Text(
+                    'Create account',
+                    style: TextStyle(
+                      color: _C.textPrimary,
+                      fontSize: 28.sp,
+                      fontWeight: FontWeight.w700,
+                      height: 1.2,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  SizedBox(height: 10.h),
+                  Text(
+                    'Enter your details to get started.',
+                    style: TextStyle(
+                      color: _C.textSecondary,
+                      fontSize: 14.sp,
+                      height: 1.5,
+                    ),
+                  ),
+                  SizedBox(height: 28.h),
                   if (error != null && error.isNotEmpty) ...[
                     _ErrorBanner(message: error, onClose: auth.clearError),
                     SizedBox(height: 16.h),
                   ],
-                  label('NAME'),
+                  label('Name'),
                   Padding(
                     padding: EdgeInsets.only(bottom: 16.h),
                     child: TextFormField(
@@ -188,7 +190,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           (v == null || v.trim().isEmpty) ? 'Required' : null,
                     ),
                   ),
-                  label('PHONE NUMBER'),
+                  label('Phone number'),
                   Padding(
                     padding: EdgeInsets.only(bottom: 16.h),
                     child: TextFormField(
@@ -213,7 +215,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                     ),
                   ),
-                  label('PASSWORD'),
+                  label('Password'),
                   Padding(
                     padding: EdgeInsets.only(bottom: 16.h),
                     child: TextFormField(
@@ -250,7 +252,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                     ),
                   ),
-                  label('CONFIRM PASSWORD'),
+                  label('Confirm password'),
                   Padding(
                     padding: EdgeInsets.only(bottom: 16.h),
                     child: TextFormField(
@@ -293,7 +295,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   SizedBox(height: 12.h),
                   SizedBox(
                     width: double.infinity,
-                    height: 58.h,
+                    height: 52.h,
                     child: ElevatedButton(
                       style:
                           ElevatedButton.styleFrom(
@@ -302,7 +304,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             elevation: 0,
                             shadowColor: Colors.transparent,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16.r),
+                              borderRadius: BorderRadius.circular(9),
                             ),
                           ).copyWith(
                             overlayColor: WidgetStateProperty.resolveWith(
@@ -348,7 +350,7 @@ class _ErrorBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.danger.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(9),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(

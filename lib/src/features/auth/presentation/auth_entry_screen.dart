@@ -7,67 +7,101 @@ class AuthEntryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final buttonShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(9),
+    );
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Saloon Management',
+                    'BUSINESS COMB',
                     style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2,
                     ),
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Login or create an account to continue.',
-                    textAlign: TextAlign.center,
+                    'Your salon.\nAll in one place.',
                     style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 32,
+                      height: 1.15,
+                      letterSpacing: -0.8,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Manage your team, services and daily sales with ease.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.6,
                       color: AppColors.textSecondary,
                     ),
                   ),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,
-                    height: 48,
+                    height: 52,
                     child: FilledButton(
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: AppColors.onPrimary,
+                        shape: buttonShape,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
                       ),
                       onPressed: () => Navigator.of(
                         context,
                       ).pushNamed(AppRoutes.phonePasswordLogin),
-                      child: const Text(
-                        'Login',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Login',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(width: 10),
+                          Icon(Icons.arrow_forward_rounded, size: 19),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
-                    height: 48,
+                    height: 52,
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textPrimary,
-                        side: const BorderSide(color: AppColors.textPrimary),
+                        backgroundColor: AppColors.surface,
+                        side: const BorderSide(color: Color(0xFFDADDD3)),
+                        shape: buttonShape,
                       ),
                       onPressed: () =>
                           Navigator.of(context).pushNamed(AppRoutes.register),
                       child: const Text(
                         'Register',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),

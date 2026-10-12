@@ -10,6 +10,7 @@ class BusinessProfileModel {
     required this.city,
     required this.area,
     required this.address,
+    this.logoBase64,
   });
 
   factory BusinessProfileModel.fromEntity(BusinessProfile entity) {
@@ -20,6 +21,7 @@ class BusinessProfileModel {
       city: entity.city,
       area: entity.area,
       address: entity.address,
+      logoBase64: entity.logoBase64,
     );
   }
 
@@ -31,6 +33,7 @@ class BusinessProfileModel {
       city: (json['city'] as String?) ?? '',
       area: (json['area'] as String?) ?? '',
       address: (json['address'] as String?) ?? '',
+      logoBase64: json['logoBase64'] as String?,
     );
   }
 
@@ -48,6 +51,7 @@ class BusinessProfileModel {
   final String city;
   final String area;
   final String address;
+  final String? logoBase64;
 
   BusinessProfile toEntity() {
     return BusinessProfile(
@@ -57,6 +61,7 @@ class BusinessProfileModel {
       city: city,
       area: area,
       address: address,
+      logoBase64: logoBase64,
     );
   }
 
@@ -68,6 +73,7 @@ class BusinessProfileModel {
       'city': city,
       'area': area,
       'address': address,
+      'logoBase64': logoBase64,
     };
   }
 

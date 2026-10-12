@@ -1,0 +1,82 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:hairsaloon/src/features/business_profile/presentation/business_logo_picker.dart';
+
+class _Picker extends ImagePicker {
+  _Picker(this.file);
+  final XFile? file;
+  ImageSource? selectedSource;
+
+  @override
+  Future<XFile?> pickImage({
+    required ImageSource source,
+    double? maxWidth,
+    double? maxHeight,
+    int? imageQuality,
+    CameraDevice preferredCameraDevice = CameraDevice.rear,
+    bool requestFullMetadata = true,
+  }) async {
+    selectedSource = source;
+    return file;
+  }
+}
+
+void main() {
+  testWidgets('gallery selection previews logo and remove clears selection', (
+    tester,
+  ) async {
+    final bytes = (await tester.runAsync(
+      () => File('assets/logo.png').readAsBytes(),
+    ))!;
+    final picker = _Picker(XFile.fromData(bytes, name: 'shop.png'));
+    String? selected;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, update) => BusinessLogoPicker(
+              value: selected,
+              picker: picker,
+              onChanged: (value) => update(() => selected = value),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Choose logo'));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+    await tester.pumpAndSettle();
+    expect(picker.selectedSource, ImageSource.gallery);
+    expect(selected, base64Encode(bytes));
+    expect(find.byType(Image), findsOneWidget);
+    await tester.tap(find.text('Remove'));
+    await tester.pumpAndSettle();
+    expect(selected, isNull);
+    expect(find.text('Choose logo'), findsOneWidget);
+  });
+
+  testWidgets('cancelling gallery preserves existing logo', (tester) async {
+    const previous = 'existing-logo';
+    var changed = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: BusinessLogoPicker(
+            value: previous,
+            picker: _Picker(null),
+            onChanged: (_) => changed = true,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Change logo'));
+    await tester.pumpAndSettle();
+    expect(changed, isFalse);
+  });
+}

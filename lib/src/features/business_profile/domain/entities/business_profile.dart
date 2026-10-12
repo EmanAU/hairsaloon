@@ -6,6 +6,7 @@ class BusinessProfile {
     required this.city,
     required this.area,
     required this.address,
+    this.logoBase64,
   });
 
   final String businessName;
@@ -14,4 +15,5 @@ class BusinessProfile {
   final String city;
   final String area;
   final String address;
+  final String? logoBase64;
 }

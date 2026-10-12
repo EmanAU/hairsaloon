@@ -1,6 +1,6 @@
 # Business COMB
 
-Offline Flutter salon management app. Registration and phone/password login use accounts saved on this device; no SMS verification or cloud services are required.
+Android-only Flutter salon management app with local storage. Registration and phone/password login use accounts saved on this device; no SMS verification or cloud services are required.
 
 Bills, customers, employees, services, categories, expenses and settings persist in Hive. Business profile and local accounts/session persist in SharedPreferences. Logout preserves business data and profile. Accounts share the single salon workspace on this device.
 
