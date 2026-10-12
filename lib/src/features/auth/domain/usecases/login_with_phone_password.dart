@@ -10,4 +10,3 @@ class LoginWithPhonePassword {
     return _repository.loginWithPhonePassword(phone: phone, password: password);
   }
 }
-

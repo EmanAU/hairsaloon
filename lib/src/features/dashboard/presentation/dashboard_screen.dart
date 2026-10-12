@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
-import 'package:hairsaloon/src/features/sync/presentation/state/sync_store.dart';
-import 'package:hairsaloon/src/features/sync/presentation/sync_modal.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -28,10 +26,9 @@ class DashboardScreen extends StatelessWidget {
         ? '${profile.area}, ${profile.city}'
         : 'G-11 Markaz, Islamabad';
 
-    return SyncOverlay(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
         // ── Header ────────────────────────────────────────────────────────
         Container(
           color: AppColors.primary,
@@ -129,11 +126,6 @@ class DashboardScreen extends StatelessWidget {
                       context,
                     ).pushNamed(AppRoutes.financeOverview),
                   ),
-                  _DashboardTile(
-                    label: 'Sync Data',
-                    icon: CupertinoIcons.cloud_upload,
-                    onTap: () => context.read<SyncStore>().startSync(),
-                  ),
                 ],
               ),
 
@@ -173,8 +165,7 @@ class DashboardScreen extends StatelessWidget {
             ],
           ),
         ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -187,13 +178,11 @@ class _DashboardTile extends StatelessWidget {
   const _DashboardTile({
     required this.label,
     this.assetPath,
-    this.icon,
     required this.onTap,
   });
 
   final String label;
   final String? assetPath;
-  final IconData? icon;
   final VoidCallback onTap;
 
   @override
@@ -229,8 +218,8 @@ class _DashboardTile extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(radius),
             onTap: onTap,
-            splashColor: AppColors.primary.withOpacity(0.12),
-            highlightColor: AppColors.primary.withOpacity(0.06),
+            splashColor: AppColors.primary.withValues(alpha: 0.12),
+            highlightColor: AppColors.primary.withValues(alpha: 0.06),
             child: Padding(
               padding: EdgeInsets.fromLTRB(14.w, 20.h, 14.w, 18.h),
               child: Column(
@@ -240,15 +229,7 @@ class _DashboardTile extends StatelessWidget {
                   Expanded(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8.r),
-                      child: icon != null
-                          ? FittedBox(
-                              fit: BoxFit.contain,
-                              child: Icon(
-                                icon,
-                                color: Colors.black,
-                              ),
-                            )
-                          : Image.asset(assetPath!, fit: BoxFit.contain),
+                      child: Image.asset(assetPath!, fit: BoxFit.contain),
                     ),
                   ),
                   SizedBox(height: 14.h),

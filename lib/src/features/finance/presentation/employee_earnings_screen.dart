@@ -85,17 +85,15 @@ class _EmployeeEarningsScreenState extends State<EmployeeEarningsScreen> {
     final target = DateTime(date.year, date.month, date.day);
     switch (_period) {
       case _EarningPeriod.daily:
-        return target == DateTime(
-          _anchorDate.year,
-          _anchorDate.month,
-          _anchorDate.day,
-        );
+        return target ==
+            DateTime(_anchorDate.year, _anchorDate.month, _anchorDate.day);
       case _EarningPeriod.weekly:
         final start = _weekStart(_anchorDate);
         final end = start.add(const Duration(days: 6));
         return !target.isBefore(start) && !target.isAfter(end);
       case _EarningPeriod.monthly:
-        return target.year == _anchorDate.year && target.month == _anchorDate.month;
+        return target.year == _anchorDate.year &&
+            target.month == _anchorDate.month;
     }
   }
 
@@ -180,7 +178,10 @@ class _EmployeeEarningsScreenState extends State<EmployeeEarningsScreen> {
               Expanded(
                 child: Text(
                   row.employee.fullName,
-                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               Container(
@@ -188,7 +189,9 @@ class _EmployeeEarningsScreenState extends State<EmployeeEarningsScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: row.employee.isActive ? const Color(0xFF46A758) : const Color(0xFFB0B0B0),
+                    color: row.employee.isActive
+                        ? const Color(0xFF46A758)
+                        : const Color(0xFFB0B0B0),
                   ),
                 ),
                 child: Text(
@@ -196,7 +199,9 @@ class _EmployeeEarningsScreenState extends State<EmployeeEarningsScreen> {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
-                    color: row.employee.isActive ? const Color(0xFF2B7A3A) : const Color(0xFF6B6B6B),
+                    color: row.employee.isActive
+                        ? const Color(0xFF2B7A3A)
+                        : const Color(0xFF6B6B6B),
                   ),
                 ),
               ),
@@ -206,7 +211,10 @@ class _EmployeeEarningsScreenState extends State<EmployeeEarningsScreen> {
           _line('Sales', 'Rs.${row.sales.toStringAsFixed(0)}'),
           _line('Basic Salary', 'Rs.${row.salary.toStringAsFixed(0)}'),
           _line('Commission %', '${row.commissionPercent.toStringAsFixed(0)}%'),
-          _line('Commission Amount', 'Rs.${row.commissionAmount.toStringAsFixed(0)}'),
+          _line(
+            'Commission Amount',
+            'Rs.${row.commissionAmount.toStringAsFixed(0)}',
+          ),
           const Divider(height: 14),
           _line(
             'Total Payout',
@@ -264,4 +272,3 @@ class _EmployeeEarning {
 }
 
 enum _EarningPeriod { daily, weekly, monthly }
-

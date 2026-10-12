@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
-import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
@@ -60,7 +59,6 @@ class AccountProfileScreen extends StatelessWidget {
                               rootNavigator: true,
                             );
                             await context.read<AuthStore>().logout();
-                            await context.read<BusinessProfileNotifier>().clear();
                             if (!context.mounted) return;
                             rootNavigator.pushNamedAndRemoveUntil(
                               AppRoutes.login,
@@ -100,7 +98,7 @@ class _InfoTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -132,4 +130,3 @@ class _InfoTile extends StatelessWidget {
     );
   }
 }
-

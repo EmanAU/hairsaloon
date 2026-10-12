@@ -8,4 +8,3 @@ class GetBusinessProfile {
 
   Future<BusinessProfile?> call() => _repository.getProfile();
 }
-

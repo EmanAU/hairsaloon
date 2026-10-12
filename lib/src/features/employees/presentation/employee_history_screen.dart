@@ -58,7 +58,10 @@ class EmployeeHistoryScreen extends StatelessWidget {
               children: [
                 Text(
                   headline,
-                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800),
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 if (subline.isNotEmpty) ...[
                   const SizedBox(height: 4),
@@ -74,7 +77,10 @@ class EmployeeHistoryScreen extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   'Orders: ${bills.length}  •  Total Sales: Rs.${_totalSales.toStringAsFixed(0)}  •  Earning: Rs.${_totalEarning.toStringAsFixed(0)}',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w400),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ],
             ),
@@ -104,12 +110,15 @@ class EmployeeHistoryScreen extends StatelessWidget {
   }
 
   Widget _orderTile(BuildContext context, Bill bill) {
-    final date = '${bill.createdAt.day.toString().padLeft(2, '0')}-'
+    final date =
+        '${bill.createdAt.day.toString().padLeft(2, '0')}-'
         '${bill.createdAt.month.toString().padLeft(2, '0')}-${bill.createdAt.year}';
 
     final customer = bill.customerName.trim().isNotEmpty
         ? bill.customerName.trim()
-        : (bill.customerPhone.trim().isNotEmpty ? bill.customerPhone.trim() : 'Walk-in');
+        : (bill.customerPhone.trim().isNotEmpty
+              ? bill.customerPhone.trim()
+              : 'Walk-in');
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
@@ -196,14 +205,17 @@ class EmployeeOrderDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final date = '${bill.createdAt.day.toString().padLeft(2, '0')}-'
+    final date =
+        '${bill.createdAt.day.toString().padLeft(2, '0')}-'
         '${bill.createdAt.month.toString().padLeft(2, '0')}-${bill.createdAt.year}';
 
     final customer = bill.customerName.trim().isNotEmpty
         ? (bill.customerPhone.trim().isNotEmpty
               ? '${bill.customerName.trim()} • ${bill.customerPhone.trim()}'
               : bill.customerName.trim())
-        : (bill.customerPhone.trim().isNotEmpty ? bill.customerPhone.trim() : 'Walk-in');
+        : (bill.customerPhone.trim().isNotEmpty
+              ? bill.customerPhone.trim()
+              : 'Walk-in');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
@@ -233,7 +245,10 @@ class EmployeeOrderDetailsScreen extends StatelessWidget {
               children: [
                 Text(
                   customer,
-                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w900),
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -248,11 +263,17 @@ class EmployeeOrderDetailsScreen extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: _MiniStat(label: 'Sub Total', value: 'Rs.${bill.subTotal.toStringAsFixed(0)}'),
+                      child: _MiniStat(
+                        label: 'Sub Total',
+                        value: 'Rs.${bill.subTotal.toStringAsFixed(0)}',
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _MiniStat(label: 'Tax', value: 'Rs.${bill.taxAmount.toStringAsFixed(0)}'),
+                      child: _MiniStat(
+                        label: 'Tax',
+                        value: 'Rs.${bill.taxAmount.toStringAsFixed(0)}',
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -281,17 +302,26 @@ class EmployeeOrderDetailsScreen extends StatelessWidget {
                   Expanded(
                     child: Text(
                       line.serviceName,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                   Text(
                     'x${line.qty}',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Text(
                     'Rs.${line.total.toStringAsFixed(0)}',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ],
               ),
@@ -320,12 +350,12 @@ class _MiniStat extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: emphasize
-            ? AppColors.primary.withOpacity(0.18)
+            ? AppColors.primary.withValues(alpha: 0.18)
             : const Color(0xFFF6F6F6),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: emphasize
-              ? AppColors.primary.withOpacity(0.45)
+              ? AppColors.primary.withValues(alpha: 0.45)
               : const Color(0xFFEAEAEA),
         ),
       ),
@@ -356,4 +386,3 @@ class _MiniStat extends StatelessWidget {
     );
   }
 }
-

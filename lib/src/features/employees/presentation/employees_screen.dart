@@ -38,7 +38,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     'General',
   ];
 
-  List<EmployeeItem> get _employees => context.watch<EmployeesStore>().employees;
+  List<EmployeeItem> get _employees =>
+      context.watch<EmployeesStore>().employees;
   List<EmployeeItem> get _filteredEmployees {
     if (_statusTab == 'All') return _employees;
     if (_statusTab == 'Active') {
@@ -96,20 +97,17 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             (e) => InkWell(
               borderRadius: BorderRadius.circular(12),
               onTap: () {
-                final bills = context
-                    .read<BillingStore>()
-                    .bills
-                    .where((b) => b.employeeName == e.fullName)
-                    .toList()
-                  ..sort(
-                    (a, b) => b.createdAt.compareTo(a.createdAt),
-                  );
+                final bills =
+                    context
+                        .read<BillingStore>()
+                        .bills
+                        .where((b) => b.employeeName == e.fullName)
+                        .toList()
+                      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => EmployeeHistoryScreen(
-                      employee: e,
-                      bills: bills,
-                    ),
+                    builder: (_) =>
+                        EmployeeHistoryScreen(employee: e, bills: bills),
                   ),
                 );
               },
@@ -158,7 +156,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                 vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withOpacity(0.22),
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.22,
+                                ),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
@@ -193,24 +193,25 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                     PopupMenuButton<String>(
                       onSelected: (value) async {
                         if (value == 'agreement') {
-                          final updated =
-                              await Navigator.of(context).push<EmployeeItem>(
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  EmployeeAgreementScreen(employee: e),
-                            ),
-                          );
+                          final updated = await Navigator.of(context)
+                              .push<EmployeeItem>(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      EmployeeAgreementScreen(employee: e),
+                                ),
+                              );
                           if (updated == null) return;
                           context.read<EmployeesStore>().update(updated);
                           return;
                         }
                         if (value == 'edit') {
-                          final updated =
-                              await Navigator.of(context).push<EmployeeItem>(
-                            MaterialPageRoute(
-                              builder: (_) => EmployeeDetailsScreen(item: e),
-                            ),
-                          );
+                          final updated = await Navigator.of(context)
+                              .push<EmployeeItem>(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      EmployeeDetailsScreen(item: e),
+                                ),
+                              );
                           if (updated == null) return;
                           context.read<EmployeesStore>().update(updated);
                           return;
@@ -299,11 +300,14 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             _field(_addressCtrl, 'Home Address'),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: _specialistCategory,
+              initialValue: _specialistCategory,
               isExpanded: true,
               decoration: InputDecoration(
                 hintText: 'Specialist Category',
-                hintStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+                hintStyle: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
                 filled: true,
                 fillColor: Colors.white,
                 contentPadding: const EdgeInsets.symmetric(
@@ -359,7 +363,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                   ),
                   const Spacer(),
                   Switch.adaptive(
-                    activeColor: Colors.black,
+                    activeThumbColor: Colors.black,
                     inactiveTrackColor: Colors.grey.shade400,
                     value: _newEmployeeActive,
                     onChanged: (value) =>

@@ -88,9 +88,7 @@ class Bill {
       paymentType: (json['paymentType'] ?? '').toString(),
       lines: rawLines
           .whereType<Map>()
-          .map(
-            (line) => BillLine.fromJson(Map<String, dynamic>.from(line)),
-          )
+          .map((line) => BillLine.fromJson(Map<String, dynamic>.from(line)))
           .toList(growable: false),
       subTotal: (json['subTotal'] as num?)?.toDouble() ?? 0,
       taxPercent: (json['taxPercent'] as num?)?.toDouble() ?? 0,
@@ -99,4 +97,3 @@ class Bill {
     );
   }
 }
-

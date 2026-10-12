@@ -15,7 +15,8 @@ class CustomerHistoryScreen extends StatelessWidget {
 
   double get _totalSpent => bills.fold(0, (sum, bill) => sum + bill.grandTotal);
   double get _totalTax => bills.fold(0, (sum, bill) => sum + bill.taxAmount);
-  double get _totalSubTotal => bills.fold(0, (sum, bill) => sum + bill.subTotal);
+  double get _totalSubTotal =>
+      bills.fold(0, (sum, bill) => sum + bill.subTotal);
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +48,10 @@ class CustomerHistoryScreen extends StatelessWidget {
               children: [
                 Text(
                   customerLabel,
-                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800),
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 const SizedBox(height: 8),
@@ -83,7 +87,8 @@ class CustomerHistoryScreen extends StatelessWidget {
   }
 
   Widget _historyCard(Bill bill) {
-    final date = '${bill.createdAt.day.toString().padLeft(2, '0')}-'
+    final date =
+        '${bill.createdAt.day.toString().padLeft(2, '0')}-'
         '${bill.createdAt.month.toString().padLeft(2, '0')}-${bill.createdAt.year}';
 
     return Container(
@@ -100,12 +105,18 @@ class CustomerHistoryScreen extends StatelessWidget {
             children: [
               Text(
                 date,
-                style: const TextStyle(fontSize: 10.5, color: Color(0xFF6B6B6B)),
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  color: Color(0xFF6B6B6B),
+                ),
               ),
               const Spacer(),
               Text(
                 'Rs.${bill.grandTotal.toStringAsFixed(0)}',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -118,13 +129,13 @@ class CustomerHistoryScreen extends StatelessWidget {
                   Expanded(
                     child: Text(
                       line.serviceName,
-                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
-                  Text(
-                    'x${line.qty}',
-                    style: const TextStyle(fontSize: 10.5),
-                  ),
+                  Text('x${line.qty}', style: const TextStyle(fontSize: 10.5)),
                   const SizedBox(width: 8),
                   Text(
                     'Rs.${line.total.toStringAsFixed(0)}',
@@ -164,11 +175,17 @@ class CustomerHistoryScreen extends StatelessWidget {
                 children: [
                   Text(
                     'Sub: Rs.${bill.subTotal.toStringAsFixed(0)}',
-                    style: const TextStyle(fontSize: 10.5, color: Color(0xFF555555)),
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      color: Color(0xFF555555),
+                    ),
                   ),
                   Text(
                     'Tax: Rs.${bill.taxAmount.toStringAsFixed(0)}',
-                    style: const TextStyle(fontSize: 10.5, color: Color(0xFF555555)),
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      color: Color(0xFF555555),
+                    ),
                   ),
                 ],
               ),
@@ -198,12 +215,12 @@ class _MiniStat extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
           color: emphasize
-              ? AppColors.primary.withOpacity(0.18)
+              ? AppColors.primary.withValues(alpha: 0.18)
               : const Color(0xFFF6F6F6),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: emphasize
-                ? AppColors.primary.withOpacity(0.45)
+                ? AppColors.primary.withValues(alpha: 0.45)
                 : const Color(0xFFEAEAEA),
           ),
         ),

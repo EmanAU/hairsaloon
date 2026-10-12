@@ -4,10 +4,7 @@ import 'package:hairsaloon/src/features/expenses/domain/entities/expense_item.da
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class ExpenseDetailsScreen extends StatelessWidget {
-  const ExpenseDetailsScreen({
-    super.key,
-    required this.item,
-  });
+  const ExpenseDetailsScreen({super.key, required this.item});
 
   final ExpenseItem item;
 

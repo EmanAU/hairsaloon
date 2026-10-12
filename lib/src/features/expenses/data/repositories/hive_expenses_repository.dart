@@ -4,7 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 class HiveExpensesRepository {
   HiveExpensesRepository({Box<Map>? box})
-      : _box = box ?? Hive.box<Map>(HiveBoxes.expenses);
+    : _box = box ?? Hive.box<Map>(HiveBoxes.expenses);
 
   final Box<Map> _box;
 
@@ -65,7 +65,8 @@ ExpenseItem _expenseFromMap(Map<String, dynamic> map) {
     quantity: (map['quantity'] as num?)?.toInt(),
     description: map['description']?.toString(),
     createdAt:
-        DateTime.tryParse((map['createdAt'] ?? '').toString()) ?? DateTime.now(),
+        DateTime.tryParse((map['createdAt'] ?? '').toString()) ??
+        DateTime.now(),
   );
 }
 
@@ -95,4 +96,3 @@ final List<ExpenseItem> _defaultExpenses = <ExpenseItem>[
     createdAt: DateTime(2026, 3, 17, 14, 15),
   ),
 ];
-

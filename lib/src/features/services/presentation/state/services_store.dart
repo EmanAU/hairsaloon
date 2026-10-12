@@ -4,7 +4,7 @@ import 'package:hairsaloon/src/features/services/domain/entities/service_item.da
 
 class ServicesStore extends ChangeNotifier {
   ServicesStore({required HiveServicesRepository repository})
-      : _repository = repository;
+    : _repository = repository;
 
   final HiveServicesRepository _repository;
 
@@ -68,7 +68,10 @@ class ServicesStore extends ChangeNotifier {
     required String category,
     required String subcategory,
   }) async {
-    await _repository.deleteSubcategory(category: category, subcategory: subcategory);
+    await _repository.deleteSubcategory(
+      category: category,
+      subcategory: subcategory,
+    );
     _hydrate();
     notifyListeners();
   }
@@ -126,4 +129,3 @@ class ServicesStore extends ChangeNotifier {
     notifyListeners();
   }
 }
-

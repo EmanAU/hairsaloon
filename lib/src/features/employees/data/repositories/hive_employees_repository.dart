@@ -4,7 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 class HiveEmployeesRepository {
   HiveEmployeesRepository({Box<Map>? box})
-      : _box = box ?? Hive.box<Map>(HiveBoxes.employees);
+    : _box = box ?? Hive.box<Map>(HiveBoxes.employees);
 
   final Box<Map> _box;
 
@@ -115,4 +115,3 @@ const List<EmployeeItem> _defaultEmployees = <EmployeeItem>[
     agreementDescription: 'Fixed salary with tiered commission.',
   ),
 ];
-

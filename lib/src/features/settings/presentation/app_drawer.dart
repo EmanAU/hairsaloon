@@ -1,7 +1,7 @@
+import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
-import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/features/settings/presentation/state/settings_store.dart';
 import 'package:provider/provider.dart';
@@ -208,12 +208,15 @@ class _AppDrawerState extends State<AppDrawer> {
             width: double.infinity,
             child: TextButton(
               style: TextButton.styleFrom(
-                backgroundColor: _C.error.withOpacity(0.08),
+                backgroundColor: _C.error.withValues(alpha: 0.08),
                 foregroundColor: _C.error,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
-                  side: BorderSide(color: _C.error.withOpacity(0.2), width: 1),
+                  side: BorderSide(
+                    color: _C.error.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
                 ),
               ),
               onPressed: () => _handleLogout(context),
@@ -313,15 +316,15 @@ class _AppDrawerState extends State<AppDrawer> {
           ),
           title: const Text(
             'Tax Rate',
-            style: TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800),
           ),
           content: TextField(
             controller: controller,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+            style: const TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.w700,
+            ),
             decoration: fieldDecoration(),
           ),
           actions: [
@@ -360,13 +363,7 @@ class _AppDrawerState extends State<AppDrawer> {
       },
     );
     if (didSave != true) return;
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      const SnackBar(
-        content: Text('Tax rate saved'),
-        duration: Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ToastService.success('Tax rate saved');
   }
 
   Future<void> _showCurrencyDialog(BuildContext context) async {
@@ -457,13 +454,7 @@ class _AppDrawerState extends State<AppDrawer> {
     );
 
     if (didSave != true) return;
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      const SnackBar(
-        content: Text('Currency updated'),
-        duration: Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ToastService.success('Currency updated');
   }
 
   Future<void> _openIntelligementWebsite() async {
@@ -473,7 +464,6 @@ class _AppDrawerState extends State<AppDrawer> {
   // ─── Logout ───────────────────────────────────────────────────────────────
   Future<void> _handleLogout(BuildContext context) async {
     final navigator = Navigator.of(context);
-    final profileNotifier = context.read<BusinessProfileNotifier>();
     final authStore = context.read<AuthStore>();
     final shouldLogout = await showDialog<bool>(
       context: context,
@@ -519,7 +509,6 @@ class _AppDrawerState extends State<AppDrawer> {
     // Close drawer first, then clear session and reset navigation stack.
     navigator.pop();
     await authStore.logout();
-    await profileNotifier.clear();
     if (!mounted) return;
 
     navigator.pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
@@ -574,8 +563,8 @@ class _Item extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),
-          splashColor: _C.lime.withOpacity(0.06),
-          highlightColor: _C.lime.withOpacity(0.04),
+          splashColor: _C.lime.withValues(alpha: 0.06),
+          highlightColor: _C.lime.withValues(alpha: 0.04),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Row(
@@ -625,7 +614,9 @@ class _Item extends StatelessWidget {
 class _TaxBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final taxRate = context.select<SettingsStore, double>((store) => store.taxRate);
+    final taxRate = context.select<SettingsStore, double>(
+      (store) => store.taxRate,
+    );
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(

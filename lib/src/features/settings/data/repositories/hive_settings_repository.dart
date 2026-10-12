@@ -3,7 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 class HiveSettingsRepository {
   HiveSettingsRepository({Box<dynamic>? box})
-      : _box = box ?? Hive.box<dynamic>(HiveBoxes.settings);
+    : _box = box ?? Hive.box<dynamic>(HiveBoxes.settings);
 
   static const String taxRateKey = 'tax_rate';
   static const String currencyCodeKey = 'currency_code';
@@ -31,4 +31,3 @@ class HiveSettingsRepository {
     await _box.put(currencyCodeKey, normalized);
   }
 }
-

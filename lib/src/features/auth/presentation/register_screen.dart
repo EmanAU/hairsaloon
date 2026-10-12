@@ -54,8 +54,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
 
     if (!mounted) return;
-    if (auth.hasPendingOtp) {
-      Navigator.of(context).pushNamed(AppRoutes.otp);
+    if (auth.currentUser != null) {
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.businessRegistration,
+        (route) => false,
+      );
     }
   }
 
@@ -151,7 +154,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   SizedBox(height: 10.h),
                   Center(
                     child: Text(
-                      'Create your account to continue.',
+                      'Create an account on this device to continue.',
                       style: TextStyle(
                         color: _C.textSecondary,
                         fontSize: 13.5.sp,
@@ -203,8 +206,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       validator: (v) {
                         final val = (v ?? '').trim();
                         if (val.isEmpty || val == '+92') return 'Required';
-                        if (!val.startsWith('+92'))
+                        if (!val.startsWith('+92')) {
                           return 'Must start with +92';
+                        }
                         return null;
                       },
                     ),
@@ -216,23 +220,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: _passwordCtrl,
                       obscureText: !_showPassword,
                       style: TextStyle(color: _C.textPrimary, fontSize: 14.sp),
-                      decoration: fieldDecoration(
-                        hint: 'Create a password',
-                        prefix: Icon(
-                          Icons.lock_rounded,
-                          color: _C.textSecondary,
-                          size: 20.r,
-                        ),
-                      ).copyWith(
-                        suffixIcon: IconButton(
-                          onPressed: () => setState(() => _showPassword = !_showPassword),
-                          icon: Icon(
-                            _showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                            color: _C.textSecondary,
-                            size: 20.r,
+                      decoration:
+                          fieldDecoration(
+                            hint: 'Create a password',
+                            prefix: Icon(
+                              Icons.lock_rounded,
+                              color: _C.textSecondary,
+                              size: 20.r,
+                            ),
+                          ).copyWith(
+                            suffixIcon: IconButton(
+                              onPressed: () => setState(
+                                () => _showPassword = !_showPassword,
+                              ),
+                              icon: Icon(
+                                _showPassword
+                                    ? Icons.visibility_off_rounded
+                                    : Icons.visibility_rounded,
+                                color: _C.textSecondary,
+                                size: 20.r,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
                       validator: (v) {
                         final val = (v ?? '').trim();
                         if (val.isEmpty) return 'Required';
@@ -248,30 +257,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: _confirmCtrl,
                       obscureText: !_showConfirmPassword,
                       style: TextStyle(color: _C.textPrimary, fontSize: 14.sp),
-                      decoration: fieldDecoration(
-                        hint: 'Re-enter password',
-                        prefix: Icon(
-                          Icons.lock_outline_rounded,
-                          color: _C.textSecondary,
-                          size: 20.r,
-                        ),
-                      ).copyWith(
-                        suffixIcon: IconButton(
-                          onPressed: () => setState(
-                            () => _showConfirmPassword = !_showConfirmPassword,
+                      decoration:
+                          fieldDecoration(
+                            hint: 'Re-enter password',
+                            prefix: Icon(
+                              Icons.lock_outline_rounded,
+                              color: _C.textSecondary,
+                              size: 20.r,
+                            ),
+                          ).copyWith(
+                            suffixIcon: IconButton(
+                              onPressed: () => setState(
+                                () => _showConfirmPassword =
+                                    !_showConfirmPassword,
+                              ),
+                              icon: Icon(
+                                _showConfirmPassword
+                                    ? Icons.visibility_off_rounded
+                                    : Icons.visibility_rounded,
+                                color: _C.textSecondary,
+                                size: 20.r,
+                              ),
+                            ),
                           ),
-                          icon: Icon(
-                            _showConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                            color: _C.textSecondary,
-                            size: 20.r,
-                          ),
-                        ),
-                      ),
                       validator: (v) {
                         final val = (v ?? '').trim();
                         if (val.isEmpty) return 'Required';
-                        if (val != _passwordCtrl.text)
+                        if (val != _passwordCtrl.text) {
                           return 'Passwords do not match';
+                        }
                         return null;
                       },
                     ),
@@ -293,7 +307,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ).copyWith(
                             overlayColor: WidgetStateProperty.resolveWith(
                               (states) => states.contains(WidgetState.pressed)
-                                  ? _C.limeDeep.withOpacity(0.5)
+                                  ? _C.limeDeep.withValues(alpha: 0.5)
                                   : null,
                             ),
                           ),
@@ -333,7 +347,7 @@ class _ErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.danger.withOpacity(0.1),
+      color: AppColors.danger.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

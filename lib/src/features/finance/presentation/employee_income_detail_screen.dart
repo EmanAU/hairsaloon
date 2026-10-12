@@ -439,7 +439,7 @@ class _TopSection extends StatelessWidget {
             height: 46,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              color: AppColors.success.withOpacity(0.1),
+              color: AppColors.success.withValues(alpha: 0.1),
             ),
             child: const Icon(
               CupertinoIcons.money_dollar_circle,

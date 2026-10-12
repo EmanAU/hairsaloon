@@ -1,21 +1,15 @@
+import 'package:hairsaloon/src/features/auth/data/repositories/local_auth_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:hairsaloon/src/features/auth/data/datasources/firebase_phone_otp_datasource.dart';
-import 'package:hairsaloon/src/features/auth/data/datasources/firestore_users_datasource.dart';
 import 'package:hairsaloon/src/features/auth/data/datasources/local_auth_session_datasource.dart';
-import 'package:hairsaloon/src/features/auth/data/repositories/firebase_auth_repository.dart';
 import 'package:hairsaloon/src/features/auth/domain/usecases/get_current_user.dart';
 import 'package:hairsaloon/src/features/auth/domain/usecases/has_session.dart';
 import 'package:hairsaloon/src/features/auth/domain/usecases/login_with_phone_password.dart';
 import 'package:hairsaloon/src/features/auth/domain/usecases/logout.dart';
 import 'package:hairsaloon/src/features/auth/domain/usecases/register_user.dart';
-import 'package:hairsaloon/src/features/auth/domain/usecases/send_registration_otp.dart';
-import 'package:hairsaloon/src/features/auth/domain/usecases/verify_registration_otp.dart';
 import 'package:hairsaloon/src/features/auth/presentation/account_profile_screen.dart';
 import 'package:hairsaloon/src/features/auth/presentation/auth_entry_screen.dart';
-import 'package:hairsaloon/src/features/auth/presentation/otp_screen.dart';
 import 'package:hairsaloon/src/features/auth/presentation/phone_password_login_screen.dart';
 import 'package:hairsaloon/src/features/auth/presentation/register_screen.dart';
 import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
@@ -27,7 +21,6 @@ import 'package:hairsaloon/src/features/billing/presentation/saved_bills_screen.
 import 'package:hairsaloon/src/features/billing/data/repositories/hive_billing_repository.dart';
 import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
 import 'package:hairsaloon/src/features/business_profile/data/repositories/shared_prefs_business_profile_repository.dart';
-import 'package:hairsaloon/src/features/business_profile/data/repositories/synced_business_profile_repository.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/usecases/clear_business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/usecases/get_business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/usecases/save_business_profile.dart';
@@ -55,8 +48,6 @@ import 'package:hairsaloon/src/features/services/presentation/new_service_screen
 import 'package:hairsaloon/src/features/services/presentation/categories_screen.dart';
 import 'package:hairsaloon/src/features/services/presentation/service_list_screen.dart';
 import 'package:hairsaloon/src/features/services/presentation/subcategories_screen.dart';
-import 'package:hairsaloon/src/features/sync/data/repositories/firestore_sync_repository.dart';
-import 'package:hairsaloon/src/features/sync/presentation/state/sync_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:provider/provider.dart';
@@ -75,9 +66,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations(
-      const [DeviceOrientation.portraitUp],
-    );
+    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
     _bootstrapFuture = _bootstrap();
   }
 
@@ -124,28 +113,15 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                 ChangeNotifierProvider<SettingsStore>.value(
                   value: bootstrap.settingsStore,
                 ),
-                ChangeNotifierProvider<AuthStore>.value(value: bootstrap.authStore),
-                ChangeNotifierProxyProvider2<AuthStore, BusinessProfileNotifier, SyncStore>(
-                  create: (_) => SyncStore(
-                    repository: FirestoreSyncRepository(
-                      firestore: FirebaseFirestore.instance,
-                    ),
-                  ),
-                  update: (_, auth, profile, store) {
-                    store ??= SyncStore(
-                      repository: FirestoreSyncRepository(
-                        firestore: FirebaseFirestore.instance,
-                      ),
-                    );
-                    store.updateContext(auth: auth, profile: profile);
-                    return store;
-                  },
+                ChangeNotifierProvider<AuthStore>.value(
+                  value: bootstrap.authStore,
                 ),
               ],
               child: MaterialApp(
                 title: 'Business COMB',
                 debugShowCheckedModeBanner: false,
                 navigatorKey: ToastService.navigatorKey,
+                scaffoldMessengerKey: ToastService.messengerKey,
                 theme: ThemeData(
                   colorScheme: ColorScheme.fromSeed(
                     seedColor: AppColors.primary,
@@ -154,16 +130,14 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                 ),
                 initialRoute: AppRoutes.splash,
                 routes: {
-                  AppRoutes.splash: (_) =>
-                      SplashScreen(
-                        hasBusinessProfile: bootstrap.hasBusinessProfile,
-                        hasAuthSession: bootstrap.hasAuthSession,
-                      ),
+                  AppRoutes.splash: (_) => SplashScreen(
+                    hasBusinessProfile: bootstrap.hasBusinessProfile,
+                    hasAuthSession: bootstrap.hasAuthSession,
+                  ),
                   AppRoutes.login: (_) => const AuthEntryScreen(),
                   AppRoutes.phonePasswordLogin: (_) =>
                       const PhonePasswordLoginScreen(),
                   AppRoutes.register: (_) => const RegisterScreen(),
-                  AppRoutes.otp: (_) => const OtpScreen(),
                   AppRoutes.businessRegistration: (_) =>
                       const BusinessRegistrationScreen(),
                   AppRoutes.homeShell: (_) => const DashboardShell(),
@@ -283,10 +257,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
     await servicesStore.load();
     final settingsStore = SettingsStore(repository: HiveSettingsRepository());
 
-    final repository = SyncedBusinessProfileRepository(
-      local: SharedPrefsBusinessProfileRepository(prefs: prefs),
-      firestore: FirebaseFirestore.instance,
-    );
+    final repository = SharedPrefsBusinessProfileRepository(prefs: prefs);
     final profileNotifier = BusinessProfileNotifier(
       getBusinessProfile: GetBusinessProfile(repository),
       saveBusinessProfile: SaveBusinessProfile(repository),
@@ -295,18 +266,10 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
     await profileNotifier.load();
 
     final session = LocalAuthSessionDataSource(prefs: prefs);
-    final otp = FirebasePhoneOtpDataSource();
-    final users = FirestoreUsersDataSource();
-    final authRepository = FirebaseAuthRepository(
-      session: session,
-      otp: otp,
-      users: users,
-    );
+    final authRepository = LocalAuthRepository(prefs: prefs, session: session);
     final authStore = AuthStore(
       hasSession: HasSession(authRepository),
       getCurrentUser: GetCurrentUser(authRepository),
-      sendRegistrationOtp: SendRegistrationOtp(authRepository),
-      verifyRegistrationOtp: VerifyRegistrationOtp(authRepository),
       registerUser: RegisterUser(authRepository),
       loginWithPhonePassword: LoginWithPhonePassword(authRepository),
       logout: Logout(authRepository),

@@ -138,7 +138,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               child: Column(
                 children: [
                   DropdownButtonFormField<String>(
-                    value: _category,
+                    initialValue: _category,
                     decoration: _decoration('Category'),
                     items: _categories
                         .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -156,7 +156,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   ),
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
-                    value: _subcategory.isEmpty ? null : _subcategory,
+                    initialValue: _subcategory.isEmpty ? null : _subcategory,
                     decoration: _decoration('Subcategory'),
                     items: _subcategories
                         .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -180,7 +180,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   ],
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
-                    value: _gender,
+                    initialValue: _gender,
                     decoration: _decoration('Gender'),
                     items: const ['Male', 'Female', 'Other']
                         .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -194,7 +194,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   ),
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
-                    value: _ageGroup,
+                    initialValue: _ageGroup,
                     decoration: _decoration('Age Group'),
                     items: const ['Adult', 'Child']
                         .map((e) => DropdownMenuItem(value: e, child: Text(e)))

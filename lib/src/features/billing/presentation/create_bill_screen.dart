@@ -32,7 +32,9 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
   @override
   void initState() {
     super.initState();
-    final activeEmployees = context.read<EmployeesStore>().employees
+    final activeEmployees = context
+        .read<EmployeesStore>()
+        .employees
         .where((e) => e.isActive)
         .map((e) => e.fullName)
         .where((name) => name.isNotEmpty)
@@ -79,7 +81,9 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
   @override
   Widget build(BuildContext context) {
     final services = context.watch<ServicesStore>().services;
-    final employeeOptions = context.watch<EmployeesStore>().employees
+    final employeeOptions = context
+        .watch<EmployeesStore>()
+        .employees
         .where((e) => e.isActive)
         .map((e) => e.fullName)
         .where((name) => name.isNotEmpty)

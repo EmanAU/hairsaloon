@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SharedPrefsBusinessProfileRepository
     implements BusinessProfileRepository {
   SharedPrefsBusinessProfileRepository({required SharedPreferences prefs})
-      : _prefs = prefs;
+    : _prefs = prefs;
 
   static const storageKey = 'business_profile_v1';
 
@@ -31,4 +31,3 @@ class SharedPrefsBusinessProfileRepository
     await _prefs.remove(storageKey);
   }
 }
-

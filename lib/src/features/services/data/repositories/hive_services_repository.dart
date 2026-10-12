@@ -5,11 +5,9 @@ import 'package:hairsaloon/src/features/services/domain/entities/service_item.da
 import 'package:hive_flutter/hive_flutter.dart';
 
 class HiveServicesRepository {
-  HiveServicesRepository({
-    Box<Map>? servicesBox,
-    Box<Map>? categoriesBox,
-  })  : _servicesBox = servicesBox ?? Hive.box<Map>(HiveBoxes.services),
-        _categoriesBox = categoriesBox ?? Hive.box<Map>(HiveBoxes.categories);
+  HiveServicesRepository({Box<Map>? servicesBox, Box<Map>? categoriesBox})
+    : _servicesBox = servicesBox ?? Hive.box<Map>(HiveBoxes.services),
+      _categoriesBox = categoriesBox ?? Hive.box<Map>(HiveBoxes.categories);
 
   final Box<Map> _servicesBox;
   final Box<Map> _categoriesBox;
@@ -73,7 +71,8 @@ class HiveServicesRepository {
     final services = getServices();
     for (final service in services) {
       if (service.category != category) continue;
-      if (service.subcategory.toLowerCase() != normalized.toLowerCase()) continue;
+      if (service.subcategory.toLowerCase() != normalized.toLowerCase())
+        continue;
       await _servicesBox.delete(service.id);
     }
   }
@@ -201,7 +200,8 @@ class HiveServicesRepository {
     var updatedAny = false;
     for (final service in services) {
       if (service.category != category) continue;
-      if (service.subcategory.toLowerCase() != normalized.toLowerCase()) continue;
+      if (service.subcategory.toLowerCase() != normalized.toLowerCase())
+        continue;
       updatedAny = true;
       final updated = service.copyWith(price: price);
       await _servicesBox.put(updated.id, _serviceToMap(updated));
@@ -225,13 +225,13 @@ class HiveServicesRepository {
   LinkedHashMap<String, List<String>> _readTree() {
     final raw = _categoriesBox.get(_categoryTreeKey);
     if (raw == null) return _defaultCategoryTree();
-    final map = LinkedHashMap<String, List<String>>();
+    final map = <String, List<String>>{};
     for (final entry in raw.entries) {
       map[entry.key.toString()] = (entry.value as List<dynamic>)
           .map((item) => item.toString())
           .toList(growable: true);
     }
-    return map;
+    return LinkedHashMap<String, List<String>>.from(map);
   }
 }
 
@@ -281,24 +281,24 @@ LinkedHashMap<String, List<String>> _defaultCategoryTree() {
   return LinkedHashMap<String, List<String>>.fromEntries(
     categories.map((category) => MapEntry(category, <String>[])),
   )..addAll(<String, List<String>>{
-      'Hair Care & Styling': <String>[
-        'Simple Cutting',
-        'Buzzcuts',
-        'Layers Cut',
-        'Trims',
-      ],
-      'Nail Care': <String>['Manicure', 'Pedicure'],
-      'Skincare & Facials': <String>['Cleanup', 'Basic Facial'],
-      'Hair Removal': <String>['Threading', 'Waxing Arms'],
-      'Eye & Makeup': <String>['Eye Makeup', 'Party Makeup'],
-      'Body & Wellness': <String>['Body Polish'],
-      "Men's Grooming": <String>['Beard Trim', 'Shave'],
-      'Bridal Services': <String>['Bridal Makeup'],
-      'Kids Services': <String>['Kids Hair Cut'],
-      'Spa & Massage': <String>['Head Massage'],
-      'Hair Treatments': <String>['Hair Spa', 'Keratin'],
-      'Packages': <String>['Groom Package', 'Bridal Package'],
-    });
+    'Hair Care & Styling': <String>[
+      'Simple Cutting',
+      'Buzzcuts',
+      'Layers Cut',
+      'Trims',
+    ],
+    'Nail Care': <String>['Manicure', 'Pedicure'],
+    'Skincare & Facials': <String>['Cleanup', 'Basic Facial'],
+    'Hair Removal': <String>['Threading', 'Waxing Arms'],
+    'Eye & Makeup': <String>['Eye Makeup', 'Party Makeup'],
+    'Body & Wellness': <String>['Body Polish'],
+    "Men's Grooming": <String>['Beard Trim', 'Shave'],
+    'Bridal Services': <String>['Bridal Makeup'],
+    'Kids Services': <String>['Kids Hair Cut'],
+    'Spa & Massage': <String>['Head Massage'],
+    'Hair Treatments': <String>['Hair Spa', 'Keratin'],
+    'Packages': <String>['Groom Package', 'Bridal Package'],
+  });
 }
 
 const List<ServiceItem> _defaultServices = <ServiceItem>[
@@ -415,4 +415,3 @@ const List<ServiceItem> _defaultServices = <ServiceItem>[
     price: 700,
   ),
 ];
-

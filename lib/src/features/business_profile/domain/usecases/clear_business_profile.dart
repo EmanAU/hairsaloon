@@ -7,4 +7,3 @@ class ClearBusinessProfile {
 
   Future<void> call() => _repository.clearProfile();
 }
-

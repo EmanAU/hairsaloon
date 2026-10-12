@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/services/presentation/state/services_store.dart';
@@ -69,7 +70,7 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
         padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
         children: [
           DropdownButtonFormField<String>(
-            value: _selectedCategory,
+            initialValue: _selectedCategory,
             decoration: _fieldDecoration('Select Category'),
             items: categories
                 .map(
@@ -121,10 +122,10 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
 
   Widget _buildSubcategoryTile(String name) {
     final price =
-        context.watch<ServicesStore>().serviceFor(
-          category: _selectedCategory,
-          subcategory: name,
-        )?.price ??
+        context
+            .watch<ServicesStore>()
+            .serviceFor(category: _selectedCategory, subcategory: name)
+            ?.price ??
         0.0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -181,7 +182,10 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
                   },
                   itemBuilder: (context) => const [
                     PopupMenuItem<String>(value: 'edit', child: Text('Edit')),
-                    PopupMenuItem<String>(value: 'delete', child: Text('Delete')),
+                    PopupMenuItem<String>(
+                      value: 'delete',
+                      child: Text('Delete'),
+                    ),
                   ],
                   icon: const Icon(CupertinoIcons.ellipsis_vertical),
                 ),
@@ -247,10 +251,10 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
   Future<void> _showEditSubcategoryDialog(String oldName) async {
     final nameController = TextEditingController(text: oldName);
     final currentPrice =
-        context.read<ServicesStore>().serviceFor(
-          category: _selectedCategory,
-          subcategory: oldName,
-        )?.price ??
+        context
+            .read<ServicesStore>()
+            .serviceFor(category: _selectedCategory, subcategory: oldName)
+            ?.price ??
         0.0;
     final priceController = TextEditingController(
       text: currentPrice <= 0 ? '' : currentPrice.toStringAsFixed(0),
@@ -286,10 +290,7 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
           ),
           title: const Text(
             'Edit Service',
-            style: TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -363,8 +364,6 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
-    );
+    ToastService.info(message);
   }
 }

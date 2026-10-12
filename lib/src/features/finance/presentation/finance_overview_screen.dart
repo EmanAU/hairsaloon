@@ -171,17 +171,12 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
     }
 
     final rows = employees
-        .map(
-          (employee) {
-            final sales = earningsByEmployee[_norm(employee.fullName)] ?? 0;
-            final commissionPercent = _commissionPercent(employee.commission);
-            final earning = (sales * commissionPercent) / 100;
-            return _EmployeeIncomeRow(
-              employee: employee,
-              todayEarning: earning,
-            );
-          },
-        )
+        .map((employee) {
+          final sales = earningsByEmployee[_norm(employee.fullName)] ?? 0;
+          final commissionPercent = _commissionPercent(employee.commission);
+          final earning = (sales * commissionPercent) / 100;
+          return _EmployeeIncomeRow(employee: employee, todayEarning: earning);
+        })
         .toList(growable: false);
 
     rows.sort((a, b) => b.todayEarning.compareTo(a.todayEarning));
@@ -220,8 +215,16 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
     for (final bill in bills) {
       if (_norm(bill.employeeName) != employeeName) continue;
       if (!_periodContains(bill.createdAt, anchor, period)) continue;
-      final day = DateTime(bill.createdAt.year, bill.createdAt.month, bill.createdAt.day);
-      salesByDay.update(day, (v) => v + bill.grandTotal, ifAbsent: () => bill.grandTotal);
+      final day = DateTime(
+        bill.createdAt.year,
+        bill.createdAt.month,
+        bill.createdAt.day,
+      );
+      salesByDay.update(
+        day,
+        (v) => v + bill.grandTotal,
+        ifAbsent: () => bill.grandTotal,
+      );
     }
 
     final expenseByDay = <DateTime, double>{};
@@ -237,7 +240,10 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
       expenseByDay.update(day, (v) => v + amount, ifAbsent: () => amount);
     }
 
-    final days = <DateTime>{...salesByDay.keys, ...expenseByDay.keys}.toList(growable: false);
+    final days = <DateTime>{
+      ...salesByDay.keys,
+      ...expenseByDay.keys,
+    }.toList(growable: false);
     if (days.isEmpty) {
       // Fallback to old number if there were no day groups.
       final safe = earningEstimate < 0 ? 0.0 : earningEstimate;
@@ -251,7 +257,8 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
       final cut = expenseByDay[day] ?? 0.0;
       final net = earning - cut;
       final due = net < 0 ? 0.0 : net;
-      final payoutKey = 'payout:${employee.id}:day:${DateTime(day.year, day.month, day.day).toIso8601String()}';
+      final payoutKey =
+          'payout:${employee.id}:day:${DateTime(day.year, day.month, day.day).toIso8601String()}';
       final isSettled = payoutBox.get(payoutKey) != null;
       if (!isSettled) {
         totalDue += due;
@@ -433,7 +440,7 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppColors.success.withOpacity(0.12),
+                  color: AppColors.success.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
@@ -569,12 +576,11 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) =>
-                    EmployeeIncomeDetailScreen(
-                      employee: row.employee,
-                      period: _period,
-                      anchorDate: _selectedDate,
-                    ),
+                builder: (_) => EmployeeIncomeDetailScreen(
+                  employee: row.employee,
+                  period: _period,
+                  anchorDate: _selectedDate,
+                ),
               ),
             );
           },

@@ -62,7 +62,10 @@ class _AllExpensesScreenState extends State<AllExpensesScreen> {
                 ),
               );
             },
-            icon: const Icon(CupertinoIcons.chart_bar_fill, color: Colors.black),
+            icon: const Icon(
+              CupertinoIcons.chart_bar_fill,
+              color: Colors.black,
+            ),
           ),
         ],
       ),
@@ -80,12 +83,14 @@ class _AllExpensesScreenState extends State<AllExpensesScreen> {
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: _employee,
+            initialValue: _employee,
             decoration: _decoration('Filter by Employee'),
             icon: const Icon(CupertinoIcons.chevron_down, size: 15),
             items: [
               const DropdownMenuItem(value: '', child: Text('All Employees')),
-              ...employees.map((e) => DropdownMenuItem(value: e, child: Text(e))),
+              ...employees.map(
+                (e) => DropdownMenuItem(value: e, child: Text(e)),
+              ),
             ],
             onChanged: (value) {
               setState(() {
@@ -110,7 +115,9 @@ class _AllExpensesScreenState extends State<AllExpensesScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: selected ? AppColors.primary : Colors.grey.shade300),
+            border: Border.all(
+              color: selected ? AppColors.primary : Colors.grey.shade300,
+            ),
           ),
           child: Center(
             child: Text(
@@ -130,9 +137,7 @@ class _AllExpensesScreenState extends State<AllExpensesScreen> {
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ExpenseDetailsScreen(item: item),
-          ),
+          MaterialPageRoute(builder: (_) => ExpenseDetailsScreen(item: item)),
         );
       },
       borderRadius: BorderRadius.circular(12),
@@ -148,7 +153,10 @@ class _AllExpensesScreenState extends State<AllExpensesScreen> {
             Expanded(
               child: Text(
                 item.employeeName,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
             Text(
@@ -162,7 +170,9 @@ class _AllExpensesScreenState extends State<AllExpensesScreen> {
                   context: context,
                   builder: (dialogContext) => AlertDialog(
                     title: const Text('Delete Expense'),
-                    content: const Text('Are you sure you want to delete this expense?'),
+                    content: const Text(
+                      'Are you sure you want to delete this expense?',
+                    ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -178,7 +188,11 @@ class _AllExpensesScreenState extends State<AllExpensesScreen> {
                 if (shouldDelete != true) return;
                 context.read<ExpensesStore>().delete(item.id);
               },
-              icon: const Icon(CupertinoIcons.delete, size: 18, color: Color(0xFFE45A5A)),
+              icon: const Icon(
+                CupertinoIcons.delete,
+                size: 18,
+                color: Color(0xFFE45A5A),
+              ),
             ),
           ],
         ),

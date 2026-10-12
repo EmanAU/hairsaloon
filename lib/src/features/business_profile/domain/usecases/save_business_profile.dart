@@ -6,6 +6,6 @@ class SaveBusinessProfile {
 
   final BusinessProfileRepository _repository;
 
-  Future<void> call(BusinessProfile profile) => _repository.saveProfile(profile);
+  Future<void> call(BusinessProfile profile) =>
+      _repository.saveProfile(profile);
 }
-

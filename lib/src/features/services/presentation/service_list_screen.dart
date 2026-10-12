@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/services/domain/entities/service_item.dart';
@@ -25,7 +26,10 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   String _newPrice = '';
   final TextEditingController _newServiceNameCtrl = TextEditingController();
 
-  List<String> get _categories => ['All', ...context.watch<ServicesStore>().categories];
+  List<String> get _categories => [
+    'All',
+    ...context.watch<ServicesStore>().categories,
+  ];
 
   List<String> get _visibleCategories {
     if (_selectedCategoryTab == 'All') {
@@ -114,8 +118,10 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                 ..._visibleCategories.map(
                   (category) => _CategoryTile(
                     category: category,
-                    subcategoryCount:
-                        context.watch<ServicesStore>().subcategoriesFor(category).length,
+                    subcategoryCount: context
+                        .watch<ServicesStore>()
+                        .subcategoriesFor(category)
+                        .length,
                     onTap: () => _openCategoryRates(category),
                   ),
                 ),
@@ -155,7 +161,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                 fontWeight: FontWeight.w400,
                 color: Colors.black,
               ),
-              value: _newCategory,
+              initialValue: _newCategory,
               decoration: _fieldDecoration('Select Category'),
               items: _categories
                   .where((e) => e != 'All')
@@ -196,7 +202,8 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
               validator: (_) {
                 final typed = _newServiceNameCtrl.text.trim();
                 if (typed.isNotEmpty) return null;
-                if (_newSubcategory == null || _newSubcategory!.trim().isEmpty) {
+                if (_newSubcategory == null ||
+                    _newSubcategory!.trim().isEmpty) {
                   return 'Please select subcategory or enter service name.';
                 }
                 return null;
@@ -209,7 +216,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                 fontWeight: FontWeight.w400,
                 color: Colors.black,
               ),
-              value: _newSubcategory,
+              initialValue: _newSubcategory,
               decoration: _fieldDecoration('Select Subcategory'),
               items: availableSubcategories
                   .map(
@@ -234,7 +241,8 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
               validator: (value) {
                 final typed = _newServiceNameCtrl.text.trim();
                 if (typed.isNotEmpty) return null;
-                if (value == null || value.trim().isEmpty) return 'Please select subcategory.';
+                if (value == null || value.trim().isEmpty)
+                  return 'Please select subcategory.';
                 return null;
               },
             ),
@@ -252,7 +260,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                 fontWeight: FontWeight.w400,
                 color: Colors.black,
               ),
-              value: _newGender,
+              initialValue: _newGender,
               decoration: _fieldDecoration('Select Gender'),
               items: const ['Male', 'Female', 'Other']
                   .map(
@@ -283,7 +291,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                 fontWeight: FontWeight.w400,
                 color: Colors.black,
               ),
-              value: _newAgeGroup,
+              initialValue: _newAgeGroup,
               decoration: _fieldDecoration('Select Age Group'),
               items: const ['Adult', 'Child']
                   .map(
@@ -382,21 +390,21 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
 
     if (typedName.isNotEmpty) {
       await context.read<ServicesStore>().addSubcategory(
-            category: _newCategory!,
-            subcategory: typedName,
-          );
+        category: _newCategory!,
+        subcategory: typedName,
+      );
     }
 
     await context.read<ServicesStore>().addService(
-          ServiceItem(
-            id: DateTime.now().microsecondsSinceEpoch.toString(),
-            category: _newCategory!,
-            subcategory: finalSubcategory,
-            gender: _newGender!,
-            ageGroup: _newAgeGroup!,
-            price: double.parse(_newPrice),
-          ),
-        );
+      ServiceItem(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        category: _newCategory!,
+        subcategory: finalSubcategory,
+        gender: _newGender!,
+        ageGroup: _newAgeGroup!,
+        price: double.parse(_newPrice),
+      ),
+    );
 
     if (!mounted) return;
     setState(() {
@@ -528,10 +536,12 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
         itemBuilder: (context, index) {
           final subcategory = subcategories[index];
           final price =
-              store.serviceFor(
-                category: widget.category,
-                subcategory: subcategory,
-              )?.price ??
+              store
+                  .serviceFor(
+                    category: widget.category,
+                    subcategory: subcategory,
+                  )
+                  ?.price ??
               0.0;
 
           return Padding(
@@ -552,7 +562,10 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
                   );
                 },
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
@@ -584,7 +597,9 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
                             return;
                           }
                           if (value == 'delete') {
-                            await context.read<ServicesStore>().deleteSubcategory(
+                            await context
+                                .read<ServicesStore>()
+                                .deleteSubcategory(
                                   category: widget.category,
                                   subcategory: subcategory,
                                 );
@@ -594,7 +609,10 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
                           PopupMenuItem(value: 'edit', child: Text('Edit')),
                           PopupMenuItem(value: 'delete', child: Text('Delete')),
                         ],
-                        icon: const Icon(CupertinoIcons.ellipsis_vertical, size: 18),
+                        icon: const Icon(
+                          CupertinoIcons.ellipsis_vertical,
+                          size: 18,
+                        ),
                       ),
                     ],
                   ),
@@ -646,10 +664,7 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
           ),
           title: const Text(
             'Edit Service',
-            style: TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -716,18 +731,16 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
     }
 
     await context.read<ServicesStore>().updatePriceForSubcategory(
-          category: widget.category,
-          subcategory: newName,
-          price: parsed,
-        );
+      category: widget.category,
+      subcategory: newName,
+      price: parsed,
+    );
 
     setState(() {});
     _showMessage('Service updated.');
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
-    );
+    ToastService.info(message);
   }
 }

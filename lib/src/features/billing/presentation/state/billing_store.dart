@@ -5,7 +5,7 @@ import 'package:hairsaloon/src/features/billing/domain/entities/customer_contact
 
 class BillingStore extends ChangeNotifier {
   BillingStore({required HiveBillingRepository repository})
-      : _repository = repository {
+    : _repository = repository {
     _hydrate();
   }
 
@@ -67,4 +67,3 @@ class BillingStore extends ChangeNotifier {
     return _repository.searchCustomerContacts(query);
   }
 }
-

@@ -4,7 +4,7 @@ import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.
 
 class EmployeesStore extends ChangeNotifier {
   EmployeesStore({required HiveEmployeesRepository repository})
-      : _repository = repository {
+    : _repository = repository {
     _employees = _repository.getAll();
   }
 
@@ -31,4 +31,3 @@ class EmployeesStore extends ChangeNotifier {
     notifyListeners();
   }
 }
-

@@ -14,7 +14,8 @@ class LocalBillingStore {
   static SharedPreferences? _prefs;
 
   static List<Bill> get bills => List<Bill>.unmodifiable(_bills);
-  static List<String> get customerPhones => List<String>.unmodifiable(_customerPhones);
+  static List<String> get customerPhones =>
+      List<String>.unmodifiable(_customerPhones);
 
   static Future<void> init(SharedPreferences prefs) async {
     _prefs = prefs;
@@ -30,15 +31,16 @@ class LocalBillingStore {
       _bills
         ..clear()
         ..addAll(
-          decoded
-              .whereType<Map>()
-              .map((item) => Bill.fromJson(Map<String, dynamic>.from(item))),
+          decoded.whereType<Map>().map(
+            (item) => Bill.fromJson(Map<String, dynamic>.from(item)),
+          ),
         );
     } catch (_) {
       _bills.clear();
     }
 
-    final rawPhones = prefs.getStringList(_customerPhonesKey) ?? const <String>[];
+    final rawPhones =
+        prefs.getStringList(_customerPhonesKey) ?? const <String>[];
     _customerPhones
       ..clear()
       ..addAll(rawPhones.where((phone) => phone.trim().isNotEmpty));
@@ -107,4 +109,3 @@ class LocalBillingStore {
     return value.replaceAll(RegExp(r'[^0-9+]'), '');
   }
 }
-

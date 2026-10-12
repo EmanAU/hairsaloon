@@ -4,7 +4,7 @@ import 'package:hairsaloon/src/features/expenses/domain/entities/expense_item.da
 
 class ExpensesStore extends ChangeNotifier {
   ExpensesStore({required HiveExpensesRepository repository})
-      : _repository = repository {
+    : _repository = repository {
     _items = _repository.getAll();
   }
 
@@ -31,4 +31,3 @@ class ExpensesStore extends ChangeNotifier {
     notifyListeners();
   }
 }
-

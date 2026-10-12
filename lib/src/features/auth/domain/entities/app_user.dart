@@ -13,4 +13,3 @@ class AppUser {
   final String phone;
   final DateTime createdAt;
 }
-

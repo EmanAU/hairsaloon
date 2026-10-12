@@ -367,7 +367,7 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
     required ValueChanged<T?> onChanged,
   }) {
     return DropdownButtonFormField<T>(
-      value: value,
+      initialValue: value,
       dropdownColor: _C.surfaceHigh,
       iconEnabledColor: _C.textSecondary,
       icon: Icon(CupertinoIcons.chevron_down, size: 16.r),
@@ -410,7 +410,7 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
             ).copyWith(
               overlayColor: WidgetStateProperty.resolveWith(
                 (states) => states.contains(WidgetState.pressed)
-                    ? _C.limeDeep.withOpacity(0.5)
+                    ? _C.limeDeep.withValues(alpha: 0.5)
                     : null,
               ),
             ),
@@ -453,9 +453,13 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
       area: _area,
       address: _address.isEmpty ? '$_area, ${_city ?? ''}' : _address,
     );
+    final auth = context.read<AuthStore>();
     await context.read<BusinessProfileNotifier>().save(profile);
-    await context.read<AuthStore>().loadCurrentUser();
-    Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.homeShell, (r) => false);
+    await auth.loadCurrentUser();
+    if (!mounted) return;
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(AppRoutes.homeShell, (r) => false);
   }
 
   Future<bool> _onWillPop() async {

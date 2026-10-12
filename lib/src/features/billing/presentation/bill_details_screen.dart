@@ -13,9 +13,7 @@ class BillDetailsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final bill = context.watch<BillingStore>().getById(billId);
     if (bill == null) {
-      return const Scaffold(
-        body: Center(child: Text('Bill not found.')),
-      );
+      return const Scaffold(body: Center(child: Text('Bill not found.')));
     }
 
     return Scaffold(
@@ -29,7 +27,10 @@ class BillDetailsScreen extends StatelessWidget {
         ),
         title: Text(
           'Bill ${bill.id.substring(0, 6)}',
-          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
       body: ListView(
@@ -39,8 +40,12 @@ class BillDetailsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Customer: ${bill.customerName.isEmpty ? '-' : bill.customerName}'),
-                Text('Phone: ${bill.customerPhone.isEmpty ? '-' : bill.customerPhone}'),
+                Text(
+                  'Customer: ${bill.customerName.isEmpty ? '-' : bill.customerName}',
+                ),
+                Text(
+                  'Phone: ${bill.customerPhone.isEmpty ? '-' : bill.customerPhone}',
+                ),
                 Text('Employee: ${bill.employeeName}'),
                 Text('Payment: ${bill.paymentType}'),
               ],
@@ -81,7 +86,10 @@ class BillDetailsScreen extends StatelessWidget {
                 ),
                 const Divider(),
                 _row('Sub Total', 'Rs.${bill.subTotal.toStringAsFixed(0)}'),
-                _row('Tax ${bill.taxPercent.toStringAsFixed(0)}%', 'Rs.${bill.taxAmount.toStringAsFixed(0)}'),
+                _row(
+                  'Tax ${bill.taxPercent.toStringAsFixed(0)}%',
+                  'Rs.${bill.taxAmount.toStringAsFixed(0)}',
+                ),
                 _row(
                   'Grand Total',
                   'Rs.${bill.grandTotal.toStringAsFixed(0)}',
@@ -114,16 +122,19 @@ class BillDetailsScreen extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: TextStyle(fontWeight: bold ? FontWeight.w700 : FontWeight.w500),
+              style: TextStyle(
+                fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+              ),
             ),
           ),
           Text(
             value,
-            style: TextStyle(fontWeight: bold ? FontWeight.w700 : FontWeight.w500),
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+            ),
           ),
         ],
       ),
     );
   }
 }
-

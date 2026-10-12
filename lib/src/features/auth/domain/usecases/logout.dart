@@ -7,4 +7,3 @@ class Logout {
 
   Future<void> call() => _repository.logout();
 }
-

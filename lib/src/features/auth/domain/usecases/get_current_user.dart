@@ -8,4 +8,3 @@ class GetCurrentUser {
 
   Future<AppUser?> call() => _repository.getCurrentUser();
 }
-

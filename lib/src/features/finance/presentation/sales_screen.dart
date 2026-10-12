@@ -34,7 +34,9 @@ class _SalesScreenState extends State<SalesScreen> {
       0,
       (sum, bill) => sum + bill.grandTotal,
     );
-    final avgBill = filteredBills.isEmpty ? 0.0 : totalSales / filteredBills.length;
+    final avgBill = filteredBills.isEmpty
+        ? 0.0
+        : totalSales / filteredBills.length;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
@@ -144,7 +146,10 @@ class _SalesScreenState extends State<SalesScreen> {
                 children: [
                   Text(
                     _periodLabel(),
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -282,17 +287,15 @@ class _SalesScreenState extends State<SalesScreen> {
     final target = DateTime(date.year, date.month, date.day);
     switch (_period) {
       case _SalesPeriod.daily:
-        return target == DateTime(
-          _anchorDate.year,
-          _anchorDate.month,
-          _anchorDate.day,
-        );
+        return target ==
+            DateTime(_anchorDate.year, _anchorDate.month, _anchorDate.day);
       case _SalesPeriod.weekly:
         final start = _weekStart(_anchorDate);
         final end = start.add(const Duration(days: 6));
         return !target.isBefore(start) && !target.isAfter(end);
       case _SalesPeriod.monthly:
-        return target.year == _anchorDate.year && target.month == _anchorDate.month;
+        return target.year == _anchorDate.year &&
+            target.month == _anchorDate.month;
     }
   }
 
@@ -325,8 +328,9 @@ class _SalesScreenState extends State<SalesScreen> {
         : (bill.customerPhone.trim().isNotEmpty
               ? bill.customerPhone.trim()
               : 'Walk-in Customer');
-    final firstService =
-        bill.lines.isNotEmpty ? bill.lines.first.serviceName : 'No service';
+    final firstService = bill.lines.isNotEmpty
+        ? bill.lines.first.serviceName
+        : 'No service';
     final dateText =
         '${bill.createdAt.day.toString().padLeft(2, '0')}-${bill.createdAt.month.toString().padLeft(2, '0')}-${bill.createdAt.year}';
     final timeText =
@@ -336,10 +340,9 @@ class _SalesScreenState extends State<SalesScreen> {
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       child: InkWell(
         onTap: () {
-          Navigator.of(context).pushNamed(
-            AppRoutes.billDetails,
-            arguments: bill.id,
-          );
+          Navigator.of(
+            context,
+          ).pushNamed(AppRoutes.billDetails, arguments: bill.id);
         },
         borderRadius: BorderRadius.circular(12),
         child: Container(
@@ -393,7 +396,10 @@ class _SalesScreenState extends State<SalesScreen> {
                   const SizedBox(height: 2),
                   Text(
                     'Rs.${bill.grandTotal.toStringAsFixed(0)}',
-                    style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
@@ -425,4 +431,3 @@ class _EmptySalesCard extends StatelessWidget {
 }
 
 enum _SalesPeriod { daily, weekly, monthly }
-

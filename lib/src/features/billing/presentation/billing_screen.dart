@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
@@ -337,7 +338,7 @@ class _BillingScreenState extends State<BillingScreen> {
                           children: [
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                value: _employee,
+                                initialValue: _employee,
                                 isExpanded: true,
                                 style: const TextStyle(
                                   fontSize: 12,
@@ -400,7 +401,7 @@ class _BillingScreenState extends State<BillingScreen> {
                             const SizedBox(width: 6),
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                value: _paymentType,
+                                initialValue: _paymentType,
                                 isExpanded: true,
                                 style: const TextStyle(
                                   fontSize: 12,
@@ -807,13 +808,7 @@ class _BillingScreenState extends State<BillingScreen> {
     );
     await context.read<BillingStore>().addBill(bill);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Bill saved successfully'),
-        duration: Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ToastService.success('Bill saved successfully');
     Navigator.of(
       context,
     ).pushNamed(AppRoutes.billDetails, arguments: bill.id).then((_) {
@@ -860,13 +855,7 @@ class _BillingScreenState extends State<BillingScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ToastService.info(message);
   }
 
   String _formatEmployeeLabel(

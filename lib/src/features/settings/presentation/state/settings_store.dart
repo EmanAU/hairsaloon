@@ -3,9 +3,9 @@ import 'package:hairsaloon/src/features/settings/data/repositories/hive_settings
 
 class SettingsStore extends ChangeNotifier {
   SettingsStore({required HiveSettingsRepository repository})
-      : _repository = repository,
-        _taxRate = repository.getTaxRate(),
-        _currencyCode = repository.getCurrencyCode();
+    : _repository = repository,
+      _taxRate = repository.getTaxRate(),
+      _currencyCode = repository.getCurrencyCode();
 
   final HiveSettingsRepository _repository;
 
@@ -30,4 +30,3 @@ class SettingsStore extends ChangeNotifier {
     notifyListeners();
   }
 }
-

@@ -30,7 +30,9 @@ class HiveBootstrap {
     await _migrateLegacyBillingIfNeeded(prefs);
   }
 
-  static Future<void> _migrateLegacyBillingIfNeeded(SharedPreferences prefs) async {
+  static Future<void> _migrateLegacyBillingIfNeeded(
+    SharedPreferences prefs,
+  ) async {
     final migrated = prefs.getBool(_billingMigrationFlag) ?? false;
     if (migrated) return;
 
@@ -106,4 +108,3 @@ class HiveBootstrap {
     return value.replaceAll(RegExp(r'[^0-9+]'), '');
   }
 }
-

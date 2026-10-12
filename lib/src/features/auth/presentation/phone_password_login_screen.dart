@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
@@ -8,7 +9,8 @@ class PhonePasswordLoginScreen extends StatefulWidget {
   const PhonePasswordLoginScreen({super.key});
 
   @override
-  State<PhonePasswordLoginScreen> createState() => _PhonePasswordLoginScreenState();
+  State<PhonePasswordLoginScreen> createState() =>
+      _PhonePasswordLoginScreenState();
 }
 
 class _PhonePasswordLoginScreenState extends State<PhonePasswordLoginScreen> {
@@ -36,7 +38,9 @@ class _PhonePasswordLoginScreenState extends State<PhonePasswordLoginScreen> {
     if (!mounted) return;
     if (auth.currentUser != null) {
       Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.businessRegistration,
+        context.read<BusinessProfileNotifier>().profile == null
+            ? AppRoutes.businessRegistration
+            : AppRoutes.homeShell,
         (route) => false,
       );
     }
@@ -61,10 +65,7 @@ class _PhonePasswordLoginScreenState extends State<PhonePasswordLoginScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           if (error != null && error.isNotEmpty) ...[
-            _ErrorBanner(
-              message: error,
-              onClose: auth.clearError,
-            ),
+            _ErrorBanner(message: error, onClose: auth.clearError),
             const SizedBox(height: 12),
           ],
           Form(
@@ -142,7 +143,7 @@ class _ErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.danger.withOpacity(0.1),
+      color: AppColors.danger.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -169,4 +170,3 @@ class _ErrorBanner extends StatelessWidget {
     );
   }
 }
-

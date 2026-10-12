@@ -5,4 +5,3 @@ abstract class BusinessProfileRepository {
   Future<BusinessProfile?> getProfile();
   Future<void> clearProfile();
 }
-

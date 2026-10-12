@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hairsaloon/src/app.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('App loading screen builds', (WidgetTester tester) async {
     await tester.pumpWidget(const BusinessCombApp());
 
     // For now we just verify that the app builds without throwing.

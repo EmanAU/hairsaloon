@@ -15,4 +15,3 @@ class BusinessProfile {
   final String area;
   final String address;
 }
-

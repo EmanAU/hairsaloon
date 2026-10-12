@@ -9,10 +9,9 @@ class BusinessProfileScope extends InheritedNotifier<BusinessProfileNotifier> {
   }) : super(notifier: notifier);
 
   static BusinessProfileNotifier of(BuildContext context) {
-    final scope =
-        context.dependOnInheritedWidgetOfExactType<BusinessProfileScope>();
+    final scope = context
+        .dependOnInheritedWidgetOfExactType<BusinessProfileScope>();
     assert(scope != null, 'BusinessProfileScope not found in widget tree.');
     return scope!.notifier!;
   }
 }
-

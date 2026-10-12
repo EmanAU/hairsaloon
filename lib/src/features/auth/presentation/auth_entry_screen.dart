@@ -45,9 +45,9 @@ class AuthEntryScreen extends StatelessWidget {
                         backgroundColor: AppColors.primary,
                         foregroundColor: AppColors.onPrimary,
                       ),
-                      onPressed: () => Navigator.of(context).pushNamed(
-                        AppRoutes.phonePasswordLogin,
-                      ),
+                      onPressed: () => Navigator.of(
+                        context,
+                      ).pushNamed(AppRoutes.phonePasswordLogin),
                       child: const Text(
                         'Login',
                         style: TextStyle(fontWeight: FontWeight.w700),
@@ -63,9 +63,8 @@ class AuthEntryScreen extends StatelessWidget {
                         foregroundColor: AppColors.textPrimary,
                         side: const BorderSide(color: AppColors.textPrimary),
                       ),
-                      onPressed: () => Navigator.of(context).pushNamed(
-                        AppRoutes.register,
-                      ),
+                      onPressed: () =>
+                          Navigator.of(context).pushNamed(AppRoutes.register),
                       child: const Text(
                         'Register',
                         style: TextStyle(fontWeight: FontWeight.w700),
@@ -81,4 +80,3 @@ class AuthEntryScreen extends StatelessWidget {
     );
   }
 }
-

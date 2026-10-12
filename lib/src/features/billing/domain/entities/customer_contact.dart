@@ -1,8 +1,5 @@
 class CustomerContact {
-  const CustomerContact({
-    required this.name,
-    required this.phone,
-  });
+  const CustomerContact({required this.name, required this.phone});
 
   final String name;
   final String phone;
@@ -16,9 +13,9 @@ class CustomerContact {
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'name': name,
-        'phone': phone,
-      };
+    'name': name,
+    'phone': phone,
+  };
 
   factory CustomerContact.fromJson(Map<String, dynamic> json) {
     return CustomerContact(
@@ -27,4 +24,3 @@ class CustomerContact {
     );
   }
 }
-

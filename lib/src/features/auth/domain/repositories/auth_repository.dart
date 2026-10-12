@@ -4,12 +4,6 @@ abstract class AuthRepository {
   Future<bool> hasSession();
   Future<AppUser?> getCurrentUser();
 
-  Future<OtpSession> sendRegistrationOtp({required String phone});
-  Future<void> verifyRegistrationOtp({
-    required String verificationId,
-    required String smsCode,
-  });
-
   Future<AppUser> registerUser({
     required String name,
     required String phone,
@@ -23,10 +17,3 @@ abstract class AuthRepository {
 
   Future<void> logout();
 }
-
-class OtpSession {
-  const OtpSession({required this.verificationId});
-
-  final String verificationId;
-}
-

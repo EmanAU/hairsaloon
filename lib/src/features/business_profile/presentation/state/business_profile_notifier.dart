@@ -9,9 +9,9 @@ class BusinessProfileNotifier extends ChangeNotifier {
     required GetBusinessProfile getBusinessProfile,
     required SaveBusinessProfile saveBusinessProfile,
     required ClearBusinessProfile clearBusinessProfile,
-  })  : _getBusinessProfile = getBusinessProfile,
-        _saveBusinessProfile = saveBusinessProfile,
-        _clearBusinessProfile = clearBusinessProfile;
+  }) : _getBusinessProfile = getBusinessProfile,
+       _saveBusinessProfile = saveBusinessProfile,
+       _clearBusinessProfile = clearBusinessProfile;
 
   final GetBusinessProfile _getBusinessProfile;
   final SaveBusinessProfile _saveBusinessProfile;
@@ -37,4 +37,3 @@ class BusinessProfileNotifier extends ChangeNotifier {
     notifyListeners();
   }
 }
-

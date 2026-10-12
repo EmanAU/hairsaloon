@@ -5,9 +5,6 @@ class AppointmentsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Appointments screen placeholder'),
-    );
+    return const Center(child: Text('Appointments screen placeholder'));
   }
 }
-

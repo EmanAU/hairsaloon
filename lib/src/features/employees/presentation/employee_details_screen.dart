@@ -109,14 +109,20 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
           _field(_addressCtrl, 'Home Address'),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
-            value: _specialistCategory,
+            initialValue: _specialistCategory,
             isExpanded: true,
             decoration: InputDecoration(
               hintText: 'Specialist Category',
-              hintStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+              hintStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+              ),
               filled: true,
               fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: Colors.grey.shade300),
@@ -143,7 +149,9 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
                   ),
                 )
                 .toList(growable: false),
-            onChanged: _editing ? (v) => setState(() => _specialistCategory = v) : null,
+            onChanged: _editing
+                ? (v) => setState(() => _specialistCategory = v)
+                : null,
           ),
           const SizedBox(height: 10),
           _field(_specialityCtrl, 'Speciality'),
@@ -151,7 +159,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
             dense: true,
-            activeColor: AppColors.primary,
+            activeThumbColor: AppColors.primary,
             title: const Text(
               'Employee Active',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),

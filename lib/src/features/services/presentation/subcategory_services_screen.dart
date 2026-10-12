@@ -18,16 +18,19 @@ class SubcategoryServicesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final services = context
-        .watch<ServicesStore>()
-        .services
-        .where((s) => s.category == category && s.subcategory == subcategory)
-        .toList()
-      ..sort((a, b) {
-        final g = a.gender.compareTo(b.gender);
-        if (g != 0) return g;
-        return a.ageGroup.compareTo(b.ageGroup);
-      });
+    final services =
+        context
+            .watch<ServicesStore>()
+            .services
+            .where(
+              (s) => s.category == category && s.subcategory == subcategory,
+            )
+            .toList()
+          ..sort((a, b) {
+            final g = a.gender.compareTo(b.gender);
+            if (g != 0) return g;
+            return a.ageGroup.compareTo(b.ageGroup);
+          });
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
@@ -75,7 +78,10 @@ class SubcategoryServicesScreen extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   'Services: ${services.length}',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF555555)),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF555555),
+                  ),
                 ),
               ],
             ),
@@ -181,4 +187,3 @@ class _ServiceRow extends StatelessWidget {
     );
   }
 }
-

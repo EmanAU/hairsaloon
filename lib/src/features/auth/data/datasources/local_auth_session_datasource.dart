@@ -1,7 +1,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LocalAuthSessionDataSource {
-  LocalAuthSessionDataSource({required SharedPreferences prefs}) : _prefs = prefs;
+  LocalAuthSessionDataSource({required SharedPreferences prefs})
+    : _prefs = prefs;
 
   static const _userIdKey = 'auth.current_user_id.v1';
 
@@ -9,8 +10,8 @@ class LocalAuthSessionDataSource {
 
   String? readUserId() => _prefs.getString(_userIdKey);
 
-  Future<void> writeUserId(String userId) => _prefs.setString(_userIdKey, userId);
+  Future<void> writeUserId(String userId) =>
+      _prefs.setString(_userIdKey, userId);
 
   Future<void> clear() => _prefs.remove(_userIdKey);
 }
-

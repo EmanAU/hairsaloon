@@ -81,14 +81,16 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
                     hint: 'Select Employee',
                     items: employees,
                     requiredField: true,
-                    onChanged: (value) => setState(() => _selectedEmployee = value),
+                    onChanged: (value) =>
+                        setState(() => _selectedEmployee = value),
                   ),
                   const SizedBox(height: 8),
                   _dropdownField(
                     value: _selectedExpenseType,
                     hint: 'Select Expense Type',
                     items: _expenseTypes,
-                    onChanged: (value) => setState(() => _selectedExpenseType = value),
+                    onChanged: (value) =>
+                        setState(() => _selectedExpenseType = value),
                   ),
                   const SizedBox(height: 8),
                   _textField(
@@ -108,14 +110,16 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
                     value: _selectedStatus,
                     hint: 'Status (Paid or Unpaid)',
                     items: const ['Paid', 'Unpaid'],
-                    onChanged: (value) => setState(() => _selectedStatus = value),
+                    onChanged: (value) =>
+                        setState(() => _selectedStatus = value),
                   ),
                   const SizedBox(height: 8),
                   _dropdownField(
                     value: _selectedPaymentType,
                     hint: 'Payment Type (Cash or Online)',
                     items: const ['Cash', 'Online'],
-                    onChanged: (value) => setState(() => _selectedPaymentType = value),
+                    onChanged: (value) =>
+                        setState(() => _selectedPaymentType = value),
                   ),
                   const SizedBox(height: 8),
                   _textField(
@@ -138,7 +142,10 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
                       onPressed: _saveExpense,
                       child: const Text(
                         'Save Expense',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
@@ -176,7 +183,10 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
             ),
             const Icon(CupertinoIcons.chevron_down, size: 15),
@@ -194,17 +204,28 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
     bool requiredField = false,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
-      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.black),
+      initialValue: value,
+      style: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w400,
+        color: Colors.black,
+      ),
       decoration: _inputDecoration(hint),
-      icon: const Icon(CupertinoIcons.chevron_down, size: 15, color: Colors.black),
+      icon: const Icon(
+        CupertinoIcons.chevron_down,
+        size: 15,
+        color: Colors.black,
+      ),
       items: items
           .map(
             (item) => DropdownMenuItem<String>(
               value: item,
               child: Text(
                 item,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
             ),
           )
@@ -230,7 +251,8 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
       decoration: _inputDecoration(hint),
       validator: requiredField
-          ? (value) => (value == null || value.trim().isEmpty) ? 'Required' : null
+          ? (value) =>
+                (value == null || value.trim().isEmpty) ? 'Required' : null
           : null,
     );
   }
@@ -269,10 +291,11 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
       paymentType: _selectedPaymentType ?? 'Cash',
       expenseType: _selectedExpenseType,
       quantity: int.tryParse(_quantityCtrl.text.trim()),
-      description: _descriptionCtrl.text.trim().isEmpty ? null : _descriptionCtrl.text.trim(),
+      description: _descriptionCtrl.text.trim().isEmpty
+          ? null
+          : _descriptionCtrl.text.trim(),
       createdAt: DateTime.now(),
     );
     Navigator.of(context).pop(expense);
   }
 }
-

@@ -4,15 +4,13 @@ import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class EmployeeAgreementScreen extends StatefulWidget {
-  const EmployeeAgreementScreen({
-    super.key,
-    this.employee,
-  });
+  const EmployeeAgreementScreen({super.key, this.employee});
 
   final EmployeeItem? employee;
 
   @override
-  State<EmployeeAgreementScreen> createState() => _EmployeeAgreementScreenState();
+  State<EmployeeAgreementScreen> createState() =>
+      _EmployeeAgreementScreenState();
 }
 
 class _EmployeeAgreementScreenState extends State<EmployeeAgreementScreen> {
@@ -26,9 +24,15 @@ class _EmployeeAgreementScreenState extends State<EmployeeAgreementScreen> {
   @override
   void initState() {
     super.initState();
-    _employeeTypeCtrl = TextEditingController(text: widget.employee?.employeeType ?? '');
-    _basicSalaryCtrl = TextEditingController(text: widget.employee?.basicSalary ?? '');
-    _commissionCtrl = TextEditingController(text: widget.employee?.commission ?? '');
+    _employeeTypeCtrl = TextEditingController(
+      text: widget.employee?.employeeType ?? '',
+    );
+    _basicSalaryCtrl = TextEditingController(
+      text: widget.employee?.basicSalary ?? '',
+    );
+    _commissionCtrl = TextEditingController(
+      text: widget.employee?.commission ?? '',
+    );
     _descriptionCtrl = TextEditingController(
       text: widget.employee?.agreementDescription ?? '',
     );
@@ -64,7 +68,10 @@ class _EmployeeAgreementScreenState extends State<EmployeeAgreementScreen> {
             onPressed: () => setState(() => _editing = !_editing),
             child: Text(
               _editing ? 'Cancel' : 'Edit',
-              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -95,11 +102,7 @@ class _EmployeeAgreementScreenState extends State<EmployeeAgreementScreen> {
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 8),
-                _field(
-                  _descriptionCtrl,
-                  'Description',
-                  maxLines: 4,
-                ),
+                _field(_descriptionCtrl, 'Description', maxLines: 4),
               ],
             ),
           ),
@@ -145,7 +148,10 @@ class _EmployeeAgreementScreenState extends State<EmployeeAgreementScreen> {
         hintStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -183,4 +189,3 @@ class _EmployeeAgreementScreenState extends State<EmployeeAgreementScreen> {
     Navigator.of(context).pop(updated);
   }
 }
-

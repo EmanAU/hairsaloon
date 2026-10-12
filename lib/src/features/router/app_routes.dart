@@ -3,7 +3,6 @@ class AppRoutes {
   static const login = '/login';
   static const phonePasswordLogin = '/login/phone-password';
   static const register = '/register';
-  static const otp = '/register/otp';
   static const businessRegistration = '/business-registration';
 
   static const homeShell = '/home';

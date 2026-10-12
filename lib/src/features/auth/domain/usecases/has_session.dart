@@ -7,4 +7,3 @@ class HasSession {
 
   Future<bool> call() => _repository.hasSession();
 }
-

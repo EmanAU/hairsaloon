@@ -8,9 +8,9 @@ class HiveBillingRepository {
     Box<Map>? billsBox,
     Box<String>? phonesBox,
     Box<Map>? contactsBox,
-  })  : _billsBox = billsBox ?? Hive.box<Map>(HiveBoxes.bills),
-        _phonesBox = phonesBox ?? Hive.box<String>(HiveBoxes.customerPhones),
-        _contactsBox = contactsBox ?? Hive.box<Map>(HiveBoxes.customerContacts);
+  }) : _billsBox = billsBox ?? Hive.box<Map>(HiveBoxes.bills),
+       _phonesBox = phonesBox ?? Hive.box<String>(HiveBoxes.customerPhones),
+       _contactsBox = contactsBox ?? Hive.box<Map>(HiveBoxes.customerContacts);
 
   final Box<Map> _billsBox;
   final Box<String> _phonesBox;
@@ -121,4 +121,3 @@ class HiveBillingRepository {
     return value.replaceAll(RegExp(r'[^0-9+]'), '');
   }
 }
-

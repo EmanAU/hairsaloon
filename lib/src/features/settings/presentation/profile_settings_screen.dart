@@ -67,7 +67,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             onPressed: () => setState(() => _isEditing = !_isEditing),
             child: Text(
               _isEditing ? 'Cancel' : 'Edit',
-              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -111,7 +114,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       onPressed: _save,
                       child: const Text(
                         'Save Profile',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
@@ -121,7 +127,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     );
   }
 
-  Widget _field(TextEditingController controller, String hint, {int maxLines = 1}) {
+  Widget _field(
+    TextEditingController controller,
+    String hint, {
+    int maxLines = 1,
+  }) {
     return TextFormField(
       controller: controller,
       enabled: _isEditing,
@@ -132,7 +142,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         hintStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -142,7 +155,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           borderSide: BorderSide(color: Colors.grey.shade300),
         ),
       ),
-      validator: (value) => (value == null || value.trim().isEmpty) ? 'Required' : null,
+      validator: (value) =>
+          (value == null || value.trim().isEmpty) ? 'Required' : null,
     );
   }
 

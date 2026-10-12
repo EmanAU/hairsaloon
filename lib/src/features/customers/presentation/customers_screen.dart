@@ -31,7 +31,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
   Widget build(BuildContext context) {
     final bills = context.watch<BillingStore>().bills;
     final customers = _groupedCustomers(bills).entries.toList()
-      ..sort((a, b) => b.value.first.createdAt.compareTo(a.value.first.createdAt));
+      ..sort(
+        (a, b) => b.value.first.createdAt.compareTo(a.value.first.createdAt),
+      );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
@@ -61,7 +63,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 final entry = customers[index];
                 final bills = entry.value;
                 final lastBill = bills.first;
-                final totalSpent = bills.fold<double>(0, (sum, bill) => sum + bill.grandTotal);
+                final totalSpent = bills.fold<double>(
+                  0,
+                  (sum, bill) => sum + bill.grandTotal,
+                );
 
                 return InkWell(
                   onTap: () {
@@ -90,22 +95,35 @@ class _CustomersScreenState extends State<CustomersScreen> {
                             children: [
                               Text(
                                 entry.key,
-                                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                               const SizedBox(height: 3),
                               Text(
                                 'Visits: ${bills.length}  •  Last: ${_formatDate(lastBill.createdAt)}',
-                                style: const TextStyle(fontSize: 10.5, color: Color(0xFF666666)),
+                                style: const TextStyle(
+                                  fontSize: 10.5,
+                                  color: Color(0xFF666666),
+                                ),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 'Total Billing: Rs.${totalSpent.toStringAsFixed(0)}',
-                                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w500),
+                                style: const TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        const Icon(CupertinoIcons.chevron_right, size: 16, color: Colors.black54),
+                        const Icon(
+                          CupertinoIcons.chevron_right,
+                          size: 16,
+                          color: Colors.black54,
+                        ),
                       ],
                     ),
                   ),
@@ -120,4 +138,3 @@ class _CustomersScreenState extends State<CustomersScreen> {
         '${date.month.toString().padLeft(2, '0')}-${date.year}';
   }
 }
-

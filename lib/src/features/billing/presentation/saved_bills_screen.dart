@@ -54,10 +54,9 @@ class SavedBillsScreen extends StatelessWidget {
                       ),
                       trailing: const Icon(CupertinoIcons.chevron_right),
                       onTap: () {
-                        Navigator.of(context).pushNamed(
-                          AppRoutes.billDetails,
-                          arguments: bill.id,
-                        );
+                        Navigator.of(
+                          context,
+                        ).pushNamed(AppRoutes.billDetails, arguments: bill.id);
                       },
                     ),
                   ),
@@ -67,4 +66,3 @@ class SavedBillsScreen extends StatelessWidget {
     );
   }
 }
-

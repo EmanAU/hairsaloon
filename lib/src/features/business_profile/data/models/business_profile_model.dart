@@ -73,4 +73,3 @@ class BusinessProfileModel {
 
   String toJsonString() => jsonEncode(toJsonMap());
 }
-
