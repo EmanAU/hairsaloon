@@ -149,4 +149,4 @@ Login → Dashboard
 
 ---
 
-That's the full flow of all 9 modules across all 15 screens. Want me to turn this into a visual flowchart, a Word doc, or a printable PDF?
+That's the full flow of all 9 modules across all 15 screens. 
