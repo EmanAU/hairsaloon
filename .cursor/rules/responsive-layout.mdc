@@ -1,0 +1,61 @@
+---
+description: Responsive Flutter layouts for mobile and portrait tablet
+globs: lib/**/*.dart
+alwaysApply: false
+---
+
+# Responsive Layout — Mobile & Portrait Tablet
+
+Target **phones (portrait)** and **tablets in portrait**. Landscape tablet is not a primary target unless asked.
+
+## Breakpoints
+
+Use shared constants (e.g. `AppBreakpoints`), not magic numbers:
+
+| Name   | Width        | Intent                          |
+|--------|--------------|---------------------------------|
+| mobile | `< 600`      | Single column, full-bleed feel  |
+| tablet | `>= 600`     | Wider content, optional 2-col   |
+
+Prefer `LayoutBuilder` for local decisions; use `MediaQuery.sizeOf(context)` only when the whole screen width matters.
+
+## Mobile (default)
+
+- Single-column layouts
+- Comfortable edge padding (e.g. 16–20)
+- Bottom nav / primary actions thumb-friendly
+- Full-width primary buttons
+- Avoid horizontal scroll for core content
+
+## Portrait Tablet
+
+- Cap content width with a centered max-width constraint when it improves readability
+- Prefer 2-column for lists+detail or form+preview when space helps
+- Larger tap targets remain; do not stretch tiny phone UI edge-to-edge awkwardly
+- Same navigation model as mobile unless a dedicated tablet pattern exists
+- Keep portrait orientation layouts stable (no landscape-only assumptions)
+
+```dart
+// ✅ GOOD
+LayoutBuilder(
+  builder: (context, constraints) {
+    final isTablet = constraints.maxWidth >= AppBreakpoints.tablet;
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: isTablet ? 720 : double.infinity),
+        child: content,
+      ),
+    );
+  },
+);
+
+// ❌ BAD — hardcoded MediaQuery everywhere, different APIs per device
+if (MediaQuery.of(context).size.width > 500) { ... }
+```
+
+## Shared Rules
+
+- One responsive decision point per screen (helper or `LayoutBuilder`), not scattered `if (width)` checks
+- Same design tokens on both sizes; only structure/spacing density may change
+- Test both mobile and portrait tablet when building or changing screens
+- Safe areas: respect notches / system bars with `SafeArea` where needed

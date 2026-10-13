@@ -1,125 +1,80 @@
 ---
+description: Flutter clean architecture, Provider state, and production coding standards
 alwaysApply: true
 ---
-You are a senior Flutter engineer writing production-grade code.
 
-GLOBAL PRINCIPLES
-- Prioritize correctness, readability, and maintainability over cleverness.
-- Follow Flutter, Dart, and Material Design best practices strictly.
-- Avoid premature abstractions.
-- Never introduce unnecessary complexity.
+# Flutter Core Standards
 
+You are a senior Flutter engineer writing production-grade, neat, maintainable code.
 
-Error architecture:
-- Data layer → throws Exceptions
-- Domain layer → converts to Failures
-- UI → receives user-friendly messages
+## Architecture (Clean Architecture — Strict)
 
-
-ARCHITECTURE (CLEAN ARCHITECTURE - STRICT)
 Layers:
 1. Presentation (UI + Provider)
 2. Domain (Entities + UseCases + Repository Contracts)
 3. Data (Models + DataSources + Repository Implementations)
 
-Rules:
 - Dependency flow: Presentation → Domain → Data only
-- Domain layer must be pure Dart (no Flutter imports)
+- Domain must be pure Dart (no Flutter imports)
 - UI must NEVER access repositories or data sources directly
-- All business logic must go through UseCases (mandatory)
+- All business logic goes through UseCases
 
-SEPARATION OF CONCERNS
+Separation:
 - UI → rendering only
 - Provider → state + flow control
 - UseCase → business logic
 - Repository → abstraction
 - DataSource → API / Firebase / local DB
 
-PROJECT STRUCTURE
-- Enforce feature-based folder structure when applicable.
-- Separate UI, state, services, and domain logic clearly.
-- Widgets must not contain business logic.
-- Keep files under reasonable length; split when responsibilities grow.
+Error flow: Data throws Exceptions → Domain converts to Failures → UI shows user-friendly messages
 
-STATE MANAGEMENT
-- Use a single state management solution consistently.
-- State must not be stored inside widgets unless it is purely local UI state.
-- Avoid tightly coupling UI to implementation details.
-- Prefer immutable state objects.
+## State Management — Provider Only
 
-THEMING & DESIGN TOKENS
-- All colors must come from AppColors (design tokens).
-- Never use Colors.* directly inside widgets.
-- Spacing, radius, and typography must come from centralized token files.
-- Light and Dark themes must reuse the same color tokens.
-- Theme differences belong only in AppTheme.
-- Widgets must read theme values via Theme.of(context) or ColorScheme.
+- Use `provider` consistently (ChangeNotifier / ChangeNotifierProvider)
+- Prefer `context.watch` for rebuilds, `context.read` for one-shot actions
+- Prefer `Consumer` / `Selector` to limit rebuild scope
+- No business logic inside widgets; call Provider methods / UseCases
+- State in Provider only (except trivial local UI state: form controllers, toggles)
+- Prefer immutable state objects; notifyListeners after state changes
+- Do not mix Riverpod, Bloc, GetX, or other state solutions
 
-DARK MODE
-- Dark theme must preserve brand identity.
-- Only surface, background, and contrast-related colors may differ.
-- Never redefine brand colors for dark mode.
-- Respect ThemeMode.system by default.
+```dart
+// ✅ GOOD
+final store = context.watch<ServicesStore>();
+onPressed: () => context.read<ServicesStore>().addService(...);
 
-LOCALIZATION
-- All user-facing text must use localization (l10n or easy_localization).
-- Never hardcode display strings in widgets.
-- Localization must not affect business logic.
-- Theme must support RTL automatically without widget-level hacks.
+// ❌ BAD — logic + repos in the widget
+onPressed: () async { await FirebaseFirestore.instance... }
+```
 
-WIDGET RULES
-- Prefer StatelessWidget whenever possible.
-- Keep build methods small and predictable.
-- Avoid deeply nested widget trees.
-- Extract reusable widgets early.
-- Avoid MediaQuery misuse; prefer LayoutBuilder when needed.
+## Project Structure
 
-PERFORMANCE
-- Mark widgets, styles, and values as const where possible.
-- Avoid rebuilding ThemeData or TextTheme in build methods.
-- Do not allocate objects repeatedly inside build().
-- Use ListView.builder and lazy widgets for large lists.
+- Feature-based folders when applicable
+- Widgets must not contain business logic
+- Keep files focused; split when responsibilities grow
 
-ASYNC & ERROR HANDLING
-- All async calls must handle errors explicitly.
-- Never ignore Future errors.
-- UI must react gracefully to loading and failure states.
-- Avoid async logic directly inside widgets.
+## Theming & Tokens
 
-UI FEEDBACK (TOAST SYSTEM)
-- Use centralized ToastService
-- Do NOT use SnackBar or ScaffoldMessenger
-- Toasts for:
-  - errors
-  - success
-  - info
+- Colors from `AppColors` only — never `Colors.*` in widgets
+- Spacing, radius, typography from centralized tokens
+- Read theme via `Theme.of(context)` / `ColorScheme`
+- Dark mode: preserve brand; only surface/background/contrast may differ
+- Default `ThemeMode.system`
 
+## Localization
 
-DEPENDENCY MANAGEMENT
-- Do not introduce packages without clear justification.
-- Prefer Flutter SDK solutions over third-party packages.
-- Keep dependencies minimal and well-scoped.
+- All user-facing text via l10n / easy_localization — no hardcoded UI strings
+- Support RTL via theme/locale, not widget hacks
 
-CODE STYLE
-- Follow Dart formatting strictly.
-- Use descriptive and consistent naming.
-- Avoid abbreviations unless universally understood.
-- No commented-out code.
-- No dead code.
+## Async, Feedback & Safety
 
-TESTABILITY
-- Write code that is easy to test.
-- Avoid static state where possible.
-- Keep logic decoupled from UI for unit testing.
+- Handle every async error; UI must show loading / empty / error states
+- Use centralized `ToastService` — never SnackBar / ScaffoldMessenger
+- No hardcoded secrets; validate user input defensively
 
-SECURITY & SAFETY
-- Do not hardcode secrets or API keys.
-- Handle user input defensively.
-- Avoid insecure storage for sensitive data.
+## Code Quality
 
-OUTPUT EXPECTATIONS
-- All generated Flutter code must compile.
-- Code must be production-ready.
-- No placeholder logic unless explicitly requested.
-- No experimental patterns unless explicitly asked.
-- Reject bad practices even if they seem convenient.
+- Prefer `StatelessWidget` + `const` where possible
+- Prefer Flutter SDK over new packages unless justified
+- No commented-out or dead code
+- Generated code must compile and be production-ready

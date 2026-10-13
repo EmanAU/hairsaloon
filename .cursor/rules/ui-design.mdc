@@ -1,0 +1,68 @@
+---
+description: Neat, clean, decent Flutter UI — spacing, hierarchy, and visual polish
+globs: lib/**/*.dart
+alwaysApply: false
+---
+
+# UI Design — Neat & Clean
+
+Build screens that feel calm, professional, and easy to scan. Prefer clarity over decoration.
+
+## Visual Principles
+
+- One clear purpose per screen/section
+- Strong visual hierarchy: title → primary action → supporting content
+- Generous whitespace; avoid cramped or crowded layouts
+- Consistent alignment on a vertical rhythm
+- Limit accent color; use neutrals for most chrome
+- No visual noise: no unnecessary cards, borders, shadows, chips, or badges
+- Cards only when they group interactive or related content that needs separation
+
+## Layout Hygiene
+
+- Consistent padding from screen edges (use spacing tokens)
+- Equal gaps between sibling items; avoid random pixel values
+- Group related controls; separate unrelated blocks with clear space
+- Primary CTA visible and uncluttered; secondary actions quieter
+- Empty, loading, and error states must look intentional — not blank or broken
+
+## Typography & Icons
+
+- Use theme text styles only (`Theme.of(context).textTheme`)
+- Prefer fewer type sizes; do not invent one-off font sizes
+- Icons from one style set; match size to text line height
+- Truncate long text with ellipsis; never overflow
+
+## Forms & Lists
+
+- Clear labels, helpful hints, and visible validation errors
+- Comfortable tap targets (min ~48dp)
+- Lists: `ListView.builder` / lazy widgets; dividers only when they aid scanning
+- Prefer simple rows over nested nested cards
+
+## Do / Don't
+
+```dart
+// ✅ GOOD — token spacing, theme text, calm layout
+Padding(
+  padding: EdgeInsets.all(AppSpacing.md),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(title, style: Theme.of(context).textTheme.titleLarge),
+      SizedBox(height: AppSpacing.sm),
+      Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
+    ],
+  ),
+);
+
+// ❌ BAD — magic numbers, Colors.*, noisy nesting
+Container(
+  margin: EdgeInsets.all(13),
+  decoration: BoxDecoration(
+    color: Colors.white,
+    boxShadow: [BoxShadow(blurRadius: 20, color: Colors.black26)],
+  ),
+  child: ...,
+);
+```
