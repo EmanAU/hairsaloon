@@ -222,16 +222,18 @@ class _BottomNav extends StatelessWidget {
           children: [
             for (var i = 0; i < _navItems.length; i++)
               Expanded(
-                child: Semantics(
-                  button: true,
-                  selected: i == currentIndex,
-                  label: _navItems[i].label,
-                  child: GestureDetector(
-                    onTap: () => onTap(i),
-                    behavior: HitTestBehavior.opaque,
-                    child: _NavTile(
-                      item: _navItems[i],
-                      isActive: i == currentIndex,
+                child: Tooltip(
+                  message: _navItems[i].label,
+                  child: Semantics(
+                    button: true,
+                    selected: i == currentIndex,
+                    child: GestureDetector(
+                      onTap: () => onTap(i),
+                      behavior: HitTestBehavior.opaque,
+                      child: _NavTile(
+                        item: _navItems[i],
+                        isActive: i == currentIndex,
+                      ),
                     ),
                   ),
                 ),

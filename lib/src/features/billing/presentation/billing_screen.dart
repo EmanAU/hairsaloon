@@ -36,6 +36,8 @@ class _BillingScreenState extends State<BillingScreen> {
   CustomerContact? _selectedCustomer;
   String? _lastExistingPromptPhone;
   bool _existingPromptOpen = false;
+  BillDiscountType _discountType = BillDiscountType.none;
+  double _discountValue = 0;
 
   List<String> get _categories {
     final values =
@@ -114,8 +116,12 @@ class _BillingScreenState extends State<BillingScreen> {
       (sum, line) => sum + line.total,
     );
     final taxPercent = context.watch<SettingsStore>().taxRate;
-    final taxAmount = (subTotal * taxPercent) / 100;
-    final grandTotal = subTotal + taxAmount;
+    final totals = BillTotals.compute(
+      subTotal: subTotal,
+      taxPercent: taxPercent,
+      discountType: _discountType,
+      discountValue: _discountValue,
+    );
     final hasCustomerInfo = customerPhone.isNotEmpty;
     final customerInfoText = _selectedCustomer == null
         ? 'Customer Phone: $customerPhone'
@@ -140,6 +146,12 @@ class _BillingScreenState extends State<BillingScreen> {
                   ),
                 ),
                 const Spacer(),
+                _DiscountChip(
+                  type: _discountType,
+                  value: _discountValue,
+                  onTap: () => _openDiscountSheet(subTotal),
+                ),
+                const SizedBox(width: 6),
                 SizedBox(
                   height: 30,
                   child: FilledButton(
@@ -167,26 +179,30 @@ class _BillingScreenState extends State<BillingScreen> {
             const SizedBox(height: 8),
             Row(
               children: [
-                Text(
-                  'Sub Total : ${subTotal.toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black,
+                Expanded(
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 2,
+                    children: [
+                      Text(
+                        'Sub Total : ${subTotal.toStringAsFixed(0)}',
+                        style: _headerMetaStyle,
+                      ),
+                      if (totals.discountAmount > 0)
+                        Text(
+                          'Discount : -${totals.discountAmount.toStringAsFixed(0)}',
+                          style: _headerMetaStyle,
+                        ),
+                      Text(
+                        'Tax : ${taxPercent.toStringAsFixed(0)}%',
+                        style: _headerMetaStyle,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Text(
-                  'Tax : ${taxPercent.toStringAsFixed(0)}%',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  'Total : Rs.${grandTotal.toStringAsFixed(0)}',
+                  'Total : Rs.${totals.grandTotal.toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -613,6 +629,12 @@ class _BillingScreenState extends State<BillingScreen> {
     );
   }
 
+  static const _headerMetaStyle = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    color: AppColors.textPrimary,
+  );
+
   InputDecoration _smallDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
@@ -786,8 +808,13 @@ class _BillingScreenState extends State<BillingScreen> {
       (sum, line) => sum + line.total,
     );
     final taxPercent = settingsStore.taxRate;
-    final taxAmount = (subTotal * taxPercent) / 100;
-    final grandTotal = subTotal + taxAmount;
+    final totals = BillTotals.compute(
+      subTotal: subTotal,
+      taxPercent: taxPercent,
+      discountType: _discountType,
+      discountValue: _discountValue,
+    );
+    final hasDiscount = totals.discountAmount > 0;
 
     final contact = phone.isEmpty
         ? null
@@ -802,8 +829,11 @@ class _BillingScreenState extends State<BillingScreen> {
       lines: selectedLines,
       subTotal: subTotal,
       taxPercent: taxPercent,
-      taxAmount: taxAmount,
-      grandTotal: grandTotal,
+      taxAmount: totals.taxAmount,
+      grandTotal: totals.grandTotal,
+      discountType: hasDiscount ? _discountType : BillDiscountType.none,
+      discountValue: hasDiscount ? _discountValue : 0,
+      discountAmount: totals.discountAmount,
     );
     await context.read<BillingStore>().addBill(bill);
     if (!mounted) return;
@@ -851,6 +881,24 @@ class _BillingScreenState extends State<BillingScreen> {
       _lastExistingPromptPhone = null;
       _existingPromptOpen = false;
       _hidePhoneSuggestions = false;
+      _discountType = BillDiscountType.none;
+      _discountValue = 0;
+    });
+  }
+
+  Future<void> _openDiscountSheet(double subTotal) async {
+    final result = await showAppSheet<({BillDiscountType type, double value})>(
+      context: context,
+      builder: (_) => _DiscountSheet(
+        initialType: _discountType,
+        initialValue: _discountValue,
+        subTotal: subTotal,
+      ),
+    );
+    if (!mounted || result == null) return;
+    setState(() {
+      _discountType = result.type;
+      _discountValue = result.type == BillDiscountType.none ? 0 : result.value;
     });
   }
 
@@ -878,6 +926,209 @@ class _BillingScreenState extends State<BillingScreen> {
     final type = (match.first.employeeType ?? '').trim();
     if (type.isEmpty) return fullName;
     return '$fullName • $type';
+  }
+}
+
+String _formatDiscountValue(double value) => value == value.roundToDouble()
+    ? value.toStringAsFixed(0)
+    : value.toStringAsFixed(1);
+
+class _DiscountChip extends StatelessWidget {
+  const _DiscountChip({
+    required this.type,
+    required this.value,
+    required this.onTap,
+  });
+
+  final BillDiscountType type;
+  final double value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = type != BillDiscountType.none && value > 0;
+    final label = !active
+        ? 'Discount'
+        : type == BillDiscountType.percent
+        ? '-${_formatDiscountValue(value)}%'
+        : '-Rs.${_formatDiscountValue(value)}';
+    return SizedBox(
+      height: 30,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(
+          active ? CupertinoIcons.tag_fill : CupertinoIcons.tag,
+          size: 13,
+        ),
+        label: Text(label),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.textPrimary,
+          backgroundColor: active ? AppColors.surface : const Color(0x00000000),
+          side: const BorderSide(color: AppColors.textPrimary),
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          visualDensity: VisualDensity.compact,
+          textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      ),
+    );
+  }
+}
+
+class _DiscountSheet extends StatefulWidget {
+  const _DiscountSheet({
+    required this.initialType,
+    required this.initialValue,
+    required this.subTotal,
+  });
+
+  final BillDiscountType initialType;
+  final double initialValue;
+  final double subTotal;
+
+  @override
+  State<_DiscountSheet> createState() => _DiscountSheetState();
+}
+
+class _DiscountSheetState extends State<_DiscountSheet> {
+  late BillDiscountType _type = widget.initialType == BillDiscountType.none
+      ? BillDiscountType.percent
+      : widget.initialType;
+  late final _valueCtrl = TextEditingController(
+    text: widget.initialValue > 0
+        ? _formatDiscountValue(widget.initialValue)
+        : '',
+  );
+  String? _error;
+
+  @override
+  void dispose() {
+    _valueCtrl.dispose();
+    super.dispose();
+  }
+
+  double get _value => double.tryParse(_valueCtrl.text.trim()) ?? 0;
+
+  void _apply() {
+    final value = _value;
+    if (value <= 0) {
+      setState(() => _error = 'Enter a discount greater than 0');
+      return;
+    }
+    if (_type == BillDiscountType.percent && value > 100) {
+      setState(() => _error = 'Percentage cannot exceed 100');
+      return;
+    }
+    Navigator.of(context).pop((type: _type, value: value));
+  }
+
+  void _remove() {
+    Navigator.of(context).pop((type: BillDiscountType.none, value: 0.0));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final preview = BillTotals.compute(
+      subTotal: widget.subTotal,
+      taxPercent: 0,
+      discountType: _type,
+      discountValue: _value,
+    ).discountAmount;
+    final hasExisting = widget.initialType != BillDiscountType.none;
+
+    return AppSheetBody(
+      title: 'Discount',
+      subtitle: 'Optional. Applied before tax.',
+      icon: CupertinoIcons.tag,
+      cancelLabel: hasExisting ? 'Remove' : 'Cancel',
+      onCancel: hasExisting ? _remove : null,
+      confirmLabel: 'Apply',
+      onConfirm: _apply,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                _typeOption(BillDiscountType.percent, 'Percentage (%)'),
+                _typeOption(BillDiscountType.amount, 'Amount (Rs)'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _valueCtrl,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _apply(),
+            onChanged: (_) => setState(() => _error = null),
+            style: const TextStyle(fontSize: 13.5),
+            decoration: appSheetInputDecoration(
+              _type == BillDiscountType.percent
+                  ? 'Discount percentage'
+                  : 'Discount amount',
+              prefixText: _type == BillDiscountType.amount ? 'Rs. ' : null,
+            ).copyWith(
+              suffixText: _type == BillDiscountType.percent ? '%' : null,
+              errorText: _error,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Text(
+                'Discount on this bill',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const Spacer(),
+              Text(
+                '- Rs.${preview.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _typeOption(BillDiscountType type, String label) {
+    final selected = _type == type;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() {
+          _type = type;
+          _error = null;
+        }),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.textPrimary : const Color(0x00000000),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: selected ? AppColors.surface : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

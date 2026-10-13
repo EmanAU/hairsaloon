@@ -11,6 +11,7 @@ class AppRoutes {
   static const billing = '/billing';
   static const savedBills = '/billing/saved';
   static const billDetails = '/billing/details';
+  static const receiptView = '/billing/receipt';
   static const expenses = '/expenses';
   static const expenseHistory = '/expenses/history';
   static const appointments = '/appointments';

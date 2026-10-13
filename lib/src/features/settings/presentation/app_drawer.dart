@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:hairsaloon/src/core/widgets/app_confirm_dialog.dart';
 import 'package:hairsaloon/src/core/widgets/app_sheet.dart';
+import 'package:hairsaloon/src/core/widgets/made_with_love_credit.dart';
 import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
@@ -343,33 +344,7 @@ class _Footer extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Wrap(
-            alignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              const Text(
-                'Made with care by ',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              InkWell(
-                onTap: onOpenSite,
-                borderRadius: BorderRadius.circular(4),
-                child: const Text(
-                  'Intelligement',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          MadeWithLoveCredit(onTap: onOpenSite),
         ],
       ),
     );

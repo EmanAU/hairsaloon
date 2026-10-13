@@ -50,7 +50,7 @@ class PosReceiptCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final billNo = bill.id.length >= 6 ? bill.id.substring(0, 6) : bill.id;
+    final billNo = bill.shortNumber;
     final dateText = _formatDate(bill.createdAt);
     final customerName = bill.customerName.trim().isEmpty
         ? '-'
@@ -221,6 +221,8 @@ class PosReceiptCard extends StatelessWidget {
           const _DashLine(),
           const SizedBox(height: 8),
           _kv('Sub Total', _money(bill.subTotal)),
+          if (bill.hasDiscount)
+            _kv(bill.discountLabel, '- ${_money(bill.discountAmount)}'),
           _kv(
             'Tax (${bill.taxPercent.toStringAsFixed(0)}%)',
             _money(bill.taxAmount),

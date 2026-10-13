@@ -7,10 +7,22 @@ import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class BillReceiptShare {
   const BillReceiptShare._();
+
+  static const _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  static String formatDateTime(DateTime d) {
+    final hour = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    final minute = d.minute.toString().padLeft(2, '0');
+    final period = d.hour < 12 ? 'AM' : 'PM';
+    return '${d.day.toString().padLeft(2, '0')} ${_months[d.month - 1]} '
+        '${d.year}, $hour:$minute $period';
+  }
 
   static String buildTextReceipt({
     required Bill bill,
@@ -21,7 +33,7 @@ class BillReceiptShare {
   }) {
     final code = currencyCode.trim().isEmpty ? 'Rs' : currencyCode.trim();
     String money(double v) => '$code ${v.toStringAsFixed(0)}';
-    final billNo = bill.id.length >= 6 ? bill.id.substring(0, 6) : bill.id;
+    String orDash(String v) => v.trim().isEmpty ? '-' : v.trim();
     final buffer = StringBuffer()
       ..writeln(businessName.toUpperCase())
       ..writeln('------------------------------');
@@ -32,30 +44,24 @@ class BillReceiptShare {
       buffer.writeln(businessPhone.trim());
     }
     buffer
-      ..writeln('TAX INVOICE / RECEIPT')
-      ..writeln('Bill No: $billNo')
-      ..writeln('Date: ${bill.createdAt}')
-      ..writeln(
-        'Customer: ${bill.customerName.trim().isEmpty ? '-' : bill.customerName}',
-      )
-      ..writeln(
-        'Phone: ${bill.customerPhone.trim().isEmpty ? '-' : bill.customerPhone}',
-      )
-      ..writeln(
-        'Staff: ${bill.employeeName.trim().isEmpty ? '-' : bill.employeeName}',
-      )
-      ..writeln(
-        'Payment: ${bill.paymentType.trim().isEmpty ? '-' : bill.paymentType}',
-      )
+      ..writeln('RECEIPT')
+      ..writeln('Bill No: ${bill.shortNumber}')
+      ..writeln('Date: ${formatDateTime(bill.createdAt)}')
+      ..writeln('Customer: ${orDash(bill.customerName)}')
+      ..writeln('Phone: ${orDash(bill.customerPhone)}')
+      ..writeln('Staff: ${orDash(bill.employeeName)}')
+      ..writeln('Payment: ${orDash(bill.paymentType)}')
       ..writeln('------------------------------');
     for (final line in bill.lines) {
-      buffer.writeln(
-        '${line.serviceName} x${line.qty}  ${money(line.total)}',
-      );
+      buffer.writeln('${line.serviceName} x${line.qty}  ${money(line.total)}');
     }
     buffer
       ..writeln('------------------------------')
-      ..writeln('Sub Total: ${money(bill.subTotal)}')
+      ..writeln('Sub Total: ${money(bill.subTotal)}');
+    if (bill.hasDiscount) {
+      buffer.writeln('${bill.discountLabel}: - ${money(bill.discountAmount)}');
+    }
+    buffer
       ..writeln(
         'Tax (${bill.taxPercent.toStringAsFixed(0)}%): ${money(bill.taxAmount)}',
       )
@@ -73,6 +79,7 @@ class BillReceiptShare {
       if (boundary == null) return null;
       final image = await boundary.toImage(pixelRatio: 3);
       final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
       if (bytes == null) return null;
       final dir = await getTemporaryDirectory();
       final file = File(
@@ -92,6 +99,8 @@ class BillReceiptShare {
     return box.localToGlobal(Offset.zero) & box.size;
   }
 
+  /// Shares the receipt as a PNG image with the text receipt as caption.
+  /// Falls back to text only if the image can't be captured.
   static Future<void> shareReceipt({
     required BuildContext context,
     required GlobalKey receiptKey,
@@ -112,79 +121,19 @@ class BillReceiptShare {
     final file = await captureReceiptImage(receiptKey);
 
     try {
-      if (file != null) {
-        await SharePlus.instance.share(
-          ShareParams(
-            files: [XFile(file.path, mimeType: 'image/png')],
-            text: text,
-            subject: 'Receipt - $businessName',
-            title: 'Share Receipt',
-            sharePositionOrigin: origin,
-          ),
-        );
-      } else {
-        await SharePlus.instance.share(
-          ShareParams(
-            text: text,
-            subject: 'Receipt - $businessName',
-            title: 'Share Receipt',
-            sharePositionOrigin: origin,
-          ),
-        );
-      }
-    } catch (e) {
+      await SharePlus.instance.share(
+        ShareParams(
+          files: file == null
+              ? null
+              : [XFile(file.path, mimeType: 'image/png')],
+          text: text,
+          subject: 'Receipt - $businessName',
+          title: 'Share Receipt',
+          sharePositionOrigin: origin,
+        ),
+      );
+    } catch (_) {
       ToastService.error('Could not share receipt.');
-    }
-  }
-
-  static Future<void> shareOnWhatsApp({
-    required BuildContext context,
-    required GlobalKey receiptKey,
-    required Bill bill,
-    required String businessName,
-    required String currencyCode,
-    String businessPhone = '',
-    String businessAddress = '',
-    String? customerPhone,
-  }) async {
-    // Prefer share sheet with image (user picks WhatsApp). Text fallback via wa.me.
-    final origin = _shareOrigin(context);
-    final file = await captureReceiptImage(receiptKey);
-    final text = buildTextReceipt(
-      bill: bill,
-      businessName: businessName,
-      currencyCode: currencyCode,
-      businessPhone: businessPhone,
-      businessAddress: businessAddress,
-    );
-
-    if (file != null) {
-      try {
-        await SharePlus.instance.share(
-          ShareParams(
-            files: [XFile(file.path, mimeType: 'image/png')],
-            text: text,
-            subject: 'Receipt - $businessName',
-            title: 'WhatsApp Receipt',
-            sharePositionOrigin: origin,
-          ),
-        );
-        return;
-      } catch (_) {
-        // fall through to text WhatsApp
-      }
-    }
-
-    final digits = (customerPhone ?? bill.customerPhone)
-        .replaceAll(RegExp(r'[^0-9]'), '');
-    final uri = digits.isEmpty
-        ? Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}')
-        : Uri.parse(
-            'https://wa.me/$digits?text=${Uri.encodeComponent(text)}',
-          );
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!launched) {
-      ToastService.error('Could not open WhatsApp.');
     }
   }
 }

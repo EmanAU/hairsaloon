@@ -18,6 +18,7 @@ import 'package:hairsaloon/src/core/storage/hive_bootstrap.dart';
 import 'package:hairsaloon/src/features/appointments/presentation/appointments_screen.dart';
 import 'package:hairsaloon/src/features/auth/presentation/business_registration_screen.dart';
 import 'package:hairsaloon/src/features/billing/presentation/bill_details_screen.dart';
+import 'package:hairsaloon/src/features/billing/presentation/receipt_view_screen.dart';
 import 'package:hairsaloon/src/features/billing/presentation/saved_bills_screen.dart';
 import 'package:hairsaloon/src/features/billing/data/repositories/hive_billing_repository.dart';
 import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
@@ -235,6 +236,15 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                       return MaterialPageRoute(
                         builder: (_) => AdaptivePage(
                           child: BillDetailsScreen(billId: billId),
+                        ),
+                      );
+                    }
+                    if (settings.name == AppRoutes.receiptView) {
+                      final billId = settings.arguments as String?;
+                      if (billId == null) return null;
+                      return MaterialPageRoute(
+                        builder: (_) => AdaptivePage(
+                          child: ReceiptViewScreen(billId: billId),
                         ),
                       );
                     }

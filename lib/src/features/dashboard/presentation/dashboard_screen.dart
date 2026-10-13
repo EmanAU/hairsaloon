@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:hairsaloon/src/core/widgets/made_with_love_credit.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
@@ -155,32 +156,11 @@ class DashboardScreen extends StatelessWidget {
         // ── Credit below cards ────────────────────────────────────────────
         Padding(
           padding: EdgeInsets.fromLTRB(16.w, 6.h, 16.w, 8.h),
-          child: Wrap(
-            alignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                'Made with care by ',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 10.5.sp,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              InkWell(
-                onTap: _openIntelligementWebsite,
-                borderRadius: BorderRadius.circular(4.r),
-                child: Text(
-                  'Intelligement',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 10.5.sp,
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ),
-            ],
+          child: Center(
+            child: MadeWithLoveCredit(
+              onTap: _openIntelligementWebsite,
+              fontSize: 10.5.sp,
+            ),
           ),
         ),
       ],

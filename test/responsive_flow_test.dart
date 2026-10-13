@@ -232,11 +232,14 @@ void main() {
         await capture('01_dashboard');
         final rail = find.byType(NavigationRail);
         expect(rail, entry.key == 'mobile' ? findsNothing : findsOneWidget);
-        await tester.tap(find.text('Billing').last);
+        Finder navItem(String label) => entry.key == 'mobile'
+            ? find.byTooltip(label)
+            : find.text(label).last;
+        await tester.tap(navItem('Billing'));
         await capture('02_billing');
-        await tester.tap(find.text('Expense').last);
+        await tester.tap(navItem('Expense'));
         await capture('03_expenses');
-        await tester.tap(find.text('Home').last);
+        await tester.tap(navItem('Home'));
         if (entry.key != 'mobile') {
           await tester.tap(find.byTooltip('Open menu').first);
         }
@@ -271,11 +274,14 @@ void main() {
           '22_saved_bills': AppRoutes.savedBills,
           '23_bill_details': AppRoutes.billDetails,
           '24_appointments': AppRoutes.appointments,
+          '25_receipt_view': AppRoutes.receiptView,
         };
         for (final route in routes.entries) {
           ToastService.navigatorKey.currentState!.pushNamed(
             route.value,
-            arguments: route.value == AppRoutes.billDetails
+            arguments:
+                route.value == AppRoutes.billDetails ||
+                    route.value == AppRoutes.receiptView
                 ? 'preview-bill'
                 : null,
           );
