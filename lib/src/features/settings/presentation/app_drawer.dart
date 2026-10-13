@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
@@ -15,7 +16,10 @@ class AppDrawer extends StatelessWidget {
     'http://www.intelligement.com/',
   );
 
-  static const Color _divider = Color(0xFFE3E3E3);
+  static const Color _divider = Color(0xFFEEEEEE);
+  static const Color _iconBg = Color(0xFFF7F8F4);
+  static const Color _iconColor = Color(0xFF7A7A7A);
+  static const Color _headerBg = Color(0xFFFBFCF7);
 
   @override
   Widget build(BuildContext context) {
@@ -28,11 +32,11 @@ class AppDrawer extends StatelessWidget {
       backgroundColor: AppColors.surface,
       surfaceTintColor: const Color(0x00000000),
       elevation: 0,
-      width: 288,
+      width: 300,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
-          topRight: Radius.circular(16),
-          bottomRight: Radius.circular(16),
+          topRight: Radius.circular(18),
+          bottomRight: Radius.circular(18),
         ),
       ),
       child: SafeArea(
@@ -40,80 +44,84 @@ class AppDrawer extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _Header(businessName: businessName),
-            const Divider(height: 1, thickness: 1, color: _divider),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                 children: [
                   const _SectionLabel('GENERAL'),
                   _Item(
+                    icon: CupertinoIcons.person_crop_circle,
                     title: 'Profile Settings',
+                    showDivider: true,
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.of(context).pushNamed(AppRoutes.profileSettings);
+                      Navigator.of(
+                        context,
+                      ).pushNamed(AppRoutes.profileSettings);
                     },
                   ),
                   _Item(
+                    icon: CupertinoIcons.person_circle,
                     title: 'Account',
+                    showDivider: true,
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.of(context).pushNamed(AppRoutes.accountProfile);
                     },
                   ),
                   _Item(
+                    icon: CupertinoIcons.person_3,
                     title: 'Employees',
+                    showDivider: true,
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.of(context).pushNamed(AppRoutes.employees);
                     },
                   ),
                   _Item(
+                    icon: CupertinoIcons.briefcase,
                     title: 'Managers',
+                    showDivider: true,
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.of(context).pushNamed(AppRoutes.managers);
                     },
                   ),
                   _Item(
+                    icon: CupertinoIcons.person_2,
                     title: 'Customers',
+                    showDivider: false,
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.of(context).pushNamed(AppRoutes.customers);
                     },
                   ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: Divider(height: 1, thickness: 1, color: _divider),
-                  ),
+                  const SizedBox(height: 10),
                   const _SectionLabel('CATALOGUE'),
                   _Item(
+                    icon: CupertinoIcons.square_list,
                     title: 'Categories',
+                    showDivider: true,
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.of(context).pushNamed(AppRoutes.categories);
                     },
                   ),
                   _Item(
+                    icon: CupertinoIcons.money_dollar,
                     title: 'Rate List',
+                    showDivider: false,
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.of(context).pushNamed(AppRoutes.serviceList);
                     },
                   ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: Divider(height: 1, thickness: 1, color: _divider),
-                  ),
+                  const SizedBox(height: 10),
                   const _SectionLabel('FINANCE'),
                   _Item(
-                    title: 'Expense List',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.of(context).pushNamed(AppRoutes.expenses);
-                    },
-                  ),
-                  _Item(
+                    icon: CupertinoIcons.money_dollar_circle,
                     title: 'Currency Change',
+                    showDivider: true,
                     onTap: () async {
                       final rootNavigator = Navigator.of(
                         context,
@@ -124,7 +132,9 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
                   _Item(
+                    icon: CupertinoIcons.percent,
                     title: 'Tax Rate',
+                    showDivider: false,
                     trailing: const _TaxBadge(),
                     onTap: () async {
                       final rootNavigator = Navigator.of(
@@ -151,75 +161,103 @@ class AppDrawer extends StatelessWidget {
 
   static Future<void> _showTaxRateDialog(BuildContext context) async {
     final settingsStore = context.read<SettingsStore>();
-    final controller = TextEditingController(
-      text: settingsStore.taxRate.toStringAsFixed(0),
-    );
+    final current = settingsStore.taxRate.toStringAsFixed(0);
+    final controller = TextEditingController(text: current);
+
     final didSave = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
-        const radius = 8.0;
-        return AlertDialog(
-          backgroundColor: AppColors.primary,
+      builder: (dialogContext) => SafeArea(
+        child: AlertDialog(
+          backgroundColor: AppColors.surface,
           surfaceTintColor: const Color(0x00000000),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radius),
+            borderRadius: BorderRadius.circular(14),
           ),
           title: const Text(
             'Tax Rate',
             style: TextStyle(
-              color: AppColors.onPrimary,
+              color: AppColors.textPrimary,
               fontSize: 16,
               fontWeight: FontWeight.w700,
             ),
           ),
-          content: TextField(
-            controller: controller,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: const TextStyle(
-              color: AppColors.onPrimary,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-            decoration: InputDecoration(
-              hintText: 'Enter percentage e.g. 16',
-              hintStyle: TextStyle(
-                color: AppColors.onPrimary.withValues(alpha: 0.5),
-                fontSize: 13,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Current: $current%',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-              suffixText: '%',
-              suffixStyle: const TextStyle(
-                color: AppColors.onPrimary,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
+              const SizedBox(height: 10),
+              TextField(
+                controller: controller,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'e.g. 16',
+                  hintStyle: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                  suffixText: '%',
+                  suffixStyle: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                  filled: true,
+                  fillColor: _headerBg,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(9),
+                    borderSide: const BorderSide(color: _divider),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(9),
+                    borderSide: const BorderSide(
+                      color: AppColors.primary,
+                      width: 1.5,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(9),
+                    borderSide: const BorderSide(color: _divider),
+                  ),
+                ),
               ),
-              filled: true,
-              fillColor: AppColors.surface,
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 12,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(radius),
-                borderSide: BorderSide.none,
-              ),
-            ),
+            ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              style: TextButton.styleFrom(foregroundColor: AppColors.onPrimary),
               child: const Text(
                 'Cancel',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
               ),
             ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.onPrimary,
-                foregroundColor: AppColors.surface,
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.onPrimary,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(radius),
+                  borderRadius: BorderRadius.circular(9),
                 ),
               ),
               onPressed: () {
@@ -237,8 +275,8 @@ class AppDrawer extends StatelessWidget {
               ),
             ),
           ],
-        );
-      },
+        ),
+      ),
     );
     if (didSave != true) return;
     ToastService.success('Tax rate saved');
@@ -251,107 +289,111 @@ class AppDrawer extends StatelessWidget {
 
     final didSave = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.background,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: const Text(
-          'Currency Change',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+      builder: (dialogContext) => SafeArea(
+        child: AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
           ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Current: $current',
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
+          title: const Text(
+            'Currency Change',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: controller,
-              textCapitalization: TextCapitalization.characters,
-              maxLength: 3,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 14,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Current: $current',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-              decoration: InputDecoration(
-                hintText: 'e.g. PKR',
-                hintStyle: const TextStyle(
+              const SizedBox(height: 10),
+              TextField(
+                controller: controller,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 3,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'e.g. PKR',
+                  hintStyle: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                  filled: true,
+                  fillColor: _headerBg,
+                  counterText: '',
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(9),
+                    borderSide: const BorderSide(color: _divider),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(9),
+                    borderSide: const BorderSide(
+                      color: AppColors.primary,
+                      width: 1.5,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(9),
+                    borderSide: const BorderSide(color: _divider),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 13,
                 ),
-                filled: true,
-                fillColor: AppColors.surface,
-                counterText: '',
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                border: OutlineInputBorder(
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.onPrimary,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(9),
-                  borderSide: const BorderSide(color: _divider),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(9),
-                  borderSide: const BorderSide(
-                    color: AppColors.primary,
-                    width: 1.5,
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(9),
-                  borderSide: const BorderSide(color: _divider),
-                ),
+              ),
+              onPressed: () async {
+                final next = controller.text.trim().toUpperCase();
+                if (next.length != 3) {
+                  Navigator.of(dialogContext).pop(false);
+                  return;
+                }
+                await settingsStore.setCurrencyCode(next);
+                if (dialogContext.mounted) {
+                  Navigator.of(dialogContext).pop(true);
+                }
+              },
+              child: const Text(
+                'Save',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
               ),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.onPrimary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(9),
-              ),
-            ),
-            onPressed: () async {
-              final next = controller.text.trim().toUpperCase();
-              if (next.length != 3) {
-                Navigator.of(dialogContext).pop(false);
-                return;
-              }
-              await settingsStore.setCurrencyCode(next);
-              if (dialogContext.mounted) {
-                Navigator.of(dialogContext).pop(true);
-              }
-            },
-            child: const Text(
-              'Save',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
       ),
     );
 
@@ -368,50 +410,51 @@ class AppDrawer extends StatelessWidget {
     final authStore = context.read<AuthStore>();
     final shouldLogout = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.background,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: const Text(
-          'Logout',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+      builder: (dialogContext) => SafeArea(
+        child: AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
           ),
-        ),
-        content: const Text(
-          'Are you sure you want to logout?',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 13,
+          title: const Text(
+            'Logout',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
+          content: const Text(
+            'Are you sure you want to logout?',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
               ),
             ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.danger,
-              foregroundColor: AppColors.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(9),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.danger,
+                foregroundColor: AppColors.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(9),
+                ),
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text(
+                'Logout',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
               ),
             ),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(
-              'Logout',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
 
@@ -430,19 +473,61 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
-      child: Text(
-        businessName,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: 17,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.2,
-          height: 1.25,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      decoration: const BoxDecoration(
+        color: AppDrawer._headerBg,
+        border: Border(
+          bottom: BorderSide(color: AppDrawer._divider, width: 1),
         ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              CupertinoIcons.building_2_fill,
+              size: 20,
+              color: AppColors.onPrimary,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'BUSINESS',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  businessName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -457,7 +542,7 @@ class _Footer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
       child: Column(
         children: [
           SizedBox(
@@ -465,23 +550,27 @@ class _Footer extends StatelessWidget {
             height: 42,
             child: TextButton(
               style: TextButton.styleFrom(
-                backgroundColor: AppColors.danger.withValues(alpha: 0.08),
+                backgroundColor: AppColors.danger.withValues(alpha: 0.07),
                 foregroundColor: AppColors.danger,
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(9),
+                  borderRadius: BorderRadius.circular(10),
                   side: BorderSide(
-                    color: AppColors.danger.withValues(alpha: 0.2),
+                    color: AppColors.danger.withValues(alpha: 0.18),
                   ),
                 ),
               ),
               onPressed: onLogout,
-              child: const Text(
-                'Logout',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(CupertinoIcons.square_arrow_left, size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    'Logout',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                ],
               ),
             ),
           ),
@@ -493,8 +582,8 @@ class _Footer extends StatelessWidget {
               const Text(
                 'Made with care by ',
                 style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -505,7 +594,7 @@ class _Footer extends StatelessWidget {
                   'Intelligement',
                   style: TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 11,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                     decoration: TextDecoration.underline,
                   ),
@@ -527,14 +616,14 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
       child: Text(
         text,
         style: const TextStyle(
           color: AppColors.textSecondary,
-          fontSize: 11,
+          fontSize: 10.5,
           fontWeight: FontWeight.w700,
-          letterSpacing: 1.0,
+          letterSpacing: 1.05,
         ),
       ),
     );
@@ -543,32 +632,81 @@ class _SectionLabel extends StatelessWidget {
 
 class _Item extends StatelessWidget {
   const _Item({
+    required this.icon,
     required this.title,
     required this.onTap,
+    this.showDivider = true,
     this.trailing,
   });
 
+  final IconData icon;
   final String title;
   final VoidCallback onTap;
+  final bool showDivider;
   final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      dense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-      minVerticalPadding: 10,
-      title: Text(
-        title,
-        style: const TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: 14.5,
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.1,
+    return Column(
+      children: [
+        Material(
+          color: const Color(0x00000000),
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
+            splashColor: AppColors.primary.withValues(alpha: 0.12),
+            highlightColor: AppColors.primary.withValues(alpha: 0.06),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+              child: Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: AppDrawer._iconBg,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppDrawer._divider),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 16,
+                      color: AppDrawer._iconColor,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.1,
+                      ),
+                    ),
+                  ),
+                  if (trailing != null) ...[
+                    trailing!,
+                    const SizedBox(width: 6),
+                  ],
+                  const Icon(
+                    CupertinoIcons.chevron_right,
+                    size: 13,
+                    color: Color(0xFFB0B0B0),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-      ),
-      trailing: trailing,
-      onTap: onTap,
+        if (showDivider)
+          const Padding(
+            padding: EdgeInsets.only(left: 54),
+            child: Divider(height: 1, thickness: 1, color: AppDrawer._divider),
+          ),
+      ],
     );
   }
 }
@@ -584,15 +722,15 @@ class _TaxBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppDrawer._iconBg,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: AppDrawer._divider),
       ),
       child: Text(
         '${taxRate.toStringAsFixed(0)}%',
         style: const TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: 11.5,
+          color: AppColors.textSecondary,
+          fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
       ),

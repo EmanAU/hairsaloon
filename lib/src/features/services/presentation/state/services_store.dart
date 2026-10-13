@@ -49,6 +49,34 @@ class ServicesStore extends ChangeNotifier {
     return _repository.seededPrice(category, subcategory);
   }
 
+  Future<bool> addCategory(String category) async {
+    final added = await _repository.addCategory(category);
+    if (!added) return false;
+    _hydrate();
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> renameCategory({
+    required String oldName,
+    required String newName,
+  }) async {
+    final renamed = await _repository.renameCategory(
+      oldName: oldName,
+      newName: newName,
+    );
+    if (!renamed) return false;
+    _hydrate();
+    notifyListeners();
+    return true;
+  }
+
+  Future<void> deleteCategory(String category) async {
+    await _repository.deleteCategory(category);
+    _hydrate();
+    notifyListeners();
+  }
+
   Future<bool> addSubcategory({
     required String category,
     required String subcategory,

@@ -36,6 +36,71 @@ class HiveServicesRepository {
     return List<String>.unmodifiable(values);
   }
 
+  Future<bool> addCategory(String category) async {
+    final normalized = category.trim();
+    if (normalized.isEmpty) return false;
+    final tree = _readTree();
+    final exists = tree.keys.any(
+      (item) => item.toLowerCase() == normalized.toLowerCase(),
+    );
+    if (exists) return false;
+    final updated = LinkedHashMap<String, List<String>>.of(tree);
+    updated[normalized] = <String>[];
+    await _categoriesBox.put(_categoryTreeKey, _treeToMap(updated));
+    return true;
+  }
+
+  Future<bool> renameCategory({
+    required String oldName,
+    required String newName,
+  }) async {
+    final normalizedOld = oldName.trim();
+    final normalizedNew = newName.trim();
+    if (normalizedOld.isEmpty || normalizedNew.isEmpty) return false;
+
+    final tree = _readTree();
+    if (!tree.containsKey(normalizedOld)) return false;
+    final duplicate = tree.keys.any(
+      (item) =>
+          item.toLowerCase() == normalizedNew.toLowerCase() &&
+          item.toLowerCase() != normalizedOld.toLowerCase(),
+    );
+    if (duplicate) return false;
+
+    final updated = LinkedHashMap<String, List<String>>();
+    for (final entry in tree.entries) {
+      if (entry.key == normalizedOld) {
+        updated[normalizedNew] = List<String>.from(entry.value);
+      } else {
+        updated[entry.key] = List<String>.from(entry.value);
+      }
+    }
+    await _categoriesBox.put(_categoryTreeKey, _treeToMap(updated));
+
+    final services = getServices();
+    for (final service in services) {
+      if (service.category != normalizedOld) continue;
+      final renamed = service.copyWith(category: normalizedNew);
+      await _servicesBox.put(renamed.id, _serviceToMap(renamed));
+    }
+    return true;
+  }
+
+  Future<void> deleteCategory(String category) async {
+    final normalized = category.trim();
+    if (normalized.isEmpty) return;
+    final tree = _readTree();
+    if (!tree.containsKey(normalized)) return;
+    tree.remove(normalized);
+    await _categoriesBox.put(_categoryTreeKey, _treeToMap(tree));
+
+    final services = getServices();
+    for (final service in services) {
+      if (service.category != normalized) continue;
+      await _servicesBox.delete(service.id);
+    }
+  }
+
   Future<bool> addSubcategory({
     required String category,
     required String subcategory,
