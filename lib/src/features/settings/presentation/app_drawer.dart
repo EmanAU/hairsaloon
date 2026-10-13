@@ -94,20 +94,11 @@ class AppDrawer extends StatelessWidget {
                   const _SectionLabel('CATALOGUE'),
                   _Item(
                     icon: CupertinoIcons.square_list,
-                    title: 'Categories',
-                    showDivider: true,
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.of(context).pushNamed(AppRoutes.categories);
-                    },
-                  ),
-                  _Item(
-                    icon: CupertinoIcons.money_dollar,
-                    title: 'Rate List',
+                    title: 'Manage Rate List',
                     showDivider: false,
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.of(context).pushNamed(AppRoutes.serviceList);
+                      Navigator.of(context).pushNamed(AppRoutes.categories);
                     },
                   ),
                   const SizedBox(height: 10),

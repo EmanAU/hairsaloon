@@ -28,7 +28,7 @@ class CategoriesScreen extends StatelessWidget {
           icon: const Icon(CupertinoIcons.back, color: AppColors.onPrimary),
         ),
         title: Text(
-          'Categories (${categories.length.toString().padLeft(2, '0')})',
+          'Manage Rate List (${categories.length.toString().padLeft(2, '0')})',
           style: const TextStyle(
             color: AppColors.onPrimary,
             fontSize: 15,

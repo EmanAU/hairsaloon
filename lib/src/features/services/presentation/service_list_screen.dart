@@ -9,7 +9,9 @@ import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
 class ServiceListScreen extends StatefulWidget {
-  const ServiceListScreen({super.key});
+  const ServiceListScreen({super.key, this.readOnly = true});
+
+  final bool readOnly;
 
   @override
   State<ServiceListScreen> createState() => _ServiceListScreenState();
@@ -112,7 +114,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
               children: [
-                if (_showAddForm) ...[
+                if (!widget.readOnly && _showAddForm) ...[
                   _buildAddFormCard(context),
                   const SizedBox(height: 14),
                 ],
@@ -428,7 +430,10 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   Future<void> _openCategoryRates(String category) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => _CategoryRatesScreen(category: category),
+        builder: (_) => _CategoryRatesScreen(
+          category: category,
+          readOnly: widget.readOnly,
+        ),
       ),
     );
     if (!mounted) return;
@@ -494,9 +499,13 @@ class _CategoryTile extends StatelessWidget {
 }
 
 class _CategoryRatesScreen extends StatefulWidget {
-  const _CategoryRatesScreen({required this.category});
+  const _CategoryRatesScreen({
+    required this.category,
+    required this.readOnly,
+  });
 
   final String category;
+  final bool readOnly;
 
   @override
   State<_CategoryRatesScreen> createState() => _CategoryRatesScreenState();
@@ -562,6 +571,7 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
                       builder: (_) => SubcategoryServicesScreen(
                         category: widget.category,
                         subcategory: subcategory,
+                        readOnly: widget.readOnly,
                       ),
                     ),
                   );
@@ -591,34 +601,47 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
                           color: Colors.black,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      PopupMenuButton<String>(
-                        onSelected: (value) async {
-                          if (value == 'edit') {
-                            await _showEditDialog(
-                              oldSubcategory: subcategory,
-                              currentPrice: price,
-                            );
-                            return;
-                          }
-                          if (value == 'delete') {
-                            await context
-                                .read<ServicesStore>()
-                                .deleteSubcategory(
-                                  category: widget.category,
-                                  subcategory: subcategory,
-                                );
-                          }
-                        },
-                        itemBuilder: (context) => const [
-                          PopupMenuItem(value: 'edit', child: Text('Edit')),
-                          PopupMenuItem(value: 'delete', child: Text('Delete')),
-                        ],
-                        icon: const Icon(
-                          CupertinoIcons.ellipsis_vertical,
-                          size: 18,
+                      if (!widget.readOnly) ...[
+                        const SizedBox(width: 8),
+                        PopupMenuButton<String>(
+                          onSelected: (value) async {
+                            if (value == 'edit') {
+                              await _showEditDialog(
+                                oldSubcategory: subcategory,
+                                currentPrice: price,
+                              );
+                              return;
+                            }
+                            if (value == 'delete') {
+                              await context
+                                  .read<ServicesStore>()
+                                  .deleteSubcategory(
+                                    category: widget.category,
+                                    subcategory: subcategory,
+                                  );
+                            }
+                          },
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(value: 'edit', child: Text('Edit')),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Delete'),
+                            ),
+                          ],
+                          icon: const Icon(
+                            CupertinoIcons.ellipsis_vertical,
+                            size: 18,
+                          ),
                         ),
-                      ),
+                      ] else
+                        const Padding(
+                          padding: EdgeInsets.only(left: 8),
+                          child: Icon(
+                            CupertinoIcons.chevron_right,
+                            size: 16,
+                            color: Colors.black54,
+                          ),
+                        ),
                     ],
                   ),
                 ),

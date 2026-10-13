@@ -11,10 +11,12 @@ class SubcategoryServicesScreen extends StatelessWidget {
     super.key,
     required this.category,
     required this.subcategory,
+    this.readOnly = false,
   });
 
   final String category;
   final String subcategory;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -92,14 +94,16 @@ class SubcategoryServicesScreen extends StatelessWidget {
               child: Padding(
                 padding: EdgeInsets.only(top: 30),
                 child: Text(
-                  'No service found for this subcategory.\nAdd from Rate List → New Service.',
+                  'No service found for this subcategory.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                 ),
               ),
             )
           else
-            ...services.map((s) => _ServiceRow(item: s)),
+            ...services.map(
+              (s) => _ServiceRow(item: s, readOnly: readOnly),
+            ),
         ],
       ),
     );
@@ -107,9 +111,10 @@ class SubcategoryServicesScreen extends StatelessWidget {
 }
 
 class _ServiceRow extends StatelessWidget {
-  const _ServiceRow({required this.item});
+  const _ServiceRow({required this.item, required this.readOnly});
 
   final ServiceItem item;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -158,30 +163,32 @@ class _ServiceRow extends StatelessWidget {
               color: Colors.black,
             ),
           ),
-          const SizedBox(width: 6),
-          PopupMenuButton<String>(
-            onSelected: (value) async {
-              if (value == 'edit') {
-                final updated = await Navigator.of(context).push<ServiceItem>(
-                  MaterialPageRoute(
-                    builder: (_) => ServiceDetailsScreen(item: item),
-                  ),
-                );
-                if (updated == null) return;
-                if (!context.mounted) return;
-                await context.read<ServicesStore>().updateService(updated);
-                return;
-              }
-              if (value == 'delete') {
-                await context.read<ServicesStore>().deleteService(item.id);
-              }
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'edit', child: Text('Edit')),
-              PopupMenuItem(value: 'delete', child: Text('Delete')),
-            ],
-            icon: const Icon(CupertinoIcons.ellipsis_vertical, size: 18),
-          ),
+          if (!readOnly) ...[
+            const SizedBox(width: 6),
+            PopupMenuButton<String>(
+              onSelected: (value) async {
+                if (value == 'edit') {
+                  final updated = await Navigator.of(context).push<ServiceItem>(
+                    MaterialPageRoute(
+                      builder: (_) => ServiceDetailsScreen(item: item),
+                    ),
+                  );
+                  if (updated == null) return;
+                  if (!context.mounted) return;
+                  await context.read<ServicesStore>().updateService(updated);
+                  return;
+                }
+                if (value == 'delete') {
+                  await context.read<ServicesStore>().deleteService(item.id);
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'edit', child: Text('Edit')),
+                PopupMenuItem(value: 'delete', child: Text('Delete')),
+              ],
+              icon: const Icon(CupertinoIcons.ellipsis_vertical, size: 18),
+            ),
+          ],
         ],
       ),
     );
