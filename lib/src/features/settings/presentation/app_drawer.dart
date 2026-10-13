@@ -1,75 +1,59 @@
-import 'package:hairsaloon/src/core/services/toast_service.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
+import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/features/settings/presentation/state/settings_store.dart';
+import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// ─── Design tokens (mirrors registration screen) ──────────────────────────────
-class _C {
-  static const bg = Color(0xFFFFFFFF);
-  static const surface = Color(0xFFF6F6F6);
-  static const surfaceHigh = Color(0xFFECECEC);
-  static const border = Color(0xFFE3E3E3);
-  static const lime = Color(0xFFD4FF33);
-  static const textPrimary = Color(0xFF0D0D0D);
-  static const textSecondary = Color(0xFF6B6B6B);
-  static const error = Color(0xFFFF5C5C);
-}
-
-class AppDrawer extends StatefulWidget {
+class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
 
-  @override
-  State<AppDrawer> createState() => _AppDrawerState();
-}
-
-class _AppDrawerState extends State<AppDrawer> {
   static final Uri _intelligementUri = Uri.parse(
     'http://www.intelligement.com/',
   );
 
+  static const Color _divider = Color(0xFFE3E3E3);
+
   @override
   Widget build(BuildContext context) {
+    final profile = context.watch<BusinessProfileNotifier>().profile;
+    final businessName = (profile?.businessName.trim().isNotEmpty ?? false)
+        ? profile!.businessName
+        : 'Business';
+
     return Drawer(
-      backgroundColor: _C.bg,
-      surfaceTintColor: Colors.transparent,
+      backgroundColor: AppColors.surface,
+      surfaceTintColor: const Color(0x00000000),
       elevation: 0,
+      width: 288,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
-          topRight: Radius.circular(28),
-          bottomRight: Radius.circular(28),
+          topRight: Radius.circular(16),
+          bottomRight: Radius.circular(16),
         ),
       ),
       child: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Header ──────────────────────────────────────────────────
-            _buildHeader(),
-
-            const SizedBox(height: 8),
-
-            // ── Menu list ────────────────────────────────────────────────
+            _Header(businessName: businessName),
+            const Divider(height: 1, thickness: 1, color: _divider),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 children: [
-                  _SectionLabel('GENERAL'),
+                  const _SectionLabel('GENERAL'),
                   _Item(
-                    icon: CupertinoIcons.person_crop_circle,
                     title: 'Profile Settings',
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.of(
-                        context,
-                      ).pushNamed(AppRoutes.profileSettings);
+                      Navigator.of(context).pushNamed(AppRoutes.profileSettings);
                     },
                   ),
                   _Item(
-                    icon: CupertinoIcons.person_circle,
                     title: 'Account',
                     onTap: () {
                       Navigator.pop(context);
@@ -77,7 +61,6 @@ class _AppDrawerState extends State<AppDrawer> {
                     },
                   ),
                   _Item(
-                    icon: CupertinoIcons.person_3,
                     title: 'Employees',
                     onTap: () {
                       Navigator.pop(context);
@@ -85,17 +68,18 @@ class _AppDrawerState extends State<AppDrawer> {
                     },
                   ),
                   _Item(
-                    icon: CupertinoIcons.person_2,
                     title: 'Customers',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.of(context).pushNamed(AppRoutes.customers);
                     },
                   ),
-                  const SizedBox(height: 10),
-                  _SectionLabel('CATALOGUE'),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: Divider(height: 1, thickness: 1, color: _divider),
+                  ),
+                  const _SectionLabel('CATALOGUE'),
                   _Item(
-                    icon: CupertinoIcons.list_bullet_indent,
                     title: 'Categories',
                     onTap: () {
                       Navigator.pop(context);
@@ -103,17 +87,18 @@ class _AppDrawerState extends State<AppDrawer> {
                     },
                   ),
                   _Item(
-                    icon: CupertinoIcons.money_dollar,
                     title: 'Rate List',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.of(context).pushNamed(AppRoutes.serviceList);
                     },
                   ),
-                  const SizedBox(height: 10),
-                  _SectionLabel('FINANCE'),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: Divider(height: 1, thickness: 1, color: _divider),
+                  ),
+                  const _SectionLabel('FINANCE'),
                   _Item(
-                    icon: CupertinoIcons.creditcard,
                     title: 'Expense List',
                     onTap: () {
                       Navigator.pop(context);
@@ -121,7 +106,6 @@ class _AppDrawerState extends State<AppDrawer> {
                     },
                   ),
                   _Item(
-                    icon: CupertinoIcons.money_dollar_circle,
                     title: 'Currency Change',
                     onTap: () async {
                       final rootNavigator = Navigator.of(
@@ -133,9 +117,8 @@ class _AppDrawerState extends State<AppDrawer> {
                     },
                   ),
                   _Item(
-                    icon: CupertinoIcons.percent,
                     title: 'Tax Rate',
-                    trailing: _TaxBadge(),
+                    trailing: const _TaxBadge(),
                     onTap: () async {
                       final rootNavigator = Navigator.of(
                         context,
@@ -148,135 +131,18 @@ class _AppDrawerState extends State<AppDrawer> {
                 ],
               ),
             ),
-
-            // ── Bottom: version + logout ──────────────────────────────────
-            _buildFooter(context),
+            const Divider(height: 1, thickness: 1, color: _divider),
+            _Footer(
+              onLogout: () => _handleLogout(context),
+              onOpenSite: _openIntelligementWebsite,
+            ),
           ],
         ),
       ),
     );
   }
 
-  // ─── Header ───────────────────────────────────────────────────────────────
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 18),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: _C.border, width: 1)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // App icon + name row
-          Row(
-            children: [
-              const Text("  "),
-              const SizedBox(width: 60),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Saloon Management',
-                    style: TextStyle(
-                      color: _C.textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─── Footer ───────────────────────────────────────────────────────────────
-  Widget _buildFooter(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: _C.border, width: 1)),
-      ),
-      child: Column(
-        children: [
-          // Logout button
-          SizedBox(
-            width: double.infinity,
-            child: TextButton(
-              style: TextButton.styleFrom(
-                backgroundColor: _C.error.withValues(alpha: 0.08),
-                foregroundColor: _C.error,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  side: BorderSide(
-                    color: _C.error.withValues(alpha: 0.2),
-                    width: 1,
-                  ),
-                ),
-              ),
-              onPressed: () => _handleLogout(context),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(CupertinoIcons.square_arrow_left, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Logout',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Wrap(
-              alignment: WrapAlignment.center,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                const Text(
-                  'Made with ❤️ by ',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.1,
-                  ),
-                ),
-                InkWell(
-                  onTap: _openIntelligementWebsite,
-                  borderRadius: BorderRadius.circular(4),
-                  child: const Text(
-                    'Intelligement',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.1,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─── Tax dialog ───────────────────────────────────────────────────────────
-  Future<void> _showTaxRateDialog(BuildContext context) async {
+  static Future<void> _showTaxRateDialog(BuildContext context) async {
     final settingsStore = context.read<SettingsStore>();
     final controller = TextEditingController(
       text: settingsStore.taxRate.toStringAsFixed(0),
@@ -284,62 +150,67 @@ class _AppDrawerState extends State<AppDrawer> {
     final didSave = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        const radius = 6.0;
-        InputDecoration fieldDecoration() {
-          return InputDecoration(
-            hintText: 'Enter percentage e.g. 16',
-            hintStyle: const TextStyle(color: Colors.black54),
-            suffixText: '%',
-            suffixStyle: const TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.w800,
-            ),
-            filled: true,
-            fillColor: Colors.white,
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(radius),
-              borderSide: BorderSide.none,
-            ),
-          );
-        }
-
+        const radius = 8.0;
         return AlertDialog(
-          backgroundColor: _C.lime,
-          surfaceTintColor: Colors.transparent,
+          backgroundColor: AppColors.primary,
+          surfaceTintColor: const Color(0x00000000),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radius),
           ),
           title: const Text(
             'Tax Rate',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800),
+            style: TextStyle(
+              color: AppColors.onPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           content: TextField(
             controller: controller,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             style: const TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.w700,
+              color: AppColors.onPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
-            decoration: fieldDecoration(),
+            decoration: InputDecoration(
+              hintText: 'Enter percentage e.g. 16',
+              hintStyle: TextStyle(
+                color: AppColors.onPrimary.withValues(alpha: 0.5),
+                fontSize: 13,
+              ),
+              suffixText: '%',
+              suffixStyle: const TextStyle(
+                color: AppColors.onPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+              filled: true,
+              fillColor: AppColors.surface,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(radius),
+                borderSide: BorderSide.none,
+              ),
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              style: TextButton.styleFrom(foregroundColor: Colors.black87),
+              style: TextButton.styleFrom(foregroundColor: AppColors.onPrimary),
               child: const Text(
                 'Cancel',
-                style: TextStyle(fontWeight: FontWeight.w700),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
+                backgroundColor: AppColors.onPrimary,
+                foregroundColor: AppColors.surface,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(radius),
                 ),
@@ -355,7 +226,7 @@ class _AppDrawerState extends State<AppDrawer> {
               },
               child: const Text(
                 'Save',
-                style: TextStyle(fontWeight: FontWeight.w800),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
               ),
             ),
           ],
@@ -366,7 +237,7 @@ class _AppDrawerState extends State<AppDrawer> {
     ToastService.success('Tax rate saved');
   }
 
-  Future<void> _showCurrencyDialog(BuildContext context) async {
+  static Future<void> _showCurrencyDialog(BuildContext context) async {
     final settingsStore = context.read<SettingsStore>();
     final current = settingsStore.currencyCode;
     final controller = TextEditingController(text: current);
@@ -374,11 +245,15 @@ class _AppDrawerState extends State<AppDrawer> {
     final didSave = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: _C.surfaceHigh,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: AppColors.background,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: const Text(
           'Currency Change',
-          style: TextStyle(color: _C.textPrimary, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -387,8 +262,9 @@ class _AppDrawerState extends State<AppDrawer> {
             Text(
               'Current: $current',
               style: const TextStyle(
-                color: _C.textSecondary,
-                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 10),
@@ -396,24 +272,38 @@ class _AppDrawerState extends State<AppDrawer> {
               controller: controller,
               textCapitalization: TextCapitalization.characters,
               maxLength: 3,
-              style: const TextStyle(color: _C.textPrimary),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+              ),
               decoration: InputDecoration(
-                hintText: 'Enter new currency code (e.g. PKR)',
-                hintStyle: const TextStyle(color: _C.textSecondary),
+                hintText: 'e.g. PKR',
+                hintStyle: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
                 filled: true,
-                fillColor: _C.surface,
+                fillColor: AppColors.surface,
                 counterText: '',
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.black),
+                  borderRadius: BorderRadius.circular(9),
+                  borderSide: const BorderSide(color: _divider),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.black, width: 1.5),
+                  borderRadius: BorderRadius.circular(9),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 1.5,
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.black),
+                  borderRadius: BorderRadius.circular(9),
+                  borderSide: const BorderSide(color: _divider),
                 ),
               ),
             ),
@@ -424,15 +314,18 @@ class _AppDrawerState extends State<AppDrawer> {
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text(
               'Cancel',
-              style: TextStyle(color: _C.textSecondary),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
             ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: _C.lime,
-              foregroundColor: Colors.black,
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.onPrimary,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(9),
               ),
             ),
             onPressed: () async {
@@ -442,11 +335,13 @@ class _AppDrawerState extends State<AppDrawer> {
                 return;
               }
               await settingsStore.setCurrencyCode(next);
-              Navigator.of(dialogContext).pop(true);
+              if (dialogContext.mounted) {
+                Navigator.of(dialogContext).pop(true);
+              }
             },
             child: const Text(
               'Save',
-              style: TextStyle(fontWeight: FontWeight.w700),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -457,161 +352,223 @@ class _AppDrawerState extends State<AppDrawer> {
     ToastService.success('Currency updated');
   }
 
-  Future<void> _openIntelligementWebsite() async {
+  static Future<void> _openIntelligementWebsite() async {
     await launchUrl(_intelligementUri, mode: LaunchMode.externalApplication);
   }
 
-  // ─── Logout ───────────────────────────────────────────────────────────────
-  Future<void> _handleLogout(BuildContext context) async {
+  static Future<void> _handleLogout(BuildContext context) async {
     final navigator = Navigator.of(context);
     final authStore = context.read<AuthStore>();
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: _C.surfaceHigh,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: AppColors.background,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: const Text(
           'Logout',
-          style: TextStyle(color: _C.textPrimary, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         content: const Text(
           'Are you sure you want to logout?',
-          style: TextStyle(color: _C.textSecondary, fontSize: 14),
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 13,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text(
               'Cancel',
-              style: TextStyle(color: _C.textSecondary),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
             ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: _C.error,
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.danger,
+              foregroundColor: AppColors.surface,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(9),
               ),
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text(
               'Logout',
-              style: TextStyle(fontWeight: FontWeight.w700),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             ),
           ),
         ],
       ),
     );
 
-    if (shouldLogout != true || !mounted) return;
+    if (shouldLogout != true) return;
 
-    // Close drawer first, then clear session and reset navigation stack.
     navigator.pop();
     await authStore.logout();
-    if (!mounted) return;
-
     navigator.pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
   }
 }
 
-// ── Section label ─────────────────────────────────────────────────────────────
+class _Header extends StatelessWidget {
+  const _Header({required this.businessName});
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-  final String text;
+  final String businessName;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
       child: Text(
-        text,
+        businessName,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
         style: const TextStyle(
-          color: _C.textSecondary,
-          fontSize: 10.5,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1.3,
+          color: AppColors.textPrimary,
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.2,
+          height: 1.25,
         ),
       ),
     );
   }
 }
 
-// ── Menu item ─────────────────────────────────────────────────────────────────
+class _Footer extends StatelessWidget {
+  const _Footer({required this.onLogout, required this.onOpenSite});
+
+  final VoidCallback onLogout;
+  final VoidCallback onOpenSite;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+      child: Column(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            height: 42,
+            child: TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: AppColors.danger.withValues(alpha: 0.08),
+                foregroundColor: AppColors.danger,
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(9),
+                  side: BorderSide(
+                    color: AppColors.danger.withValues(alpha: 0.2),
+                  ),
+                ),
+              ),
+              onPressed: onLogout,
+              child: const Text(
+                'Logout',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const Text(
+                'Made with care by ',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              InkWell(
+                onTap: onOpenSite,
+                borderRadius: BorderRadius.circular(4),
+                child: const Text(
+                  'Intelligement',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.0,
+        ),
+      ),
+    );
+  }
+}
 
 class _Item extends StatelessWidget {
   const _Item({
-    required this.icon,
     required this.title,
     required this.onTap,
     this.trailing,
   });
 
-  final IconData icon;
   final String title;
   final VoidCallback onTap;
   final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          splashColor: _C.lime.withValues(alpha: 0.06),
-          highlightColor: _C.lime.withValues(alpha: 0.04),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            child: Row(
-              children: [
-                // Icon container
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: _C.surface,
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(color: _C.border, width: 1),
-                  ),
-                  child: Icon(icon, size: 17, color: _C.textSecondary),
-                ),
-                const SizedBox(width: 13),
-                // Title
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      color: _C.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: -0.1,
-                    ),
-                  ),
-                ),
-                // Trailing or chevron
-                trailing ??
-                    const Icon(
-                      CupertinoIcons.chevron_right,
-                      size: 13,
-                      color: _C.textSecondary,
-                    ),
-              ],
-            ),
-          ),
+    return ListTile(
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+      minVerticalPadding: 10,
+      title: Text(
+        title,
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 14.5,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.1,
         ),
       ),
+      trailing: trailing,
+      onTap: onTap,
     );
   }
 }
 
-// ── Tax badge ─────────────────────────────────────────────────────────────────
-
 class _TaxBadge extends StatelessWidget {
+  const _TaxBadge();
+
   @override
   Widget build(BuildContext context) {
     final taxRate = context.select<SettingsStore, double>(
@@ -620,17 +577,16 @@ class _TaxBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: _C.surfaceHigh,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _C.border, width: 1),
+        border: Border.all(color: AppDrawer._divider),
       ),
       child: Text(
         '${taxRate.toStringAsFixed(0)}%',
         style: const TextStyle(
-          color: Colors.black,
-          fontSize: 11,
+          color: AppColors.textPrimary,
+          fontSize: 11.5,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.2,
         ),
       ),
     );

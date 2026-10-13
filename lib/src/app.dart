@@ -49,7 +49,7 @@ import 'package:hairsaloon/src/features/services/presentation/new_service_screen
 import 'package:hairsaloon/src/features/services/presentation/categories_screen.dart';
 import 'package:hairsaloon/src/features/services/presentation/service_list_screen.dart';
 import 'package:hairsaloon/src/features/services/presentation/subcategories_screen.dart';
-import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:hairsaloon/src/theme/app_theme.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -130,18 +130,22 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                 ),
               ],
               child: MaterialApp(
-                builder: (context, child) =>
-                    AdaptivePage(child: child ?? const SizedBox.shrink()),
+                builder: (context, child) {
+                  final media = MediaQuery.of(context);
+                  return MediaQuery(
+                    data: media.copyWith(
+                      textScaler: TextScaler.linear(AppTheme.textScaleFactor),
+                    ),
+                    child: AdaptivePage(
+                      child: child ?? const SizedBox.shrink(),
+                    ),
+                  );
+                },
                 title: 'Business COMB',
                 debugShowCheckedModeBanner: false,
                 navigatorKey: ToastService.navigatorKey,
                 scaffoldMessengerKey: ToastService.messengerKey,
-                theme: ThemeData(
-                  colorScheme: ColorScheme.fromSeed(
-                    seedColor: AppColors.primary,
-                  ),
-                  useMaterial3: true,
-                ),
+                theme: AppTheme.light(),
                 initialRoute: AppRoutes.splash,
                 routes:
                     <String, WidgetBuilder>{
@@ -220,10 +224,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
   Widget _loadingApp({String message = 'Loading...'}) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light(),
       home: Scaffold(
         body: Center(
           child: Column(
@@ -242,10 +243,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
   Widget _errorApp(Object? error) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light(),
       home: Scaffold(
         body: Center(
           child: Padding(
