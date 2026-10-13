@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/core/widgets/app_sheet.dart';
 import 'package:hairsaloon/src/features/finance/domain/finance_calculator.dart';
@@ -72,10 +71,30 @@ class _SettleSheet extends StatefulWidget {
 class _SettleSheetState extends State<_SettleSheet> {
   final _noteCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
+  final _amountFocus = FocusNode();
   bool _bonusConfirmed = false;
   String? _error;
   double get _amount => double.tryParse(_amountCtrl.text.trim()) ?? 0;
   double get _bonus => _amount > widget.pay ? _amount - widget.pay : 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _amountFocus.requestFocus();
+      final animation = ModalRoute.of(context)?.animation;
+      if (animation == null || animation.isCompleted) return;
+      void listener(AnimationStatus status) {
+        if (status != AnimationStatus.completed) return;
+        animation.removeStatusListener(listener);
+        if (mounted) _amountFocus.requestFocus();
+      }
+
+      animation.addStatusListener(listener);
+    });
+  }
+
   void _confirm() {
     final text = _amountCtrl.text.trim();
     if (!RegExp(r'^\d+(\.\d{1,2})?$').hasMatch(text) ||
@@ -101,6 +120,7 @@ class _SettleSheetState extends State<_SettleSheet> {
 
   @override
   void dispose() {
+    _amountFocus.dispose();
     _amountCtrl.dispose();
     _noteCtrl.dispose();
     super.dispose();
@@ -110,14 +130,20 @@ class _SettleSheetState extends State<_SettleSheet> {
   Widget build(BuildContext context) {
     return AppSheetBody(
       title: 'Settle Up',
-      subtitle: widget.employeeName,
-      icon: CupertinoIcons.checkmark_seal,
-      iconColor: AppColors.success,
       confirmLabel: 'Record Payment',
       onConfirm: _confirm,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Text(
+            widget.employeeName,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -136,27 +162,10 @@ class _SettleSheetState extends State<_SettleSheet> {
                 _line('Earning', FinanceFormat.money(widget.earning)),
                 _line('Already paid', FinanceFormat.money(widget.cut)),
                 const Divider(height: 18, color: AppColors.border),
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Remaining due',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      FinanceFormat.money(widget.pay),
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
+                _line(
+                  'Remaining due',
+                  FinanceFormat.money(widget.pay),
+                  emphasize: true,
                 ),
               ],
             ),
@@ -164,10 +173,29 @@ class _SettleSheetState extends State<_SettleSheet> {
           const SizedBox(height: 12),
           TextField(
             controller: _amountCtrl,
+            focusNode: _amountFocus,
+            autofocus: true,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: appSheetInputDecoration(
-              'Payment amount',
-            ).copyWith(errorText: _error),
+            textInputAction: TextInputAction.done,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+            decoration: appSheetInputDecoration('Payment amount').copyWith(
+              errorText: _error,
+              labelStyle: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+              floatingLabelStyle: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            onSubmitted: (_) => _confirm(),
             onChanged: (_) => setState(() {
               _error = null;
               _bonusConfirmed = false;
@@ -179,18 +207,20 @@ class _SettleSheetState extends State<_SettleSheet> {
             FinanceFormat.money(
               _amount < widget.pay ? widget.pay - _amount : 0,
             ),
+            emphasize: true,
           ),
           if (_bonus > 0) ...[
             _line(
               'Extra bonus/tip',
               FinanceFormat.money(_bonus),
               color: AppColors.success,
+              emphasize: true,
             ),
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text(
                 'Confirm extra amount as bonus/tip',
-                style: TextStyle(fontSize: 12),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
               ),
               value: _bonusConfirmed,
               onChanged: (value) => setState(() {
@@ -216,7 +246,12 @@ class _SettleSheetState extends State<_SettleSheet> {
     );
   }
 
-  Widget _line(String label, String value, {Color? color}) {
+  Widget _line(
+    String label,
+    String value, {
+    Color? color,
+    bool emphasize = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -224,9 +259,12 @@ class _SettleSheetState extends State<_SettleSheet> {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
+              style: TextStyle(
+                color: emphasize
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
+                fontSize: emphasize ? 13 : 12,
+                fontWeight: emphasize ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ),
@@ -234,8 +272,8 @@ class _SettleSheetState extends State<_SettleSheet> {
             value,
             style: TextStyle(
               color: color ?? AppColors.textPrimary,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
+              fontSize: emphasize ? 16 : 12.5,
+              fontWeight: emphasize ? FontWeight.w800 : FontWeight.w600,
             ),
           ),
         ],
