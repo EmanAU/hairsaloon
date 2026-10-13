@@ -745,6 +745,8 @@ void main() {
             payout: null,
           ),
         ],
+        salesTotal: 800,
+        commissionPercent: 10,
       );
       await capture('settle_salary_dialog');
       ToastService.navigatorKey.currentState!.pop();

@@ -47,10 +47,16 @@ class _EmployeeIncomeDetailScreenState
   }
 
   Future<void> _settle(List<EmployeeDayIncome> days) async {
+    final dueDays = days.where((d) => d.dueAmount > 0);
+    final salesTotal = dueDays.fold<double>(0, (s, d) => s + d.sales);
     final result = await showSettleSalaryDialog(
       context: context,
       employeeName: _employee.fullName,
       days: days,
+      salesTotal: salesTotal,
+      commissionPercent: FinanceCalculator.commissionPercent(
+        _employee.commission,
+      ),
     );
     if (result == null || !mounted) return;
     try {

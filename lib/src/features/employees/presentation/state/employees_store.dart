@@ -52,6 +52,15 @@ class EmployeesStore extends ChangeNotifier {
         .toList(growable: false);
   }
 
+  /// True if [employeeId] cannot be assigned to [targetId] (reverse/cycle).
+  bool wouldCreateCycle(String employeeId, String targetId) {
+    return wouldCreateAssignmentCycle(
+      employeeId: employeeId,
+      targetId: targetId,
+      employees: _all,
+    );
+  }
+
   List<EmployeeItem> assignedPeople(EmployeeItem employee) {
     return employee.assignedToIds
         .map(byId)
@@ -77,6 +86,7 @@ class EmployeesStore extends ChangeNotifier {
         selfId: item.id,
         ids: item.assignedToIds,
         knownIds: _knownIds,
+        employees: _all,
       ),
     );
     await _repository.add(cleaned);
@@ -85,11 +95,13 @@ class EmployeesStore extends ChangeNotifier {
   }
 
   Future<void> update(EmployeeItem item) async {
+    final withSelf = [..._all.where((e) => e.id != item.id), item];
     final cleaned = item.copyWith(
       assignedToIds: sanitizeAssignedToIds(
         selfId: item.id,
         ids: item.assignedToIds,
         knownIds: {..._knownIds, item.id},
+        employees: withSelf,
       ),
     );
     await _repository.update(cleaned);
@@ -122,6 +134,7 @@ class EmployeesStore extends ChangeNotifier {
       selfId: employeeId,
       ids: assignedToIds,
       knownIds: _knownIds,
+      employees: _all,
     );
     if (_sameIds(employee.assignedToIds, next)) return;
     await _repository.update(employee.copyWith(assignedToIds: next));

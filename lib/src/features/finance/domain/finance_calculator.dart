@@ -28,7 +28,8 @@ class EmployeeDayIncome {
   double get bonusAmount => payout?.bonusAmount ?? 0;
   double get dueAmount {
     final remaining = payableAmount - (payout?.incomeAmount ?? 0);
-    return remaining > 0.005 ? remaining : 0;
+    if (remaining <= 0.005) return 0;
+    return double.parse(remaining.toStringAsFixed(2));
   }
 }
 
@@ -94,11 +95,11 @@ class FinanceCalculator {
   static String norm(String value) => value.trim().toLowerCase();
 
   static double commissionPercent(String? value) {
-    if (value == null || value.trim().isEmpty) return 100;
+    if (value == null || value.trim().isEmpty) return 0;
     final parsed =
         double.tryParse(value.replaceAll(',', '').replaceAll('%', '').trim()) ??
         0;
-    return parsed <= 0 ? 100 : parsed;
+    return parsed <= 0 ? 0 : parsed;
   }
 
   static List<EmployeeDayIncome> employeeDays({

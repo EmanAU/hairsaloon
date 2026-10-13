@@ -7,9 +7,16 @@ import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class EmployeeAgreementScreen extends StatefulWidget {
-  const EmployeeAgreementScreen({super.key, this.employee});
+  const EmployeeAgreementScreen({
+    super.key,
+    this.employee,
+    this.requireCompletion = false,
+  });
 
   final EmployeeItem? employee;
+
+  /// When true, user must save a complete agreement before leaving.
+  final bool requireCompletion;
 
   @override
   State<EmployeeAgreementScreen> createState() =>
@@ -24,11 +31,13 @@ class _EmployeeAgreementScreenState extends State<EmployeeAgreementScreen> {
   late final TextEditingController _basicSalaryCtrl;
   late final TextEditingController _commissionCtrl;
   late final TextEditingController _descriptionCtrl;
-  bool _editing = false;
+  late bool _editing;
+  bool _completed = false;
 
   @override
   void initState() {
     super.initState();
+    _editing = widget.requireCompletion;
     _employeeTypeCtrl = TextEditingController(
       text: widget.employee?.employeeType ?? '',
     );
@@ -62,162 +71,182 @@ class _EmployeeAgreementScreenState extends State<EmployeeAgreementScreen> {
     });
   }
 
+  void _onBack() {
+    if (widget.requireCompletion && !_completed) {
+      ToastService.error('Complete the employee agreement to continue');
+      return;
+    }
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final employeeName = widget.employee?.fullName ?? 'Employee';
+    final mustComplete = widget.requireCompletion && !_completed;
 
-    return AdaptivePage(
-      form: true,
-      child: Scaffold(
-        backgroundColor: AppColors.surface,
-        appBar: AppBar(
-          backgroundColor: AppColors.primary,
-          surfaceTintColor: const Color(0x00000000),
-          leading: IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(CupertinoIcons.back, color: AppColors.onPrimary),
-          ),
-          title: const Text(
-            'Employee Agreement',
-            style: TextStyle(
-              color: AppColors.onPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
+    return PopScope(
+      canPop: !mustComplete,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _onBack();
+      },
+      child: AdaptivePage(
+        form: true,
+        child: Scaffold(
+          backgroundColor: AppColors.surface,
+          appBar: AppBar(
+            backgroundColor: AppColors.primary,
+            surfaceTintColor: const Color(0x00000000),
+            leading: IconButton(
+              onPressed: _onBack,
+              icon: const Icon(CupertinoIcons.back, color: AppColors.onPrimary),
             ),
+            title: const Text(
+              'Employee Agreement',
+              style: TextStyle(
+                color: AppColors.onPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            actions: [
+              if (!widget.requireCompletion)
+                TextButton(
+                  onPressed: () {
+                    if (_editing) {
+                      _cancelEdit();
+                    } else {
+                      setState(() => _editing = true);
+                    }
+                  },
+                  child: Text(
+                    _editing ? 'Cancel' : 'Edit',
+                    style: const TextStyle(
+                      color: AppColors.onPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                if (_editing) {
-                  _cancelEdit();
-                } else {
-                  setState(() => _editing = true);
-                }
-              },
-              child: Text(
-                _editing ? 'Cancel' : 'Edit',
+          body: ListView(
+            padding: SafeScrollPadding.of(
+              context,
+              left: 20,
+              top: 18,
+              right: 20,
+              bottom: 32,
+            ),
+            children: [
+              Text(
+                employeeName,
                 style: const TextStyle(
-                  color: AppColors.onPrimary,
-                  fontSize: 13,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
                 ),
               ),
-            ),
-          ],
-        ),
-        body: ListView(
-          padding: SafeScrollPadding.of(
-            context,
-            left: 20,
-            top: 18,
-            right: 20,
-            bottom: 32,
-          ),
-          children: [
-            Text(
-              employeeName,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+              const SizedBox(height: 4),
+              Text(
+                widget.requireCompletion
+                    ? 'Required: set salary, commission and agreement terms'
+                    : 'Salary, commission and agreement terms',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Salary, commission and agreement terms',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 18),
-            if (_editing)
-              Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _editField(
-                      _employeeTypeCtrl,
-                      'Employee type',
-                      helper: 'Role or contract type (e.g. Full-time, Stylist)',
-                    ),
-                    const SizedBox(height: 12),
-                    _editField(
-                      _basicSalaryCtrl,
-                      'Basic salary',
-                      helper: 'Monthly fixed salary amount',
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 12),
-                    _editField(
-                      _commissionCtrl,
-                      'Commission (%)',
-                      helper: 'Percentage earned on sales',
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 12),
-                    _editField(
-                      _descriptionCtrl,
-                      'Agreement description',
-                      helper: 'Notes about terms, payout rules, etc.',
-                      maxLines: 4,
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      height: 48,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: AppColors.onPrimary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(9),
+              const SizedBox(height: 18),
+              if (_editing)
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _editField(
+                        _employeeTypeCtrl,
+                        'Employee type',
+                        helper:
+                            'Role or contract type (e.g. Full-time, Stylist)',
+                      ),
+                      const SizedBox(height: 12),
+                      _editField(
+                        _basicSalaryCtrl,
+                        'Basic salary',
+                        helper: 'Monthly fixed salary amount',
+                        keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: 12),
+                      _editField(
+                        _commissionCtrl,
+                        'Commission (%)',
+                        helper: 'Percentage earned on sales',
+                        keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: 12),
+                      _editField(
+                        _descriptionCtrl,
+                        'Agreement description',
+                        helper: 'Notes about terms, payout rules, etc.',
+                        maxLines: 4,
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        height: 48,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: AppColors.onPrimary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(9),
+                            ),
                           ),
-                        ),
-                        onPressed: _save,
-                        child: const Text(
-                          'Save Agreement',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                          onPressed: _save,
+                          child: const Text(
+                            'Save Agreement',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),
+                    ],
+                  ),
+                )
+              else
+                Column(
+                  children: [
+                    _viewRow(
+                      'Employee type',
+                      _employeeTypeCtrl.text,
+                      hint: 'Role or contract type',
+                    ),
+                    _viewRow(
+                      'Basic salary',
+                      _basicSalaryCtrl.text.isEmpty
+                          ? ''
+                          : 'Rs. ${_basicSalaryCtrl.text}',
+                      hint: 'Monthly fixed salary',
+                    ),
+                    _viewRow(
+                      'Commission',
+                      _commissionCtrl.text.isEmpty
+                          ? ''
+                          : '${_commissionCtrl.text}%',
+                      hint: 'Percent on sales',
+                    ),
+                    _viewRow(
+                      'Agreement description',
+                      _descriptionCtrl.text,
+                      hint: 'Terms and notes',
+                      isLast: true,
                     ),
                   ],
                 ),
-              )
-            else
-              Column(
-                children: [
-                  _viewRow(
-                    'Employee type',
-                    _employeeTypeCtrl.text,
-                    hint: 'Role or contract type',
-                  ),
-                  _viewRow(
-                    'Basic salary',
-                    _basicSalaryCtrl.text.isEmpty
-                        ? ''
-                        : 'Rs. ${_basicSalaryCtrl.text}',
-                    hint: 'Monthly fixed salary',
-                  ),
-                  _viewRow(
-                    'Commission',
-                    _commissionCtrl.text.isEmpty
-                        ? ''
-                        : '${_commissionCtrl.text}%',
-                    hint: 'Percent on sales',
-                  ),
-                  _viewRow(
-                    'Agreement description',
-                    _descriptionCtrl.text,
-                    hint: 'Terms and notes',
-                    isLast: true,
-                  ),
-                ],
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -348,12 +377,22 @@ class _EmployeeAgreementScreenState extends State<EmployeeAgreementScreen> {
     final state = _formKey.currentState;
     if (state == null || !state.validate()) return;
 
+    final commissionText = _commissionCtrl.text.trim();
+    final commission = double.tryParse(
+      commissionText.replaceAll(',', '').replaceAll('%', ''),
+    );
+    if (commission == null || commission <= 0) {
+      ToastService.error('Enter a commission greater than 0');
+      return;
+    }
+
     final updated = widget.employee!.copyWith(
       employeeType: _employeeTypeCtrl.text.trim(),
       basicSalary: _basicSalaryCtrl.text.trim(),
-      commission: _commissionCtrl.text.trim(),
+      commission: commissionText,
       agreementDescription: _descriptionCtrl.text.trim(),
     );
+    _completed = true;
     ToastService.success('Agreement saved');
     Navigator.of(context).pop(updated);
   }

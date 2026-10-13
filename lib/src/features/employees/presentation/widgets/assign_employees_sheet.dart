@@ -11,6 +11,7 @@ Future<List<String>?> showAssignEmployeesSheet({
   required List<EmployeeItem> others,
   required List<String> selectedIds,
   required int Function(String employeeId) assignedCount,
+  bool Function(String employeeId)? isBlocked,
 }) {
   return showAppSheet<List<String>>(
     context: context,
@@ -19,6 +20,7 @@ Future<List<String>?> showAssignEmployeesSheet({
       others: others,
       initialIds: selectedIds,
       assignedCount: assignedCount,
+      isBlocked: isBlocked,
     ),
   );
 }
@@ -29,19 +31,26 @@ class _AssignEmployeesSheet extends StatefulWidget {
     required this.others,
     required this.initialIds,
     required this.assignedCount,
+    this.isBlocked,
   });
 
   final String employeeName;
   final List<EmployeeItem> others;
   final List<String> initialIds;
   final int Function(String employeeId) assignedCount;
+  final bool Function(String employeeId)? isBlocked;
 
   @override
   State<_AssignEmployeesSheet> createState() => _AssignEmployeesSheetState();
 }
 
 class _AssignEmployeesSheetState extends State<_AssignEmployeesSheet> {
-  late final Set<String> _selected = widget.initialIds.toSet();
+  late final Set<String> _selected = {
+    for (final id in widget.initialIds)
+      if (widget.isBlocked?.call(id) != true) id,
+  };
+
+  bool _blocked(String id) => widget.isBlocked?.call(id) == true;
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +59,9 @@ class _AssignEmployeesSheetState extends State<_AssignEmployeesSheet> {
       subtitle: widget.employeeName,
       icon: CupertinoIcons.person_2,
       confirmLabel: 'Apply',
-      onConfirm: () => Navigator.of(context).pop(_selected.toList()),
+      onConfirm: () => Navigator.of(context).pop(
+        _selected.where((id) => !_blocked(id)).toList(),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -73,27 +84,37 @@ class _AssignEmployeesSheetState extends State<_AssignEmployeesSheet> {
               ),
             )
           else
-            for (final other in widget.others)
-              AppSheetOption(
-                label: other.fullName,
-                subtitle: () {
-                  final count = widget.assignedCount(other.id);
-                  final status = other.isActive ? 'Active' : 'Inactive';
-                  if (count == 0) return status;
-                  return '$status  •  $count assigned';
-                }(),
-                icon: CupertinoIcons.person_crop_circle,
-                selected: _selected.contains(other.id),
-                onTap: () => setState(() {
-                  if (_selected.contains(other.id)) {
-                    _selected.remove(other.id);
-                  } else {
-                    _selected.add(other.id);
-                  }
-                }),
-              ),
+            ...widget.others.map(_option),
         ],
       ),
+    );
+  }
+
+  Widget _option(EmployeeItem other) {
+    final blocked = _blocked(other.id);
+    final count = widget.assignedCount(other.id);
+    final status = other.isActive ? 'Active' : 'Inactive';
+    final subtitle = blocked
+        ? 'Already under ${widget.employeeName} — cannot reverse'
+        : count == 0
+        ? status
+        : '$status  •  $count assigned';
+    return AppSheetOption(
+      label: other.fullName,
+      subtitle: subtitle,
+      icon: CupertinoIcons.person_crop_circle,
+      selected: !blocked && _selected.contains(other.id),
+      enabled: !blocked,
+      onTap: () {
+        if (blocked) return;
+        setState(() {
+          if (_selected.contains(other.id)) {
+            _selected.remove(other.id);
+          } else {
+            _selected.add(other.id);
+          }
+        });
+      },
     );
   }
 }

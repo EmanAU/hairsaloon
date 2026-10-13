@@ -48,6 +48,15 @@ void main() {
     ),
   ];
 
+  test('empty or invalid commission defaults to 0 percent', () {
+    expect(FinanceCalculator.commissionPercent(null), 0);
+    expect(FinanceCalculator.commissionPercent(''), 0);
+    expect(FinanceCalculator.commissionPercent('0'), 0);
+    expect(FinanceCalculator.commissionPercent('-5'), 0);
+    expect(FinanceCalculator.commissionPercent('10'), 10);
+    expect(FinanceCalculator.commissionPercent('10%'), 10);
+  });
+
   test('shop expenses never reduce employee commission', () {
     final days = FinanceCalculator.employeeDays(
       employee: employee,

@@ -246,6 +246,7 @@ class AppSheetOption extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.selected = false,
+    this.enabled = true,
     this.icon,
     this.subtitle,
   });
@@ -254,60 +255,65 @@ class AppSheetOption extends StatelessWidget {
   final String? subtitle;
   final IconData? icon;
   final bool selected;
+  final bool enabled;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final fg = enabled ? AppColors.textPrimary : AppColors.textSecondary;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Material(
-        color: selected
+        color: selected && enabled
             ? AppColors.primary.withValues(alpha: 0.35)
             : AppColors.background,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, size: 18, color: AppColors.textPrimary),
-                  const SizedBox(width: 12),
-                ],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: selected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      if (subtitle != null)
+          onTap: enabled ? onTap : null,
+          child: Opacity(
+            opacity: enabled ? 1 : 0.55,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 18, color: fg),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          subtitle!,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
+                          label,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: selected && enabled
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: fg,
                           ),
                         ),
-                    ],
+                        if (subtitle != null)
+                          Text(
+                            subtitle!,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-                if (selected)
-                  const Icon(
-                    Icons.check_circle_rounded,
-                    size: 18,
-                    color: AppColors.textPrimary,
-                  ),
-              ],
+                  if (selected && enabled)
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      size: 18,
+                      color: AppColors.textPrimary,
+                    ),
+                ],
+              ),
             ),
           ),
         ),

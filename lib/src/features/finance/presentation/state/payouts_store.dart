@@ -66,14 +66,18 @@ class PayoutsStore extends ChangeNotifier {
       final paid =
           _byId[SalaryPayout.dayKey(employee.id, day.date)]?.incomeAmount ?? 0;
       final due = day.payableAmount - paid;
-      return due > 0 ? due : 0;
+      if (due <= 0.005) return 0;
+      return double.parse(due.toStringAsFixed(2));
     }
 
-    final totalDue = selected.fold<double>(0, (sum, day) => sum + dueFor(day));
-    final payment = double.parse(amount.toStringAsFixed(2));
-    final bonus = double.parse(
-      (payment > totalDue ? payment - totalDue : 0).toStringAsFixed(2),
+    final totalDue = double.parse(
+      selected
+          .fold<double>(0, (sum, day) => sum + dueFor(day))
+          .toStringAsFixed(2),
     );
+    final payment = double.parse(amount.toStringAsFixed(2));
+    final excess = double.parse((payment - totalDue).toStringAsFixed(2));
+    final bonus = excess > 0 ? excess : 0.0;
     if (bonus > 0 && !bonusConfirmed) {
       throw StateError('Confirm the extra amount as bonus/tip');
     }

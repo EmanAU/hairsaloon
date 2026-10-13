@@ -312,6 +312,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       others: store.assignTargets(excludeId: employee.id),
       selectedIds: employee.assignedToIds,
       assignedCount: (id) => store.peopleAssignedTo(id).length,
+      isBlocked: (id) => store.wouldCreateCycle(employee.id, id),
     );
     if (result == null) return;
     await store.setAssignedTo(employeeId: employee.id, assignedToIds: result);
@@ -597,27 +598,39 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       await store.addSpecialistCategory(other);
     }
 
-    await store.add(
-      EmployeeItem(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        firstName: _firstNameCtrl.text.trim(),
-        lastName: _lastNameCtrl.text.trim(),
-        phoneNumber: _phoneCtrl.text.trim(),
-        cnicNumber: _cnicCtrl.text.trim(),
-        homeAddress: _addressCtrl.text.trim(),
-        isActive: _newActive,
-        assignedToIds: _assignedToIds,
-        photoBase64: _photoBase64,
-        speciality: _specialityCtrl.text.trim(),
-        employeeType: category,
-      ),
+    final employee = EmployeeItem(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      firstName: _firstNameCtrl.text.trim(),
+      lastName: _lastNameCtrl.text.trim(),
+      phoneNumber: _phoneCtrl.text.trim(),
+      cnicNumber: _cnicCtrl.text.trim(),
+      homeAddress: _addressCtrl.text.trim(),
+      isActive: _newActive,
+      assignedToIds: _assignedToIds,
+      photoBase64: _photoBase64,
+      speciality: _specialityCtrl.text.trim(),
+      employeeType: category,
     );
+    await store.add(employee);
 
     setState(() {
       _showAddForm = false;
       _resetFormFields();
     });
     ToastService.success('Employee saved');
+
+    if (!mounted) return;
+    final saved = store.byId(employee.id) ?? employee;
+    final updated = await Navigator.of(context).push<EmployeeItem>(
+      MaterialPageRoute(
+        builder: (_) => EmployeeAgreementScreen(
+          employee: saved,
+          requireCompletion: true,
+        ),
+      ),
+    );
+    if (updated == null || !mounted) return;
+    await store.update(updated);
   }
 
   void _resetFormFields() {

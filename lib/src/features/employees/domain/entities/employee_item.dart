@@ -79,6 +79,7 @@ List<String> sanitizeAssignedToIds({
   required String selfId,
   required Iterable<String> ids,
   Set<String>? knownIds,
+  List<EmployeeItem>? employees,
 }) {
   final seen = <String>{};
   final result = <String>[];
@@ -86,8 +87,49 @@ List<String> sanitizeAssignedToIds({
     final id = raw.trim();
     if (id.isEmpty || id == selfId || seen.contains(id)) continue;
     if (knownIds != null && !knownIds.contains(id)) continue;
+    if (employees != null &&
+        wouldCreateAssignmentCycle(
+          employeeId: selfId,
+          targetId: id,
+          employees: employees,
+        )) {
+      continue;
+    }
     seen.add(id);
     result.add(id);
   }
   return result;
+}
+
+/// True when assigning [employeeId] → [targetId] would reverse hierarchy or
+/// create a cycle (i.e. [employeeId] is already above [targetId]).
+///
+/// Example: if Ali is assigned to Bilal, Bilal cannot be assigned to Ali.
+bool wouldCreateAssignmentCycle({
+  required String employeeId,
+  required String targetId,
+  required List<EmployeeItem> employees,
+}) {
+  if (employeeId.isEmpty || targetId.isEmpty) return false;
+  if (employeeId == targetId) return true;
+
+  final byId = <String, EmployeeItem>{
+    for (final employee in employees) employee.id: employee,
+  };
+  final seen = <String>{};
+  var frontier = <String>[targetId];
+
+  while (frontier.isNotEmpty) {
+    final next = <String>[];
+    for (final id in frontier) {
+      final person = byId[id];
+      if (person == null) continue;
+      for (final managerId in person.assignedToIds) {
+        if (managerId == employeeId) return true;
+        if (seen.add(managerId)) next.add(managerId);
+      }
+    }
+    frontier = next;
+  }
+  return false;
 }

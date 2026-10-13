@@ -140,6 +140,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
       others: store.assignTargets(excludeId: widget.item.id),
       selectedIds: _assignedToIds,
       assignedCount: (id) => store.peopleAssignedTo(id).length,
+      isBlocked: (id) => store.wouldCreateCycle(widget.item.id, id),
     );
     if (result == null || !mounted) return;
     setState(() => _assignedToIds = result);
