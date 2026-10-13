@@ -15,6 +15,7 @@ class AppRoutes {
   static const appointments = '/appointments';
 
   static const employees = '/employees';
+  static const managers = '/managers';
   static const employeeAgreement = '/employees/agreement';
 
   static const serviceList = '/services';

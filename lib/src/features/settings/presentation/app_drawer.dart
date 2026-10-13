@@ -68,6 +68,13 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
                   _Item(
+                    title: 'Managers',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).pushNamed(AppRoutes.managers);
+                    },
+                  ),
+                  _Item(
                     title: 'Customers',
                     onTap: () {
                       Navigator.pop(context);

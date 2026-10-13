@@ -50,6 +50,20 @@ class AppTheme {
           color: AppColors.textPrimary,
         ),
       ),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Color(0x00000000),
+        titleTextStyle: TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+        ),
+        contentTextStyle: TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 13,
+          height: 1.4,
+        ),
+      ),
     );
   }
 }

@@ -1,6 +1,8 @@
-import 'package:hairsaloon/src/core/layout/adaptive_page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hairsaloon/src/core/layout/adaptive_page.dart';
+import 'package:hairsaloon/src/core/layout/safe_scroll_padding.dart';
+import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
@@ -15,6 +17,8 @@ class EmployeeAgreementScreen extends StatefulWidget {
 }
 
 class _EmployeeAgreementScreenState extends State<EmployeeAgreementScreen> {
+  static const Color _divider = Color(0xFFE1E1E1);
+
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _employeeTypeCtrl;
   late final TextEditingController _basicSalaryCtrl;
@@ -48,31 +52,53 @@ class _EmployeeAgreementScreenState extends State<EmployeeAgreementScreen> {
     super.dispose();
   }
 
+  void _cancelEdit() {
+    setState(() {
+      _employeeTypeCtrl.text = widget.employee?.employeeType ?? '';
+      _basicSalaryCtrl.text = widget.employee?.basicSalary ?? '';
+      _commissionCtrl.text = widget.employee?.commission ?? '';
+      _descriptionCtrl.text = widget.employee?.agreementDescription ?? '';
+      _editing = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final employeeName = widget.employee?.fullName ?? 'Employee';
+
     return AdaptivePage(
       form: true,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF3F3F3),
+        backgroundColor: AppColors.surface,
         appBar: AppBar(
           backgroundColor: AppColors.primary,
-          surfaceTintColor: Colors.transparent,
+          surfaceTintColor: const Color(0x00000000),
           leading: IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(CupertinoIcons.back, color: Colors.black),
+            icon: const Icon(CupertinoIcons.back, color: AppColors.onPrimary),
           ),
           title: const Text(
             'Employee Agreement',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: AppColors.onPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           actions: [
             TextButton(
-              onPressed: () => setState(() => _editing = !_editing),
+              onPressed: () {
+                if (_editing) {
+                  _cancelEdit();
+                } else {
+                  setState(() => _editing = true);
+                }
+              },
               child: Text(
                 _editing ? 'Cancel' : 'Edit',
                 style: const TextStyle(
-                  color: Colors.black,
+                  color: AppColors.onPrimary,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -80,54 +106,116 @@ class _EmployeeAgreementScreenState extends State<EmployeeAgreementScreen> {
           ],
         ),
         body: ListView(
-          padding: const EdgeInsets.all(12),
+          padding: SafeScrollPadding.of(
+            context,
+            left: 20,
+            top: 18,
+            right: 20,
+            bottom: 32,
+          ),
           children: [
             Text(
               employeeName,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 10),
-            Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  _field(_employeeTypeCtrl, 'Employee Type'),
-                  const SizedBox(height: 8),
-                  _field(
-                    _basicSalaryCtrl,
-                    'Basic Salary',
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 8),
-                  _field(
-                    _commissionCtrl,
-                    'Commission (%)',
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 8),
-                  _field(_descriptionCtrl, 'Description', maxLines: 4),
-                ],
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
+            const Text(
+              'Salary, commission and agreement terms',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 18),
             if (_editing)
-              SizedBox(
-                height: 46,
-                width: double.infinity,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _editField(
+                      _employeeTypeCtrl,
+                      'Employee type',
+                      helper: 'Role or contract type (e.g. Full-time, Stylist)',
                     ),
-                  ),
-                  onPressed: _save,
-                  child: const Text(
-                    'Save Agreement',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                  ),
+                    const SizedBox(height: 12),
+                    _editField(
+                      _basicSalaryCtrl,
+                      'Basic salary',
+                      helper: 'Monthly fixed salary amount',
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 12),
+                    _editField(
+                      _commissionCtrl,
+                      'Commission (%)',
+                      helper: 'Percentage earned on sales',
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 12),
+                    _editField(
+                      _descriptionCtrl,
+                      'Agreement description',
+                      helper: 'Notes about terms, payout rules, etc.',
+                      maxLines: 4,
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: 48,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.onPrimary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                        ),
+                        onPressed: _save,
+                        child: const Text(
+                          'Save Agreement',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+              )
+            else
+              Column(
+                children: [
+                  _viewRow(
+                    'Employee type',
+                    _employeeTypeCtrl.text,
+                    hint: 'Role or contract type',
+                  ),
+                  _viewRow(
+                    'Basic salary',
+                    _basicSalaryCtrl.text.isEmpty
+                        ? ''
+                        : 'Rs. ${_basicSalaryCtrl.text}',
+                    hint: 'Monthly fixed salary',
+                  ),
+                  _viewRow(
+                    'Commission',
+                    _commissionCtrl.text.isEmpty
+                        ? ''
+                        : '${_commissionCtrl.text}%',
+                    hint: 'Percent on sales',
+                  ),
+                  _viewRow(
+                    'Agreement description',
+                    _descriptionCtrl.text,
+                    hint: 'Terms and notes',
+                    isLast: true,
+                  ),
+                ],
               ),
           ],
         ),
@@ -135,44 +223,120 @@ class _EmployeeAgreementScreenState extends State<EmployeeAgreementScreen> {
     );
   }
 
-  Widget _field(
+  Widget _viewRow(
+    String label,
+    String value, {
+    required String hint,
+    bool isLast = false,
+  }) {
+    final display = value.trim().isEmpty ? '—' : value.trim();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : const Border(bottom: BorderSide(color: _divider)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            hint,
+            style: TextStyle(
+              color: AppColors.textSecondary.withValues(alpha: 0.75),
+              fontSize: 10.5,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            display,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              height: 1.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _editField(
     TextEditingController controller,
-    String hint, {
+    String label, {
+    required String helper,
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
   }) {
-    return TextFormField(
-      controller: controller,
-      enabled: _editing,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
+    const radius = BorderRadius.all(Radius.circular(9));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+        const SizedBox(height: 2),
+        Text(
+          helper,
+          style: TextStyle(
+            color: AppColors.textSecondary.withValues(alpha: 0.8),
+            fontSize: 10.5,
+          ),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          maxLines: maxLines,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+          decoration: const InputDecoration(
+            filled: false,
+            isDense: true,
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: radius,
+              borderSide: BorderSide(color: _divider),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: radius,
+              borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: radius,
+              borderSide: BorderSide(color: AppColors.danger),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: radius,
+              borderSide: BorderSide(color: AppColors.danger, width: 1.5),
+            ),
+            errorStyle: TextStyle(fontSize: 11),
+          ),
+          validator: (value) {
+            if ((value ?? '').trim().isEmpty) return 'Required';
+            return null;
+          },
         ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-      ),
-      validator: (value) {
-        if ((value ?? '').trim().isEmpty) return 'Required';
-        return null;
-      },
+      ],
     );
   }
 
@@ -190,6 +354,7 @@ class _EmployeeAgreementScreenState extends State<EmployeeAgreementScreen> {
       commission: _commissionCtrl.text.trim(),
       agreementDescription: _descriptionCtrl.text.trim(),
     );
+    ToastService.success('Agreement saved');
     Navigator.of(context).pop(updated);
   }
 }

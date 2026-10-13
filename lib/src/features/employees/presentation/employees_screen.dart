@@ -1,7 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hairsaloon/src/core/layout/safe_scroll_padding.dart';
+import 'package:hairsaloon/src/core/services/toast_service.dart';
+import 'package:hairsaloon/src/core/widgets/app_confirm_dialog.dart';
 import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
+import 'package:hairsaloon/src/features/business_profile/presentation/business_logo_picker.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/features/employees/presentation/employee_agreement_screen.dart';
 import 'package:hairsaloon/src/features/employees/presentation/employee_details_screen.dart';
@@ -10,8 +16,15 @@ import 'package:hairsaloon/src/features/employees/presentation/state/employees_s
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
+enum StaffListMode { employees, managers }
+
 class EmployeesScreen extends StatefulWidget {
-  const EmployeesScreen({super.key});
+  const EmployeesScreen({
+    super.key,
+    this.initialMode = StaffListMode.employees,
+  });
+
+  final StaffListMode initialMode;
 
   @override
   State<EmployeesScreen> createState() => _EmployeesScreenState();
@@ -21,6 +34,11 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _showAddForm = false;
   String _statusTab = 'All';
+  late StaffListMode _mode;
+  String? _photoBase64;
+  String? _specialistCategory;
+  String? _selectedManagerId;
+  bool _newActive = true;
 
   final _firstNameCtrl = TextEditingController();
   final _lastNameCtrl = TextEditingController();
@@ -28,24 +46,12 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   final _cnicCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
   final _specialityCtrl = TextEditingController();
-  String? _specialistCategory;
-  bool _newEmployeeActive = true;
+  final _otherCategoryCtrl = TextEditingController();
 
-  static const List<String> _specialistCategories = <String>[
-    'Men Specialist',
-    'Women Specialist',
-    'Kids Specialist',
-    'General',
-  ];
-
-  List<EmployeeItem> get _employees =>
-      context.watch<EmployeesStore>().employees;
-  List<EmployeeItem> get _filteredEmployees {
-    if (_statusTab == 'All') return _employees;
-    if (_statusTab == 'Active') {
-      return _employees.where((e) => e.isActive).toList(growable: false);
-    }
-    return _employees.where((e) => !e.isActive).toList(growable: false);
+  @override
+  void initState() {
+    super.initState();
+    _mode = widget.initialMode;
   }
 
   @override
@@ -56,229 +62,413 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     _cnicCtrl.dispose();
     _addressCtrl.dispose();
     _specialityCtrl.dispose();
+    _otherCategoryCtrl.dispose();
     super.dispose();
+  }
+
+  List<EmployeeItem> _baseList(EmployeesStore store) =>
+      _mode == StaffListMode.managers ? store.managers : store.employees;
+
+  List<EmployeeItem> _filtered(EmployeesStore store) {
+    final list = _baseList(store);
+    if (_statusTab == 'All') return list;
+    if (_statusTab == 'Active') {
+      return list.where((e) => e.isActive).toList(growable: false);
+    }
+    return list.where((e) => !e.isActive).toList(growable: false);
   }
 
   @override
   Widget build(BuildContext context) {
+    final store = context.watch<EmployeesStore>();
+    final items = _filtered(store);
+    final isManagers = _mode == StaffListMode.managers;
+    final title = isManagers
+        ? 'Managers (${store.managers.length.toString().padLeft(2, '0')})'
+        : 'Employees (${store.employees.length.toString().padLeft(2, '0')})';
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F3F3),
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: AppColors.primary,
-        surfaceTintColor: Colors.transparent,
+        surfaceTintColor: const Color(0x00000000),
         leading: IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(CupertinoIcons.back, color: Colors.black),
+          icon: const Icon(CupertinoIcons.back, color: AppColors.onPrimary),
         ),
         title: Text(
-          'Employees (${_employees.length.toString().padLeft(2, '0')})',
+          title,
           style: const TextStyle(
-            color: Colors.black,
+            color: AppColors.onPrimary,
+            fontSize: 15,
             fontWeight: FontWeight.w700,
           ),
         ),
         actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(
+              CupertinoIcons.ellipsis_vertical,
+              color: AppColors.onPrimary,
+            ),
+            onSelected: (value) {
+              if (value == 'employees') {
+                setState(() {
+                  _mode = StaffListMode.employees;
+                  _showAddForm = false;
+                  _resetFormFields();
+                });
+              } else if (value == 'managers') {
+                setState(() {
+                  _mode = StaffListMode.managers;
+                  _showAddForm = false;
+                  _resetFormFields();
+                });
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'employees', child: Text('Employees')),
+              PopupMenuItem(value: 'managers', child: Text('Managers')),
+            ],
+          ),
           IconButton(
             onPressed: () => setState(() => _showAddForm = !_showAddForm),
             icon: Icon(
               _showAddForm ? CupertinoIcons.xmark : CupertinoIcons.add,
+              color: AppColors.onPrimary,
             ),
-            color: Colors.black,
           ),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(12),
+        padding: SafeScrollPadding.of(
+          context,
+          left: 12,
+          top: 12,
+          right: 12,
+          bottom: 24,
+        ),
         children: [
           _buildStatusTabs(),
           const SizedBox(height: 10),
-          if (_showAddForm) ...[_addForm(), const SizedBox(height: 12)],
-          ..._filteredEmployees.map(
-            (e) => InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () {
-                final bills =
-                    context
-                        .read<BillingStore>()
-                        .bills
-                        .where((b) => b.employeeName == e.fullName)
-                        .toList()
-                      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        EmployeeHistoryScreen(employee: e, bills: bills),
+          if (_showAddForm) ...[
+            _addForm(store),
+            const SizedBox(height: 12),
+          ],
+          if (items.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 40),
+              child: Center(
+                child: Text(
+                  isManagers ? 'No managers yet.' : 'No employees yet.',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
                   ),
-                );
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    _EmployeeAvatar(employeeId: e.id),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            e.speciality?.trim().isNotEmpty == true
-                                ? e.speciality!
-                                : 'General Specialist',
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            e.fullName,
-                            style: const TextStyle(
-                              fontSize: 27 / 2,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          if ((e.employeeType ?? '').trim().isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(
-                                  alpha: 0.22,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                e.employeeType!.trim(),
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          e.isActive ? 'Active' : 'Inactive',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: e.isActive
-                                ? Colors.black
-                                : Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    PopupMenuButton<String>(
-                      onSelected: (value) async {
-                        if (value == 'agreement') {
-                          final updated = await Navigator.of(context)
-                              .push<EmployeeItem>(
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      EmployeeAgreementScreen(employee: e),
-                                ),
-                              );
-                          if (updated == null) return;
-                          context.read<EmployeesStore>().update(updated);
-                          return;
-                        }
-                        if (value == 'edit') {
-                          final updated = await Navigator.of(context)
-                              .push<EmployeeItem>(
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      EmployeeDetailsScreen(item: e),
-                                ),
-                              );
-                          if (updated == null) return;
-                          context.read<EmployeesStore>().update(updated);
-                          return;
-                        }
-                        if (value == 'delete') {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (dContext) => AlertDialog(
-                              title: const Text('Delete Employee'),
-                              content: Text('Delete ${e.fullName}?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(dContext).pop(false),
-                                  child: const Text('Cancel'),
-                                ),
-                                FilledButton(
-                                  onPressed: () =>
-                                      Navigator.of(dContext).pop(true),
-                                  child: const Text('Delete'),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirm != true) return;
-                          context.read<EmployeesStore>().delete(e.id);
-                        }
-                      },
-                      itemBuilder: (context) => const [
-                        PopupMenuItem(
-                          value: 'agreement',
-                          child: Text('Agreement'),
-                        ),
-                        PopupMenuItem(value: 'edit', child: Text('Edit')),
-                        PopupMenuItem(value: 'delete', child: Text('Delete')),
-                      ],
-                      icon: const Icon(CupertinoIcons.ellipsis_vertical),
-                    ),
-                  ],
                 ),
               ),
             ),
-          ),
+          ...items.map((e) => _staffCard(store, e)),
         ],
       ),
     );
   }
 
-  Widget _addForm() {
+  Widget _staffCard(EmployeesStore store, EmployeeItem e) {
+    final manager = store.managerOf(e.managerId);
+    final teamCount = e.isManager ? store.employeesForManager(e.id).length : 0;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () {
+        final bills = context
+            .read<BillingStore>()
+            .bills
+            .where((b) => b.employeeName == e.fullName)
+            .toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => EmployeeHistoryScreen(employee: e, bills: bills),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE1E1E1)),
+        ),
+        child: Row(
+          children: [
+            _StaffAvatar(photoBase64: e.photoBase64, name: e.fullName),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    e.speciality?.trim().isNotEmpty == true
+                        ? e.speciality!
+                        : (e.isManager ? 'Manager' : 'General Specialist'),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    e.fullName,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  if ((e.employeeType ?? '').trim().isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    _chip(e.employeeType!.trim()),
+                  ],
+                  if (!e.isManager && manager != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Manager: ${manager.fullName}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                  if (e.isManager) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '$teamCount employee${teamCount == 1 ? '' : 's'}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Text(
+              e.isActive ? 'Active' : 'Inactive',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+                color: e.isActive
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
+              ),
+            ),
+            PopupMenuButton<String>(
+              onSelected: (value) => _onMenuAction(store, e, value),
+              itemBuilder: (_) => [
+                if (!e.isManager)
+                  const PopupMenuItem(
+                    value: 'assign',
+                    child: Text('Assign Manager'),
+                  ),
+                if (!e.isManager)
+                  const PopupMenuItem(
+                    value: 'agreement',
+                    child: Text('Agreement'),
+                  ),
+                const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                const PopupMenuItem(value: 'delete', child: Text('Delete')),
+              ],
+              icon: const Icon(CupertinoIcons.ellipsis_vertical, size: 18),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _chip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: AppColors.onPrimary,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _onMenuAction(
+    EmployeesStore store,
+    EmployeeItem e,
+    String value,
+  ) async {
+    if (value == 'assign') {
+      await _showAssignManagerSheet(store, e);
+      return;
+    }
+    if (value == 'agreement') {
+      final updated = await Navigator.of(context).push<EmployeeItem>(
+        MaterialPageRoute(
+          builder: (_) => EmployeeAgreementScreen(employee: e),
+        ),
+      );
+      if (updated == null) return;
+      await store.update(updated);
+      return;
+    }
+    if (value == 'edit') {
+      final updated = await Navigator.of(context).push<EmployeeItem>(
+        MaterialPageRoute(builder: (_) => EmployeeDetailsScreen(item: e)),
+      );
+      if (updated == null) return;
+      await store.update(updated);
+      return;
+    }
+    if (value == 'delete') {
+      final confirm = await showAppConfirmDialog(
+        context: context,
+        title: e.isManager ? 'Delete Manager' : 'Delete Employee',
+        message: e.isManager
+            ? 'Delete ${e.fullName}? Assigned employees will be unassigned.'
+            : 'Delete ${e.fullName}?',
+        cancelLabel: 'Cancel',
+        confirmLabel: 'Delete',
+        isDestructive: true,
+      );
+      if (confirm != true) return;
+      await store.delete(e.id);
+      ToastService.success(e.isManager ? 'Manager deleted' : 'Employee deleted');
+    }
+  }
+
+  Future<void> _showAssignManagerSheet(
+    EmployeesStore store,
+    EmployeeItem employee,
+  ) async {
+    final managers = store.managers;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 14, 16, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Assign Manager',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              ListTile(
+                title: const Text('Unassigned'),
+                trailing: employee.managerId == null
+                    ? const Icon(Icons.check, size: 18)
+                    : null,
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  await store.assignEmployeeToManager(
+                    employeeId: employee.id,
+                    managerId: null,
+                  );
+                  ToastService.success('Manager unassigned');
+                },
+              ),
+              if (managers.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'No managers yet. Add a manager first.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ...managers.map(
+                (manager) => ListTile(
+                  title: Text(manager.fullName),
+                  subtitle: Text(
+                    '${store.employeesForManager(manager.id).length} employees',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  trailing: employee.managerId == manager.id
+                      ? const Icon(Icons.check, size: 18)
+                      : null,
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    await store.assignEmployeeToManager(
+                      employeeId: employee.id,
+                      managerId: manager.id,
+                    );
+                    ToastService.success(
+                      'Assigned to ${manager.fullName}',
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _addForm(EmployeesStore store) {
+    final isManager = _mode == StaffListMode.managers;
+    final categories = store.specialistCategories;
+    final showOther = _specialistCategory == 'Other';
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE1E1E1)),
       ),
       child: Form(
         key: _formKey,
         child: Column(
           children: [
-            const Align(
+            Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Add Employee',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                isManager ? 'Add Manager' : 'Add Employee',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
+            BusinessLogoPicker(
+              value: _photoBase64,
+              title: 'Photo',
+              emptyHint: 'Optional · camera or gallery',
+              filledHint: 'Tap to change or remove',
+              onChanged: (value) => setState(() => _photoBase64 = value),
+            ),
+            const SizedBox(height: 12),
             _field(_firstNameCtrl, 'First Name'),
             const SizedBox(height: 8),
             _field(_lastNameCtrl, 'Last Name'),
@@ -302,28 +492,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             DropdownButtonFormField<String>(
               initialValue: _specialistCategory,
               isExpanded: true,
-              decoration: InputDecoration(
-                hintText: 'Specialist Category',
-                hintStyle: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-              ),
-              items: _specialistCategories
+              decoration: _dropdownDecoration('Specialist Category'),
+              items: categories
                   .map(
                     (value) => DropdownMenuItem(
                       value: value,
@@ -336,38 +506,78 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                     ),
                   )
                   .toList(growable: false),
-              onChanged: (value) => setState(() => _specialistCategory = value),
+              onChanged: (value) => setState(() {
+                _specialistCategory = value;
+                if (value != 'Other') {
+                  _otherCategoryCtrl.clear();
+                }
+              }),
               validator: (value) =>
                   (value == null || value.trim().isEmpty) ? 'Required' : null,
             ),
+            if (showOther) ...[
+              const SizedBox(height: 8),
+              _field(
+                _otherCategoryCtrl,
+                'Other category name',
+              ),
+            ],
             const SizedBox(height: 8),
             _field(_specialityCtrl, 'Speciality'),
+            if (!isManager) ...[
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedManagerId ?? '',
+                isExpanded: true,
+                decoration: _dropdownDecoration('Assign Manager (optional)'),
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: '',
+                    child: Text(
+                      'Unassigned',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  ...store.managers.map(
+                    (manager) => DropdownMenuItem(
+                      value: manager.id,
+                      child: Text(
+                        manager.fullName,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ),
+                ],
+                onChanged: (value) => setState(
+                  () => _selectedManagerId =
+                      (value == null || value.isEmpty) ? null : value,
+                ),
+              ),
+            ],
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: const Color(0xFFE1E1E1)),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
                   Text(
-                    _newEmployeeActive ? 'Active' : 'Inactive',
+                    _newActive ? 'Active' : 'Inactive',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: _newEmployeeActive
-                          ? Colors.black
-                          : Colors.grey.shade600,
+                      color: _newActive
+                          ? AppColors.textPrimary
+                          : AppColors.textSecondary,
                     ),
                   ),
                   const Spacer(),
                   Switch.adaptive(
-                    activeThumbColor: Colors.black,
-                    inactiveTrackColor: Colors.grey.shade400,
-                    value: _newEmployeeActive,
-                    onChanged: (value) =>
-                        setState(() => _newEmployeeActive = value),
+                    activeThumbColor: AppColors.onPrimary,
+                    value: _newActive,
+                    onChanged: (value) => setState(() => _newActive = value),
                   ),
                 ],
               ),
@@ -379,15 +589,18 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
               child: FilledButton(
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.black,
+                  foregroundColor: AppColors.onPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed: _saveEmployee,
-                child: const Text(
-                  'Save Employee',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                onPressed: () => _save(store),
+                child: Text(
+                  isManager ? 'Save Manager' : 'Save Employee',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -397,76 +610,121 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     );
   }
 
+  InputDecoration _dropdownDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+      filled: true,
+      fillColor: AppColors.surface,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFE1E1E1)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFE1E1E1)),
+      ),
+    );
+  }
+
   Widget _field(
     TextEditingController controller,
     String hint, {
     TextInputType keyboardType = TextInputType.text,
     List<TextInputFormatter>? inputFormatters,
+    ValueChanged<String>? onChanged,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
       inputFormatters: inputFormatters,
+      onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppColors.surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
           vertical: 12,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: const BorderSide(color: Color(0xFFE1E1E1)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: const BorderSide(color: Color(0xFFE1E1E1)),
         ),
       ),
       validator: (v) {
         final value = (v ?? '').trim();
         if (value.isEmpty) return 'Required';
-        if (hint == 'Phone Number') {
-          if (!_isValidPkPhone(value)) return 'Use +92 followed by 10 digits';
+        if (hint == 'Phone Number' && !_isValidPkPhone(value)) {
+          return 'Use +92 followed by 10 digits';
         }
-        if (hint == 'CNIC Number') {
-          if (!_isValidCnic(value)) return 'Use format: 12345-1234567-1';
+        if (hint == 'CNIC Number' && !_isValidCnic(value)) {
+          return 'Use format: 12345-1234567-1';
         }
         return null;
       },
     );
   }
 
-  void _saveEmployee() {
+  Future<void> _save(EmployeesStore store) async {
     final state = _formKey.currentState;
     if (state == null || !state.validate()) return;
+
+    var category = _specialistCategory?.trim();
+    if (category == 'Other') {
+      final other = _otherCategoryCtrl.text.trim();
+      if (other.isEmpty) {
+        ToastService.error('Enter the other category name');
+        return;
+      }
+      category = other;
+      await store.addSpecialistCategory(other);
+    }
+
+    final isManager = _mode == StaffListMode.managers;
+    await store.add(
+      EmployeeItem(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        firstName: _firstNameCtrl.text.trim(),
+        lastName: _lastNameCtrl.text.trim(),
+        phoneNumber: _phoneCtrl.text.trim(),
+        cnicNumber: _cnicCtrl.text.trim(),
+        homeAddress: _addressCtrl.text.trim(),
+        isActive: _newActive,
+        role: isManager ? EmployeeRole.manager : EmployeeRole.employee,
+        managerId: isManager ? null : _selectedManagerId,
+        photoBase64: _photoBase64,
+        speciality: _specialityCtrl.text.trim(),
+        employeeType: category,
+      ),
+    );
+
     setState(() {
-      context.read<EmployeesStore>().add(
-        EmployeeItem(
-          id: DateTime.now().microsecondsSinceEpoch.toString(),
-          firstName: _firstNameCtrl.text.trim(),
-          lastName: _lastNameCtrl.text.trim(),
-          phoneNumber: _phoneCtrl.text.trim(),
-          cnicNumber: _cnicCtrl.text.trim(),
-          homeAddress: _addressCtrl.text.trim(),
-          isActive: _newEmployeeActive,
-          speciality: _specialityCtrl.text.trim(),
-          employeeType: _specialistCategory?.trim(),
-        ),
-      );
-      _firstNameCtrl.clear();
-      _lastNameCtrl.clear();
-      _phoneCtrl.text = '+92';
-      _cnicCtrl.clear();
-      _addressCtrl.clear();
-      _specialityCtrl.clear();
-      _specialistCategory = null;
       _showAddForm = false;
-      _newEmployeeActive = true;
+      _resetFormFields();
     });
+    ToastService.success(isManager ? 'Manager saved' : 'Employee saved');
+  }
+
+  void _resetFormFields() {
+    _firstNameCtrl.clear();
+    _lastNameCtrl.clear();
+    _phoneCtrl.text = '+92';
+    _cnicCtrl.clear();
+    _addressCtrl.clear();
+    _specialityCtrl.clear();
+    _otherCategoryCtrl.clear();
+    _specialistCategory = null;
+    _selectedManagerId = null;
+    _photoBase64 = null;
+    _newActive = true;
   }
 
   Widget _buildStatusTabs() {
@@ -483,15 +741,15 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
           return ChoiceChip(
             label: Text(tab),
             selected: selected,
-            selectedColor: Colors.white,
-            backgroundColor: Colors.white,
+            selectedColor: AppColors.surface,
+            backgroundColor: AppColors.surface,
             side: BorderSide(
-              color: selected ? AppColors.primary : Colors.grey.shade300,
+              color: selected ? AppColors.primary : const Color(0xFFE1E1E1),
             ),
             labelStyle: TextStyle(
               fontSize: 11,
               fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-              color: Colors.black,
+              color: AppColors.textPrimary,
             ),
             onSelected: (_) => setState(() => _statusTab = tab),
           );
@@ -506,30 +764,43 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       RegExp(r'^\d{5}-\d{7}-\d$').hasMatch(value);
 }
 
-class _EmployeeAvatar extends StatelessWidget {
-  const _EmployeeAvatar({required this.employeeId});
+class _StaffAvatar extends StatelessWidget {
+  const _StaffAvatar({required this.photoBase64, required this.name});
 
-  final String employeeId;
+  final String? photoBase64;
+  final String name;
 
   @override
   Widget build(BuildContext context) {
-    final useAsset = employeeId.hashCode.isEven;
+    Uint8List? bytes;
+    try {
+      if (photoBase64 != null && photoBase64!.isNotEmpty) {
+        bytes = base64Decode(photoBase64!);
+      }
+    } on FormatException {
+      bytes = null;
+    }
+
     return Container(
       width: 48,
       height: 48,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        color: Colors.grey.shade200,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.background,
       ),
       clipBehavior: Clip.antiAlias,
-      child: useAsset
-          ? Image.asset(
-              'assets/placeholder.png',
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(CupertinoIcons.person_fill),
-            )
-          : const Icon(CupertinoIcons.person_fill, size: 24),
+      child: bytes != null
+          ? Image.memory(bytes, fit: BoxFit.cover)
+          : Center(
+              child: Text(
+                name.isNotEmpty ? name[0].toUpperCase() : '?',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
     );
   }
 }

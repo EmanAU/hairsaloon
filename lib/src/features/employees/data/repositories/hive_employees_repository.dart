@@ -3,19 +3,32 @@ import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.
 import 'package:hive_flutter/hive_flutter.dart';
 
 class HiveEmployeesRepository {
-  HiveEmployeesRepository({Box<Map>? box})
-    : _box = box ?? Hive.box<Map>(HiveBoxes.employees);
+  HiveEmployeesRepository({Box<Map>? box, Box<dynamic>? metaBox})
+    : _box = box ?? Hive.box<Map>(HiveBoxes.employees),
+      _metaBox = metaBox ?? Hive.box<dynamic>(HiveBoxes.settings);
+
+  static const _specialistCategoriesKey = 'employee_specialist_categories';
 
   final Box<Map> _box;
+  final Box<dynamic> _metaBox;
 
   List<EmployeeItem> getAll() {
     if (_box.isEmpty) {
       _seedDefaults();
     }
-    final values = _box.values
+    return _box.values
         .map((item) => _employeeFromMap(Map<String, dynamic>.from(item)))
         .toList(growable: false);
-    return values;
+  }
+
+  List<String> getCustomSpecialistCategories() {
+    final raw = _metaBox.get(_specialistCategoriesKey);
+    if (raw is! List) return const <String>[];
+    return raw.map((e) => e.toString()).where((e) => e.trim().isNotEmpty).toList();
+  }
+
+  Future<void> saveCustomSpecialistCategories(List<String> categories) async {
+    await _metaBox.put(_specialistCategoriesKey, categories);
   }
 
   Future<void> add(EmployeeItem item) async {
@@ -46,6 +59,9 @@ Map<String, dynamic> _employeeToMap(EmployeeItem item) {
     'cnicNumber': item.cnicNumber,
     'homeAddress': item.homeAddress,
     'isActive': item.isActive,
+    'role': item.role.name,
+    'managerId': item.managerId,
+    'photoBase64': item.photoBase64,
     'speciality': item.speciality,
     'employeeType': item.employeeType,
     'basicSalary': item.basicSalary,
@@ -63,6 +79,9 @@ EmployeeItem _employeeFromMap(Map<String, dynamic> map) {
     cnicNumber: (map['cnicNumber'] ?? '').toString(),
     homeAddress: (map['homeAddress'] ?? '').toString(),
     isActive: (map['isActive'] as bool?) ?? false,
+    role: EmployeeRole.fromStorage(map['role']?.toString()),
+    managerId: map['managerId']?.toString(),
+    photoBase64: map['photoBase64']?.toString(),
     speciality: map['speciality']?.toString(),
     employeeType: map['employeeType']?.toString(),
     basicSalary: map['basicSalary']?.toString(),
@@ -73,6 +92,18 @@ EmployeeItem _employeeFromMap(Map<String, dynamic> map) {
 
 const List<EmployeeItem> _defaultEmployees = <EmployeeItem>[
   EmployeeItem(
+    id: 'mgr-1',
+    firstName: 'Hassan',
+    lastName: 'Ali',
+    phoneNumber: '+923001112233',
+    cnicNumber: '35202-1111222-3',
+    homeAddress: 'F-7, Islamabad',
+    isActive: true,
+    role: EmployeeRole.manager,
+    speciality: 'Floor Manager',
+    employeeType: 'General',
+  ),
+  EmployeeItem(
     id: 'emp-1',
     firstName: 'Ali',
     lastName: 'Raza',
@@ -80,8 +111,10 @@ const List<EmployeeItem> _defaultEmployees = <EmployeeItem>[
     cnicNumber: '35202-1234567-1',
     homeAddress: 'G-11 Markaz, Islamabad',
     isActive: true,
+    role: EmployeeRole.employee,
+    managerId: 'mgr-1',
     speciality: 'Haircut Specialist',
-    employeeType: 'Stylist',
+    employeeType: 'Men Specialist',
     basicSalary: '40000',
     commission: '10',
     agreementDescription: 'Monthly salary plus service commission.',
@@ -94,11 +127,9 @@ const List<EmployeeItem> _defaultEmployees = <EmployeeItem>[
     cnicNumber: '35202-7654321-9',
     homeAddress: 'F-10, Islamabad',
     isActive: false,
+    role: EmployeeRole.employee,
     speciality: 'Color Specialist',
-    employeeType: null,
-    basicSalary: null,
-    commission: null,
-    agreementDescription: null,
+    employeeType: 'Women Specialist',
   ),
   EmployeeItem(
     id: 'emp-3',
@@ -108,8 +139,10 @@ const List<EmployeeItem> _defaultEmployees = <EmployeeItem>[
     cnicNumber: '61101-2233445-7',
     homeAddress: 'Blue Area, Islamabad',
     isActive: true,
+    role: EmployeeRole.employee,
+    managerId: 'mgr-1',
     speciality: 'Haircut Specialist',
-    employeeType: 'Senior Barber',
+    employeeType: 'Men Specialist',
     basicSalary: '50000',
     commission: '15',
     agreementDescription: 'Fixed salary with tiered commission.',

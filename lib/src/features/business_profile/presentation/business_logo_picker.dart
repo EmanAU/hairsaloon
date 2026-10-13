@@ -70,6 +70,11 @@ class BusinessLogoPicker extends StatefulWidget {
     this.enabled = true,
     this.recoverLostImage = false,
     this.picker,
+    this.title = 'Business photo',
+    this.emptyHint = 'Optional · camera or gallery',
+    this.filledHint = 'Tap the camera to change or remove',
+    this.addLabel = 'Add photo',
+    this.changeLabel = 'Change photo',
   });
 
   final String? value;
@@ -77,6 +82,11 @@ class BusinessLogoPicker extends StatefulWidget {
   final bool enabled;
   final bool recoverLostImage;
   final ImagePicker? picker;
+  final String title;
+  final String emptyHint;
+  final String filledHint;
+  final String addLabel;
+  final String changeLabel;
 
   @override
   State<BusinessLogoPicker> createState() => _BusinessLogoPickerState();
@@ -336,15 +346,13 @@ class _BusinessLogoPickerState extends State<BusinessLogoPicker> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Business photo',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              Text(
+                widget.title,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 4),
               Text(
-                hasPhoto
-                    ? 'Tap the camera to change or remove'
-                    : 'Optional · camera or gallery',
+                hasPhoto ? widget.filledHint : widget.emptyHint,
                 style: const TextStyle(
                   fontSize: 11,
                   height: 1.35,
@@ -369,8 +377,8 @@ class _BusinessLogoPickerState extends State<BusinessLogoPicker> {
                     _busy
                         ? 'Opening…'
                         : hasPhoto
-                            ? 'Change photo'
-                            : 'Add photo',
+                            ? widget.changeLabel
+                            : widget.addLabel,
                   ),
                 ),
               ],

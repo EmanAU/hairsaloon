@@ -1,9 +1,14 @@
-import 'package:hairsaloon/src/core/layout/adaptive_page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hairsaloon/src/core/layout/adaptive_page.dart';
+import 'package:hairsaloon/src/core/layout/safe_scroll_padding.dart';
+import 'package:hairsaloon/src/core/services/toast_service.dart';
+import 'package:hairsaloon/src/features/business_profile/presentation/business_logo_picker.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
+import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class EmployeeDetailsScreen extends StatefulWidget {
   const EmployeeDetailsScreen({super.key, required this.item});
@@ -15,36 +20,86 @@ class EmployeeDetailsScreen extends StatefulWidget {
 }
 
 class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
+  static const Color _divider = Color(0xFFE1E1E1);
+
   late final TextEditingController _firstNameCtrl;
   late final TextEditingController _lastNameCtrl;
   late final TextEditingController _phoneCtrl;
   late final TextEditingController _cnicCtrl;
   late final TextEditingController _addressCtrl;
   late final TextEditingController _specialityCtrl;
+  late final TextEditingController _otherCategoryCtrl;
   String? _specialistCategory;
+  String? _photoBase64;
+  String? _managerId;
   bool _editing = false;
   late bool _isActive;
-
-  static const List<String> _specialistCategories = <String>[
-    'Men Specialist',
-    'Women Specialist',
-    'Kids Specialist',
-    'General',
-  ];
+  bool _usingOther = false;
 
   @override
   void initState() {
     super.initState();
-    _firstNameCtrl = TextEditingController(text: widget.item.firstName);
-    _lastNameCtrl = TextEditingController(text: widget.item.lastName);
-    _phoneCtrl = TextEditingController(text: widget.item.phoneNumber);
-    _cnicCtrl = TextEditingController(text: widget.item.cnicNumber);
-    _addressCtrl = TextEditingController(text: widget.item.homeAddress);
-    _specialityCtrl = TextEditingController(text: widget.item.speciality ?? '');
-    _specialistCategory = (widget.item.employeeType ?? '').trim().isEmpty
-        ? null
-        : widget.item.employeeType!.trim();
-    _isActive = widget.item.isActive;
+    _hydrateFrom(widget.item);
+  }
+
+  void _hydrateFrom(EmployeeItem item) {
+    _firstNameCtrl = TextEditingController(text: item.firstName);
+    _lastNameCtrl = TextEditingController(text: item.lastName);
+    _phoneCtrl = TextEditingController(text: item.phoneNumber);
+    _cnicCtrl = TextEditingController(text: item.cnicNumber);
+    _addressCtrl = TextEditingController(text: item.homeAddress);
+    _specialityCtrl = TextEditingController(text: item.speciality ?? '');
+    _otherCategoryCtrl = TextEditingController();
+    _photoBase64 = item.photoBase64;
+    _managerId = item.managerId;
+    _isActive = item.isActive;
+
+    final type = (item.employeeType ?? '').trim();
+    final defaults = EmployeesStore.defaultSpecialistCategories
+        .where((c) => c != 'Other')
+        .toSet();
+    if (type.isEmpty) {
+      _specialistCategory = null;
+      _usingOther = false;
+    } else if (defaults.contains(type) || type == 'Other') {
+      _specialistCategory = type;
+      _usingOther = type == 'Other';
+    } else {
+      _specialistCategory = 'Other';
+      _usingOther = true;
+      _otherCategoryCtrl.text = type;
+    }
+  }
+
+  void _resetFromItem() {
+    final item = widget.item;
+    _firstNameCtrl.text = item.firstName;
+    _lastNameCtrl.text = item.lastName;
+    _phoneCtrl.text = item.phoneNumber;
+    _cnicCtrl.text = item.cnicNumber;
+    _addressCtrl.text = item.homeAddress;
+    _specialityCtrl.text = item.speciality ?? '';
+    _photoBase64 = item.photoBase64;
+    _managerId = item.managerId;
+    _isActive = item.isActive;
+
+    final type = (item.employeeType ?? '').trim();
+    final defaults = EmployeesStore.defaultSpecialistCategories
+        .where((c) => c != 'Other')
+        .toSet();
+    if (type.isEmpty) {
+      _specialistCategory = null;
+      _usingOther = false;
+      _otherCategoryCtrl.clear();
+    } else if (defaults.contains(type) || type == 'Other') {
+      _specialistCategory = type;
+      _usingOther = type == 'Other';
+      if (!_usingOther) _otherCategoryCtrl.clear();
+    } else {
+      _specialistCategory = 'Other';
+      _usingOther = true;
+      _otherCategoryCtrl.text = type;
+    }
   }
 
   @override
@@ -55,33 +110,64 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     _cnicCtrl.dispose();
     _addressCtrl.dispose();
     _specialityCtrl.dispose();
+    _otherCategoryCtrl.dispose();
     super.dispose();
+  }
+
+  String get _resolvedCategory {
+    if (_specialistCategory == 'Other') {
+      final other = _otherCategoryCtrl.text.trim();
+      return other.isEmpty ? 'Other' : other;
+    }
+    return (_specialistCategory ?? '').trim();
+  }
+
+  String get _managerDisplayName {
+    if (_managerId == null || _managerId!.isEmpty) return 'Unassigned';
+    final manager = context.read<EmployeesStore>().managerOf(_managerId);
+    return manager?.fullName ?? 'Unassigned';
   }
 
   @override
   Widget build(BuildContext context) {
+    final store = context.watch<EmployeesStore>();
+    final isManager = widget.item.isManager;
+    final categories = store.specialistCategories;
+
     return AdaptivePage(
       form: true,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF3F3F3),
+        backgroundColor: AppColors.surface,
         appBar: AppBar(
           backgroundColor: AppColors.primary,
-          surfaceTintColor: Colors.transparent,
+          surfaceTintColor: const Color(0x00000000),
           leading: IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(CupertinoIcons.back, color: Colors.black),
+            icon: const Icon(CupertinoIcons.back, color: AppColors.onPrimary),
           ),
-          title: const Text(
-            'Employee Details',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+          title: Text(
+            isManager ? 'Manager Details' : 'Employee Details',
+            style: const TextStyle(
+              color: AppColors.onPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           actions: [
             TextButton(
-              onPressed: () => setState(() => _editing = !_editing),
+              onPressed: () => setState(() {
+                if (_editing) {
+                  _resetFromItem();
+                  _editing = false;
+                } else {
+                  _editing = true;
+                }
+              }),
               child: Text(
                 _editing ? 'Cancel' : 'Edit',
                 style: const TextStyle(
-                  color: Colors.black,
+                  color: AppColors.onPrimary,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -89,150 +175,284 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
           ],
         ),
         body: ListView(
-          padding: const EdgeInsets.all(12),
+          padding: SafeScrollPadding.of(
+            context,
+            left: 20,
+            top: 18,
+            right: 20,
+            bottom: 32,
+          ),
           children: [
-            _field(_firstNameCtrl, 'First Name'),
-            const SizedBox(height: 10),
-            _field(_lastNameCtrl, 'Last Name'),
-            const SizedBox(height: 10),
-            _field(
-              _phoneCtrl,
-              'Phone Number',
-              keyboardType: TextInputType.phone,
-              inputFormatters: [_PhonePkFormatter()],
+            BusinessLogoPicker(
+              value: _photoBase64,
+              enabled: _editing,
+              title: 'Photo',
+              emptyHint: 'Optional · camera or gallery',
+              filledHint: 'Tap to change or remove',
+              onChanged: (value) => setState(() => _photoBase64 = value),
             ),
-            const SizedBox(height: 10),
-            _field(
-              _cnicCtrl,
-              'CNIC Number',
-              keyboardType: TextInputType.number,
-              inputFormatters: [_CnicFormatter()],
-            ),
-            const SizedBox(height: 10),
-            _field(_addressCtrl, 'Home Address'),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              initialValue: _specialistCategory,
-              isExpanded: true,
-              decoration: InputDecoration(
-                hintText: 'Specialist Category',
-                hintStyle: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                disabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+            const SizedBox(height: 18),
+            if (_editing) ...[
+              _editField(_firstNameCtrl, 'First name'),
+              const SizedBox(height: 12),
+              _editField(_lastNameCtrl, 'Last name'),
+              const SizedBox(height: 12),
+              _editField(
+                _phoneCtrl,
+                'Phone number',
+                keyboardType: TextInputType.phone,
+                inputFormatters: [_PhonePkFormatter()],
+              ),
+              const SizedBox(height: 12),
+              _editField(
+                _cnicCtrl,
+                'CNIC number',
+                keyboardType: TextInputType.number,
+                inputFormatters: [_CnicFormatter()],
+              ),
+              const SizedBox(height: 12),
+              _editField(_addressCtrl, 'Home address'),
+              const SizedBox(height: 12),
+              _labeledDropdown(
+                label: 'Specialist category',
+                child: DropdownButtonFormField<String>(
+                  initialValue: _specialistCategory,
+                  isExpanded: true,
+                  decoration: _inputDecoration(),
+                  items: <String>{
+                    ...categories,
+                    if (_specialistCategory != null) _specialistCategory!,
+                  }.map(
+                    (value) => DropdownMenuItem(
+                      value: value,
+                      child: Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  ).toList(growable: false),
+                  onChanged: (v) => setState(() {
+                    _specialistCategory = v;
+                    _usingOther = v == 'Other';
+                    if (!_usingOther) _otherCategoryCtrl.clear();
+                  }),
                 ),
               ),
-              items:
-                  <String>{
-                        ..._specialistCategories,
-                        if (_specialistCategory != null) _specialistCategory!,
-                      }
-                      .map(
-                        (value) => DropdownMenuItem(
-                          value: value,
+              if (_usingOther || _specialistCategory == 'Other') ...[
+                const SizedBox(height: 12),
+                _editField(_otherCategoryCtrl, 'Other category name'),
+              ],
+              const SizedBox(height: 12),
+              _editField(_specialityCtrl, 'Speciality'),
+              if (!isManager) ...[
+                const SizedBox(height: 12),
+                _labeledDropdown(
+                  label: 'Assigned manager',
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _managerId ?? '',
+                    isExpanded: true,
+                    decoration: _inputDecoration(),
+                    items: [
+                      const DropdownMenuItem(
+                        value: '',
+                        child: Text(
+                          'Unassigned',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ),
+                      ...store.managers.map(
+                        (manager) => DropdownMenuItem(
+                          value: manager.id,
                           child: Text(
-                            value,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12),
+                            manager.fullName,
+                            style: const TextStyle(fontSize: 13),
                           ),
                         ),
-                      )
-                      .toList(growable: false),
-              onChanged: _editing
-                  ? (v) => setState(() => _specialistCategory = v)
-                  : null,
-            ),
-            const SizedBox(height: 10),
-            _field(_specialityCtrl, 'Speciality'),
-            const SizedBox(height: 8),
-            SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              activeThumbColor: AppColors.primary,
-              title: const Text(
-                'Employee Active',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+                      ),
+                    ],
+                    onChanged: (value) => setState(
+                      () => _managerId =
+                          (value == null || value.isEmpty) ? null : value,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                activeThumbColor: AppColors.primary,
+                title: Text(
+                  isManager ? 'Manager active' : 'Employee active',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                value: _isActive,
+                onChanged: (value) => setState(() => _isActive = value),
               ),
-              value: _isActive,
-              onChanged: _editing
-                  ? (value) => setState(() => _isActive = value)
-                  : null,
-            ),
-            const SizedBox(height: 14),
-            if (_editing)
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 height: 48,
                 child: FilledButton(
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.black,
+                    foregroundColor: AppColors.onPrimary,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(9),
                     ),
                   ),
-                  onPressed: _save,
-                  child: const Text('Save Changes'),
+                  onPressed: () => _save(store),
+                  child: const Text(
+                    'Save Changes',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
+            ] else ...[
+              _viewRow('First name', _firstNameCtrl.text),
+              _viewRow('Last name', _lastNameCtrl.text),
+              _viewRow('Phone number', _phoneCtrl.text),
+              _viewRow('CNIC number', _cnicCtrl.text),
+              _viewRow('Home address', _addressCtrl.text),
+              _viewRow('Specialist category', _resolvedCategory),
+              _viewRow('Speciality', _specialityCtrl.text),
+              if (!isManager)
+                _viewRow('Assigned manager', _managerDisplayName),
+              _viewRow(
+                'Status',
+                _isActive ? 'Active' : 'Inactive',
+                isLast: !isManager,
+              ),
+              if (isManager)
+                _viewRow(
+                  'Team size',
+                  '${store.employeesForManager(widget.item.id).length} employees',
+                  isLast: true,
+                ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _field(
-    TextEditingController controller,
-    String hint, {
-    TextInputType keyboardType = TextInputType.text,
-    List<TextInputFormatter>? inputFormatters,
-  }) {
-    return TextField(
-      controller: controller,
-      enabled: _editing,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
+  Widget _viewRow(String label, String value, {bool isLast = false}) {
+    final display = value.trim().isEmpty ? '—' : value.trim();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : const Border(bottom: BorderSide(color: _divider)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            display,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              height: 1.3,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  void _save() {
+  Widget _labeledDropdown({required String label, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 6),
+        child,
+      ],
+    );
+  }
+
+  InputDecoration _inputDecoration() {
+    const radius = BorderRadius.all(Radius.circular(9));
+    return const InputDecoration(
+      filled: false,
+      isDense: true,
+      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: _divider),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: _divider),
+      ),
+    );
+  }
+
+  Widget _editField(
+    TextEditingController controller,
+    String label, {
+    TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+          decoration: _inputDecoration(),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _save(EmployeesStore store) async {
     final first = _firstNameCtrl.text.trim();
     final last = _lastNameCtrl.text.trim();
     final phone = _phoneCtrl.text.trim();
@@ -245,7 +465,19 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
         address.isEmpty ||
         !_isValidPkPhone(phone) ||
         !_isValidCnic(cnic)) {
+      ToastService.error('Please fill valid details');
       return;
+    }
+
+    var category = _specialistCategory?.trim();
+    if (category == 'Other') {
+      final other = _otherCategoryCtrl.text.trim();
+      if (other.isEmpty) {
+        ToastService.error('Enter the other category name');
+        return;
+      }
+      category = other;
+      await store.addSpecialistCategory(other);
     }
 
     final updated = widget.item.copyWith(
@@ -255,9 +487,17 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
       cnicNumber: cnic,
       homeAddress: address,
       speciality: speciality,
-      employeeType: _specialistCategory?.trim(),
+      employeeType: category,
       isActive: _isActive,
+      photoBase64: _photoBase64,
+      clearPhoto: _photoBase64 == null,
+      managerId: widget.item.isManager ? null : _managerId,
+      clearManagerId: !widget.item.isManager && _managerId == null,
     );
+    ToastService.success(
+      widget.item.isManager ? 'Manager updated' : 'Employee updated',
+    );
+    if (!mounted) return;
     Navigator.of(context).pop(updated);
   }
 

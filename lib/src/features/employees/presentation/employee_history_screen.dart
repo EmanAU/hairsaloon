@@ -1,10 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hairsaloon/src/core/layout/safe_scroll_padding.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
-class EmployeeHistoryScreen extends StatelessWidget {
+enum _HistoryDateFilter { all, today, week, month, custom }
+
+class EmployeeHistoryScreen extends StatefulWidget {
   const EmployeeHistoryScreen({
     super.key,
     required this.employee,
@@ -14,15 +17,96 @@ class EmployeeHistoryScreen extends StatelessWidget {
   final EmployeeItem employee;
   final List<Bill> bills;
 
-  double get _totalSales => bills.fold(0, (sum, bill) => sum + bill.grandTotal);
-  double get _commissionPercent => _toDouble(employee.commission);
+  @override
+  State<EmployeeHistoryScreen> createState() => _EmployeeHistoryScreenState();
+}
+
+class _EmployeeHistoryScreenState extends State<EmployeeHistoryScreen> {
+  _HistoryDateFilter _filter = _HistoryDateFilter.all;
+  DateTimeRange? _customRange;
+
+  List<Bill> get _filteredBills {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    bool inRange(DateTime date, DateTime start, DateTime endInclusive) {
+      final d = DateTime(date.year, date.month, date.day);
+      return !d.isBefore(start) && !d.isAfter(endInclusive);
+    }
+
+    switch (_filter) {
+      case _HistoryDateFilter.all:
+        return widget.bills;
+      case _HistoryDateFilter.today:
+        return widget.bills
+            .where((b) => inRange(b.createdAt, today, today))
+            .toList(growable: false);
+      case _HistoryDateFilter.week:
+        final start = today.subtract(Duration(days: today.weekday - 1));
+        return widget.bills
+            .where((b) => inRange(b.createdAt, start, today))
+            .toList(growable: false);
+      case _HistoryDateFilter.month:
+        final start = DateTime(today.year, today.month, 1);
+        return widget.bills
+            .where((b) => inRange(b.createdAt, start, today))
+            .toList(growable: false);
+      case _HistoryDateFilter.custom:
+        final range = _customRange;
+        if (range == null) return widget.bills;
+        final start = DateTime(
+          range.start.year,
+          range.start.month,
+          range.start.day,
+        );
+        final end = DateTime(range.end.year, range.end.month, range.end.day);
+        return widget.bills
+            .where((b) => inRange(b.createdAt, start, end))
+            .toList(growable: false);
+    }
+  }
+
+  double get _totalSales =>
+      _filteredBills.fold(0, (sum, bill) => sum + bill.grandTotal);
+  double get _commissionPercent => _toDouble(widget.employee.commission);
   double get _totalEarning => (_totalSales * _commissionPercent) / 100;
+
+  Future<void> _pickCustomRange() async {
+    final now = DateTime.now();
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 1),
+      initialDateRange: _customRange ??
+          DateTimeRange(
+            start: now.subtract(const Duration(days: 7)),
+            end: now,
+          ),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: AppColors.primary,
+              onPrimary: AppColors.onPrimary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked == null) return;
+    setState(() {
+      _customRange = picked;
+      _filter = _HistoryDateFilter.custom;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final employee = widget.employee;
+    final bills = _filteredBills;
     final category = (employee.employeeType ?? '').trim();
     final speciality = (employee.speciality ?? '').trim();
-    final headline = employee.fullName;
     final sublineParts = <String>[
       if (category.isNotEmpty) category,
       if (speciality.isNotEmpty) speciality,
@@ -31,36 +115,47 @@ class EmployeeHistoryScreen extends StatelessWidget {
     final subline = sublineParts.join(' • ');
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F3F3),
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: AppColors.primary,
-        surfaceTintColor: Colors.transparent,
+        surfaceTintColor: const Color(0x00000000),
         leading: IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(CupertinoIcons.back, color: Colors.black),
+          icon: const Icon(CupertinoIcons.back, color: AppColors.onPrimary),
         ),
         title: const Text(
           'Employee History',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: AppColors.onPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(12),
+        padding: SafeScrollPadding.of(
+          context,
+          left: 12,
+          top: 12,
+          right: 12,
+          bottom: 24,
+        ),
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE1E1E1)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  headline,
+                  employee.fullName,
                   style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 if (subline.isNotEmpty) ...[
@@ -70,29 +165,75 @@ class EmployeeHistoryScreen extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
-                      color: Color(0xFF666666),
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ],
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Text(
-                  'Orders: ${bills.length}  •  Total Sales: Rs.${_totalSales.toStringAsFixed(0)}  •  Earning: Rs.${_totalEarning.toStringAsFixed(0)}',
+                  'Orders: ${bills.length}  •  Sales: Rs.${_totalSales.toStringAsFixed(0)}  •  Earning: Rs.${_totalEarning.toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w400,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+          const Text(
+            'Filter by date',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _filterChip('All', _HistoryDateFilter.all),
+              _filterChip('Today', _HistoryDateFilter.today),
+              _filterChip('This week', _HistoryDateFilter.week),
+              _filterChip('This month', _HistoryDateFilter.month),
+              ChoiceChip(
+                label: Text(
+                  _filter == _HistoryDateFilter.custom && _customRange != null
+                      ? _rangeLabel(_customRange!)
+                      : 'Custom',
+                ),
+                selected: _filter == _HistoryDateFilter.custom,
+                selectedColor: AppColors.primary.withValues(alpha: 0.25),
+                backgroundColor: AppColors.surface,
+                side: BorderSide(
+                  color: _filter == _HistoryDateFilter.custom
+                      ? AppColors.primary
+                      : const Color(0xFFE1E1E1),
+                ),
+                labelStyle: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+                onSelected: (_) => _pickCustomRange(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           if (bills.isEmpty)
             const Center(
               child: Padding(
                 padding: EdgeInsets.only(top: 30),
                 child: Text(
-                  'No orders found for this employee.',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                  'No orders found for this date range.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             )
@@ -101,6 +242,34 @@ class EmployeeHistoryScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _filterChip(String label, _HistoryDateFilter value) {
+    final selected = _filter == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      selectedColor: AppColors.primary.withValues(alpha: 0.25),
+      backgroundColor: AppColors.surface,
+      side: BorderSide(
+        color: selected ? AppColors.primary : const Color(0xFFE1E1E1),
+      ),
+      labelStyle: TextStyle(
+        fontSize: 11,
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        color: AppColors.textPrimary,
+      ),
+      onSelected: (_) => setState(() {
+        _filter = value;
+        if (value != _HistoryDateFilter.custom) _customRange = null;
+      }),
+    );
+  }
+
+  String _rangeLabel(DateTimeRange range) {
+    String fmt(DateTime d) =>
+        '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
+    return '${fmt(range.start)}–${fmt(range.end)}';
   }
 
   static double _toDouble(String? value) {
@@ -133,8 +302,9 @@ class EmployeeHistoryScreen extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE1E1E1)),
         ),
         child: Row(
           children: [
@@ -148,7 +318,7 @@ class EmployeeHistoryScreen extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -156,7 +326,7 @@ class EmployeeHistoryScreen extends StatelessWidget {
                     '$date  •  ${bill.paymentType}',
                     style: const TextStyle(
                       fontSize: 10.5,
-                      color: Color(0xFF6B6B6B),
+                      color: AppColors.textSecondary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -171,8 +341,8 @@ class EmployeeHistoryScreen extends StatelessWidget {
                   'Rs.${bill.grandTotal.toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.black,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -180,7 +350,7 @@ class EmployeeHistoryScreen extends StatelessWidget {
                   '${bill.lines.length} items',
                   style: const TextStyle(
                     fontSize: 10.5,
-                    color: Color(0xFF6B6B6B),
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -189,7 +359,7 @@ class EmployeeHistoryScreen extends StatelessWidget {
             const Icon(
               CupertinoIcons.chevron_right,
               size: 16,
-              color: Colors.black54,
+              color: AppColors.textSecondary,
             ),
           ],
         ),
@@ -218,27 +388,38 @@ class EmployeeOrderDetailsScreen extends StatelessWidget {
               : 'Walk-in');
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F3F3),
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: AppColors.primary,
-        surfaceTintColor: Colors.transparent,
+        surfaceTintColor: const Color(0x00000000),
         leading: IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(CupertinoIcons.back, color: Colors.black),
+          icon: const Icon(CupertinoIcons.back, color: AppColors.onPrimary),
         ),
         title: const Text(
           'Order Details',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            color: AppColors.onPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(12),
+        padding: SafeScrollPadding.of(
+          context,
+          left: 12,
+          top: 12,
+          right: 12,
+          bottom: 24,
+        ),
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE1E1E1)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,7 +428,7 @@ class EmployeeOrderDetailsScreen extends StatelessWidget {
                   customer,
                   style: const TextStyle(
                     fontSize: 13.5,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -256,7 +437,7 @@ class EmployeeOrderDetailsScreen extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF6B6B6B),
+                    color: AppColors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -294,8 +475,9 @@ class EmployeeOrderDetailsScreen extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE1E1E1)),
               ),
               child: Row(
                 children: [
@@ -304,7 +486,7 @@ class EmployeeOrderDetailsScreen extends StatelessWidget {
                       line.serviceName,
                       style: const TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -312,7 +494,7 @@ class EmployeeOrderDetailsScreen extends StatelessWidget {
                     'x${line.qty}',
                     style: const TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -320,7 +502,7 @@ class EmployeeOrderDetailsScreen extends StatelessWidget {
                     'Rs.${line.total.toStringAsFixed(0)}',
                     style: const TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -351,7 +533,7 @@ class _MiniStat extends StatelessWidget {
       decoration: BoxDecoration(
         color: emphasize
             ? AppColors.primary.withValues(alpha: 0.18)
-            : const Color(0xFFF6F6F6),
+            : AppColors.background,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: emphasize
@@ -366,8 +548,8 @@ class _MiniStat extends StatelessWidget {
             label,
             style: const TextStyle(
               fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF6B6B6B),
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 4),
@@ -377,8 +559,8 @@ class _MiniStat extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 11.5,
-              fontWeight: emphasize ? FontWeight.w900 : FontWeight.w800,
-              color: Colors.black,
+              fontWeight: emphasize ? FontWeight.w800 : FontWeight.w700,
+              color: AppColors.textPrimary,
             ),
           ),
         ],

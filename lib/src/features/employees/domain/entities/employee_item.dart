@@ -7,6 +7,9 @@ class EmployeeItem {
     required this.cnicNumber,
     required this.homeAddress,
     required this.isActive,
+    this.role = EmployeeRole.employee,
+    this.managerId,
+    this.photoBase64,
     this.speciality,
     this.employeeType,
     this.basicSalary,
@@ -21,6 +24,10 @@ class EmployeeItem {
   final String cnicNumber;
   final String homeAddress;
   final bool isActive;
+  final EmployeeRole role;
+  /// Manager this employee reports to (null for managers / unassigned).
+  final String? managerId;
+  final String? photoBase64;
   final String? speciality;
   final String? employeeType;
   final String? basicSalary;
@@ -28,6 +35,7 @@ class EmployeeItem {
   final String? agreementDescription;
 
   String get fullName => '$firstName $lastName'.trim();
+  bool get isManager => role == EmployeeRole.manager;
 
   EmployeeItem copyWith({
     String? id,
@@ -37,6 +45,11 @@ class EmployeeItem {
     String? cnicNumber,
     String? homeAddress,
     bool? isActive,
+    EmployeeRole? role,
+    String? managerId,
+    bool clearManagerId = false,
+    String? photoBase64,
+    bool clearPhoto = false,
     String? speciality,
     String? employeeType,
     String? basicSalary,
@@ -51,11 +64,25 @@ class EmployeeItem {
       cnicNumber: cnicNumber ?? this.cnicNumber,
       homeAddress: homeAddress ?? this.homeAddress,
       isActive: isActive ?? this.isActive,
+      role: role ?? this.role,
+      managerId: clearManagerId ? null : (managerId ?? this.managerId),
+      photoBase64: clearPhoto ? null : (photoBase64 ?? this.photoBase64),
       speciality: speciality ?? this.speciality,
       employeeType: employeeType ?? this.employeeType,
       basicSalary: basicSalary ?? this.basicSalary,
       commission: commission ?? this.commission,
-      agreementDescription: agreementDescription ?? this.agreementDescription,
+      agreementDescription:
+          agreementDescription ?? this.agreementDescription,
     );
+  }
+}
+
+enum EmployeeRole {
+  employee,
+  manager;
+
+  static EmployeeRole fromStorage(String? value) {
+    if (value == EmployeeRole.manager.name) return EmployeeRole.manager;
+    return EmployeeRole.employee;
   }
 }
