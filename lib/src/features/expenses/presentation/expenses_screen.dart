@@ -8,6 +8,7 @@ import 'package:hairsaloon/src/features/expenses/presentation/expense_details_sc
 import 'package:hairsaloon/src/features/expenses/presentation/expense_history_screen.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/expense_types_screen.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/state/expenses_store.dart';
+import 'package:hairsaloon/src/features/expenses/presentation/widgets/mark_as_paid_button.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
@@ -71,18 +72,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     await context.read<ExpensesStore>().add(created);
     if (!mounted) return;
     ToastService.success('Expense added');
-  }
-
-  Future<void> _markPaid(ExpenseItem item) async {
-    final ok = await showAppConfirmDialog(
-      context: context,
-      title: 'Mark as Paid',
-      message: 'Confirm this expense has been paid?',
-      confirmLabel: 'Mark Paid',
-    );
-    if (ok != true || !mounted) return;
-    await context.read<ExpensesStore>().markAsPaid(item.id);
-    ToastService.success('Marked as paid');
   }
 
   Future<void> _deleteExpense(ExpenseItem item) async {
@@ -389,7 +378,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(10, 10, 4, 10),
+      padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -483,18 +472,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             ),
           ),
           if (item.isUnpaid) ...[
-            const Divider(height: 16),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () => _markPaid(item),
-                icon: const Icon(CupertinoIcons.checkmark_circle, size: 16),
-                label: const Text(
-                  'Mark as Paid',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                ),
-              ),
-            ),
+            const Divider(height: 16, color: AppColors.border),
+            MarkAsPaidButton(item: item),
           ],
         ],
       ),

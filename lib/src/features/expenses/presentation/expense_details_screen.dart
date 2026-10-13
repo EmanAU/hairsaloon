@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:hairsaloon/src/core/widgets/app_confirm_dialog.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/state/expenses_store.dart';
+import 'package:hairsaloon/src/features/expenses/presentation/widgets/mark_as_paid_button.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
@@ -65,33 +66,8 @@ class ExpenseDetailsScreen extends StatelessWidget {
           _row('Quantity', item.quantity?.toString() ?? '-'),
           _row('Description', item.description ?? '-'),
           if (item.isUnpaid) ...[
-            const SizedBox(height: 8),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.textPrimary,
-                foregroundColor: AppColors.surface,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: () async {
-                final ok = await showAppConfirmDialog(
-                  context: context,
-                  title: 'Mark as Paid',
-                  message: 'Confirm this expense has been paid?',
-                  confirmLabel: 'Mark Paid',
-                );
-                if (ok != true || !context.mounted) return;
-                await context.read<ExpensesStore>().markAsPaid(item.id);
-                ToastService.success('Marked as paid');
-              },
-              icon: const Icon(CupertinoIcons.checkmark_circle_fill, size: 18),
-              label: const Text(
-                'Mark as Paid',
-                style: TextStyle(fontWeight: FontWeight.w800),
-              ),
-            ),
+            const SizedBox(height: 12),
+            MarkAsPaidButton(item: item),
           ],
           if (item.isPaid) ...[
             const SizedBox(height: 8),

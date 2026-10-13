@@ -7,6 +7,7 @@ import 'package:hairsaloon/src/features/expenses/presentation/expense_analytics_
 import 'package:hairsaloon/src/features/expenses/presentation/expense_details_screen.dart';
 import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/state/expenses_store.dart';
+import 'package:hairsaloon/src/features/expenses/presentation/widgets/mark_as_paid_button.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
@@ -152,7 +153,7 @@ class _AllExpensesScreenState extends State<AllExpensesScreen> {
   Widget _tile(ExpenseItem item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(10, 10, 4, 8),
+      padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -223,28 +224,10 @@ class _AllExpensesScreenState extends State<AllExpensesScreen> {
               ],
             ),
           ),
-          if (item.isUnpaid)
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () async {
-                  final ok = await showAppConfirmDialog(
-                    context: context,
-                    title: 'Mark as Paid',
-                    message: 'Confirm this expense has been paid?',
-                    confirmLabel: 'Mark Paid',
-                  );
-                  if (ok != true || !mounted) return;
-                  await context.read<ExpensesStore>().markAsPaid(item.id);
-                  ToastService.success('Marked as paid');
-                },
-                icon: const Icon(CupertinoIcons.checkmark_circle, size: 16),
-                label: const Text(
-                  'Mark as Paid',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                ),
-              ),
-            ),
+          if (item.isUnpaid) ...[
+            const Divider(height: 16, color: AppColors.border),
+            MarkAsPaidButton(item: item),
+          ],
         ],
       ),
     );
