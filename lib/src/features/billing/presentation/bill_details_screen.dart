@@ -153,72 +153,59 @@ class _CustomerCard extends StatelessWidget {
     String orDash(String value) => value.trim().isEmpty ? '-' : value.trim();
     return _Card(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _InfoRow(
             label: 'Customer',
             value: bill.customerName.trim().isEmpty
                 ? 'Walk-in customer'
                 : bill.customerName.trim(),
-            emphasize: true,
           ),
           _InfoRow(label: 'Phone', value: orDash(bill.customerPhone)),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 6),
             child: Divider(height: 1, color: AppColors.border),
           ),
-          _InfoRow(label: 'Bill No', value: bill.shortNumber),
+          _InfoRow(label: 'Bill Number', value: bill.shortNumber),
           _InfoRow(
             label: 'Date',
             value: BillReceiptShare.formatDateTime(bill.createdAt),
           ),
-          _InfoRow(label: 'Staff', value: orDash(bill.employeeName)),
-          _InfoRow(label: 'Payment', value: orDash(bill.paymentType)),
+          _InfoRow(label: 'Barber', value: orDash(bill.employeeName)),
+          _InfoRow(label: 'Payment Method', value: orDash(bill.paymentType)),
         ],
       ),
     );
   }
 }
 
+/// "Heading : value" line with a bold heading.
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.label,
-    required this.value,
-    this.emphasize = false,
-  });
+  const _InfoRow({required this.label, required this.value});
 
   final String label;
   final String value;
-  final bool emphasize;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 84,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12.5,
-                color: AppColors.textSecondary,
-              ),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: label,
+              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: emphasize ? 14 : 13,
-                fontWeight: emphasize ? FontWeight.w700 : FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-        ],
+            const TextSpan(text: ' : '),
+            TextSpan(text: value),
+          ],
+        ),
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary,
+        ),
       ),
     );
   }

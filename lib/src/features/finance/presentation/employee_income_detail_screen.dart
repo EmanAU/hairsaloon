@@ -1,21 +1,18 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
-import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
 import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/state/expenses_store.dart';
 import 'package:hairsaloon/src/features/finance/domain/entities/finance_period.dart';
 import 'package:hairsaloon/src/features/finance/domain/finance_calculator.dart';
+import 'package:hairsaloon/src/features/finance/presentation/employee_customer_history_screen.dart';
 import 'package:hairsaloon/src/features/finance/presentation/finance_format.dart';
 import 'package:hairsaloon/src/features/finance/presentation/state/payouts_store.dart';
 import 'package:hairsaloon/src/features/finance/presentation/widgets/finance_widgets.dart';
 import 'package:hairsaloon/src/features/finance/presentation/widgets/settle_salary_dialog.dart';
-import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
-
-enum _BillRange { today, week, month, custom, all }
 
 class EmployeeIncomeDetailScreen extends StatefulWidget {
   const EmployeeIncomeDetailScreen({
@@ -39,55 +36,14 @@ class _EmployeeIncomeDetailScreenState
   late FinancePeriod _period = widget.period;
   late DateTime _anchor = widget.anchorDate;
 
-  _BillRange _billRange = _BillRange.month;
-  DateTimeRange? _customRange;
-  String _payment = 'All';
-
   EmployeeItem get _employee => widget.employee;
 
-  bool _billInRange(DateTime date) {
-    final now = DateTime.now();
-    switch (_billRange) {
-      case _BillRange.today:
-        return FinanceCalculator.periodContains(date, now, FinancePeriod.daily);
-      case _BillRange.week:
-        return FinanceCalculator.periodContains(
-          date,
-          now,
-          FinancePeriod.weekly,
-        );
-      case _BillRange.month:
-        return FinanceCalculator.periodContains(
-          date,
-          now,
-          FinancePeriod.monthly,
-        );
-      case _BillRange.custom:
-        final range = _customRange;
-        if (range == null) return true;
-        final d = FinanceCalculator.dayOf(date);
-        return !d.isBefore(FinanceCalculator.dayOf(range.start)) &&
-            !d.isAfter(FinanceCalculator.dayOf(range.end));
-      case _BillRange.all:
-        return true;
-    }
-  }
-
-  Future<void> _pickCustomRange() async {
-    final now = DateTime.now();
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(now.year + 1),
-      initialDateRange:
-          _customRange ??
-          DateTimeRange(start: now.subtract(const Duration(days: 6)), end: now),
+  void _openCustomerHistory() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => EmployeeCustomerHistoryScreen(employee: _employee),
+      ),
     );
-    if (picked == null) return;
-    setState(() {
-      _customRange = picked;
-      _billRange = _BillRange.custom;
-    });
   }
 
   Future<void> _settle(List<EmployeeDayIncome> days) async {
@@ -130,22 +86,6 @@ class _EmployeeIncomeDetailScreenState
     final totalEarning = days.fold<double>(0, (s, d) => s + d.earning);
     final totalPaid = days.fold<double>(0, (s, d) => s + d.paidAmount);
     final totalDue = days.fold<double>(0, (s, d) => s + d.dueAmount);
-
-    final filteredBills = allBills
-        .where((b) => _billInRange(b.createdAt))
-        .where(
-          (b) =>
-              _payment == 'All' ||
-              b.paymentType.trim().toLowerCase() == _payment.toLowerCase(),
-        )
-        .toList(growable: false);
-    final billsByDay = <DateTime, List<Bill>>{};
-    for (final b in filteredBills) {
-      billsByDay
-          .putIfAbsent(FinanceCalculator.dayOf(b.createdAt), () => <Bill>[])
-          .add(b);
-    }
-    final billDays = billsByDay.keys.toList()..sort((a, b) => b.compareTo(a));
     final tablet = MediaQuery.sizeOf(context).shortestSide >= 600;
 
     return Scaffold(
@@ -228,6 +168,29 @@ class _EmployeeIncomeDetailScreenState
                   ),
                 ),
               ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 42,
+                child: OutlinedButton.icon(
+                  onPressed: _openCustomerHistory,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textPrimary,
+                    backgroundColor: AppColors.surface,
+                    side: const BorderSide(color: AppColors.border),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  icon: const Icon(CupertinoIcons.person_2, size: 16),
+                  label: Text(
+                    'Customer History  •  ${allBills.length} bills',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 14),
               const FinanceSectionTitle('Daily Income'),
               if (days.isEmpty)
@@ -242,98 +205,10 @@ class _EmployeeIncomeDetailScreenState
                     ),
                   ),
                 ),
-              const SizedBox(height: 10),
-              FinanceSectionTitle(
-                'Bills History',
-                trailing: Text(
-                  '${filteredBills.length} bills',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              _billFilters(),
-              if (billDays.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: FinanceEmpty(message: 'No bills for these filters.'),
-                )
-              else
-                for (final day in billDays) ...[
-                  FinanceDayHeader(
-                    date: day,
-                    trailing: FinanceFormat.money(
-                      billsByDay[day]!.fold<double>(
-                        0,
-                        (s, b) => s + b.grandTotal,
-                      ),
-                    ),
-                  ),
-                  ...billsByDay[day]!.map(
-                    (b) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: _BillCard(bill: b),
-                    ),
-                  ),
-                ],
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _billFilters() {
-    final rangeLabels = <_BillRange, String>{
-      _BillRange.today: 'Today',
-      _BillRange.week: 'Week',
-      _BillRange.month: 'Month',
-      _BillRange.all: 'All',
-    };
-    final customLabel = _customRange == null
-        ? 'Custom'
-        : '${FinanceFormat.date(_customRange!.start)} - ${FinanceFormat.date(_customRange!.end)}';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              for (final e in rangeLabels.entries) ...[
-                FinanceChip(
-                  label: e.value,
-                  selected: _billRange == e.key,
-                  onTap: () => setState(() => _billRange = e.key),
-                ),
-                const SizedBox(width: 6),
-              ],
-              FinanceChip(
-                label: customLabel,
-                selected: _billRange == _BillRange.custom,
-                onTap: _pickCustomRange,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            for (final p in const ['All', 'Cash', 'Card', 'Online']) ...[
-              Expanded(
-                child: FinanceChip(
-                  label: p,
-                  selected: _payment == p,
-                  onTap: () => setState(() => _payment = p),
-                ),
-              ),
-              if (p != 'Online') const SizedBox(width: 6),
-            ],
-          ],
-        ),
-      ],
     );
   }
 }
@@ -528,75 +403,6 @@ class _Badge extends StatelessWidget {
           fontSize: 10.5,
           fontWeight: FontWeight.w700,
         ),
-      ),
-    );
-  }
-}
-
-class _BillCard extends StatelessWidget {
-  const _BillCard({required this.bill});
-
-  final Bill bill;
-
-  @override
-  Widget build(BuildContext context) {
-    final customer = bill.customerName.trim().isNotEmpty
-        ? bill.customerName.trim()
-        : (bill.customerPhone.trim().isNotEmpty
-              ? bill.customerPhone.trim()
-              : 'Walk-in Customer');
-    final services = bill.lines.map((l) => l.serviceName).join(', ');
-    return FinanceCard(
-      padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
-      onTap: () => Navigator.of(
-        context,
-      ).pushNamed(AppRoutes.billDetails, arguments: bill.id),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  customer,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${FinanceFormat.time(bill.createdAt)}  •  ${bill.paymentType}'
-                  '${services.isEmpty ? '' : '  •  $services'}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 10.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            FinanceFormat.money(bill.grandTotal),
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(width: 4),
-          const Icon(
-            CupertinoIcons.chevron_right,
-            size: 12,
-            color: AppColors.textSecondary,
-          ),
-        ],
       ),
     );
   }

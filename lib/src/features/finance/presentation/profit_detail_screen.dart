@@ -84,7 +84,7 @@ class _ProfitDetailScreenState extends State<ProfitDetailScreen> {
                           child: Text(
                             'Net Profit',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary,
                             ),
@@ -93,7 +93,7 @@ class _ProfitDetailScreenState extends State<ProfitDetailScreen> {
                         Text(
                           FinanceFormat.money(totals.profit),
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.w800,
                             color: totals.profit < 0
                                 ? AppColors.danger
@@ -179,8 +179,8 @@ class _DayProfitTile extends StatelessWidget {
               Text(
                 FinanceFormat.money(day.profit),
                 style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                   color: positive ? AppColors.success : AppColors.danger,
                 ),
               ),

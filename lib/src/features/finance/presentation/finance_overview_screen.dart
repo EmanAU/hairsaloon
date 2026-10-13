@@ -92,7 +92,7 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
       title: '${FinanceFormat.periodWord(_period).toUpperCase()} SALE',
       amount: totals.sales,
       subtitle: '${totals.billCount} bills',
-      onTap: () => Navigator.of(context).pushNamed(AppRoutes.financeSales),
+      onTap: () => _open(AppRoutes.financeSales),
     );
     final statCards = <Widget>[
       Expanded(
