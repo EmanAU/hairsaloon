@@ -49,6 +49,7 @@ import 'package:hairsaloon/src/features/services/presentation/new_service_screen
 import 'package:hairsaloon/src/features/services/presentation/categories_screen.dart';
 import 'package:hairsaloon/src/features/services/presentation/service_list_screen.dart';
 import 'package:hairsaloon/src/features/services/presentation/subcategories_screen.dart';
+import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:hairsaloon/src/theme/app_theme.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:provider/provider.dart';
@@ -107,29 +108,37 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
 
             return MultiProvider(
               providers: [
+                // Needed immediately for session → home / login routing.
                 ChangeNotifierProvider<BusinessProfileNotifier>.value(
                   value: bootstrap.profileNotifier,
-                ),
-                ChangeNotifierProvider<BillingStore>.value(
-                  value: bootstrap.billingStore,
-                ),
-                ChangeNotifierProvider<EmployeesStore>.value(
-                  value: bootstrap.employeesStore,
-                ),
-                ChangeNotifierProvider<ExpensesStore>.value(
-                  value: bootstrap.expensesStore,
-                ),
-                ChangeNotifierProvider<ServicesStore>.value(
-                  value: bootstrap.servicesStore,
-                ),
-                ChangeNotifierProvider<SettingsStore>.value(
-                  value: bootstrap.settingsStore,
                 ),
                 ChangeNotifierProvider<AuthStore>.value(
                   value: bootstrap.authStore,
                 ),
+                // Created on first use (lazy) so splash stays light.
+                ChangeNotifierProvider<BillingStore>(
+                  create: (_) =>
+                      BillingStore(repository: HiveBillingRepository()),
+                ),
+                ChangeNotifierProvider<EmployeesStore>(
+                  create: (_) =>
+                      EmployeesStore(repository: HiveEmployeesRepository()),
+                ),
+                ChangeNotifierProvider<ExpensesStore>(
+                  create: (_) =>
+                      ExpensesStore(repository: HiveExpensesRepository()),
+                ),
+                ChangeNotifierProvider<ServicesStore>(
+                  create: (_) =>
+                      ServicesStore(repository: HiveServicesRepository()),
+                ),
+                ChangeNotifierProvider<SettingsStore>(
+                  create: (_) =>
+                      SettingsStore(repository: HiveSettingsRepository()),
+                ),
               ],
-              child: MaterialApp(
+              child: _DeferredStoreWarmup(
+                child: MaterialApp(
                 builder: (context, child) {
                   final media = MediaQuery.of(context);
                   return MediaQuery(
@@ -217,6 +226,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                   return null;
                 },
               ),
+              ),
             );
           },
         );
@@ -282,18 +292,11 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
     );
   }
 
+  /// Only what splash needs to decide login vs home.
+  /// Billing / employees / services / settings are created lazily by Provider.
   Future<_AppBootstrap> _bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
     await HiveBootstrap.init(prefs);
-
-    final billingStore = BillingStore(repository: HiveBillingRepository());
-    final employeesStore = EmployeesStore(
-      repository: HiveEmployeesRepository(),
-    );
-    final expensesStore = ExpensesStore(repository: HiveExpensesRepository());
-    final servicesStore = ServicesStore(repository: HiveServicesRepository());
-    await servicesStore.load();
-    final settingsStore = SettingsStore(repository: HiveSettingsRepository());
 
     final repository = SharedPrefsBusinessProfileRepository(prefs: prefs);
     final profileNotifier = BusinessProfileNotifier(
@@ -320,11 +323,6 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
 
     return _AppBootstrap(
       profileNotifier: profileNotifier,
-      billingStore: billingStore,
-      employeesStore: employeesStore,
-      expensesStore: expensesStore,
-      servicesStore: servicesStore,
-      settingsStore: settingsStore,
       authStore: authStore,
       hasAuthSession: hasAuthSession,
       hasBusinessProfile: profileNotifier.profile != null,
@@ -335,25 +333,42 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
 class _AppBootstrap {
   const _AppBootstrap({
     required this.profileNotifier,
-    required this.billingStore,
-    required this.employeesStore,
-    required this.expensesStore,
-    required this.servicesStore,
-    required this.settingsStore,
     required this.authStore,
     required this.hasAuthSession,
     required this.hasBusinessProfile,
   });
 
   final BusinessProfileNotifier profileNotifier;
-  final BillingStore billingStore;
-  final EmployeesStore employeesStore;
-  final ExpensesStore expensesStore;
-  final ServicesStore servicesStore;
-  final SettingsStore settingsStore;
   final AuthStore authStore;
   final bool hasAuthSession;
   final bool hasBusinessProfile;
+}
+
+/// Soft background warm-up after first frame — does not block splash/home.
+class _DeferredStoreWarmup extends StatefulWidget {
+  const _DeferredStoreWarmup({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_DeferredStoreWarmup> createState() => _DeferredStoreWarmupState();
+}
+
+class _DeferredStoreWarmupState extends State<_DeferredStoreWarmup> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _warm());
+  }
+
+  Future<void> _warm() async {
+    if (!mounted) return;
+    // Prefetch catalogue quietly so Rate List / Categories feel instant later.
+    await context.read<ServicesStore>().ensureLoaded();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class SplashScreen extends StatefulWidget {
@@ -378,27 +393,48 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _navigate() async {
-    await Future<void>.delayed(const Duration(seconds: 2));
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
-    final next = widget.hasAuthSession
-        ? (widget.hasBusinessProfile
-              ? AppRoutes.homeShell
-              : AppRoutes.businessRegistration)
-        : AppRoutes.login;
+
+    // Re-check live session so a saved login always opens Home until logout.
+    final auth = context.read<AuthStore>();
+    final profile = context.read<BusinessProfileNotifier>();
+
+    var hasSession = widget.hasAuthSession || auth.currentUser != null;
+    if (!hasSession) {
+      hasSession = await auth.hasLocalSession();
+    }
+    if (hasSession && auth.currentUser == null) {
+      await auth.loadCurrentUser();
+      hasSession = auth.currentUser != null;
+    }
+
+    final hasProfile =
+        widget.hasBusinessProfile || profile.profile != null;
+
+    if (!mounted) return;
+    final String next;
+    if (!hasSession) {
+      next = AppRoutes.login;
+    } else if (!hasProfile) {
+      next = AppRoutes.businessRegistration;
+    } else {
+      next = AppRoutes.homeShell;
+    }
     Navigator.of(context).pushReplacementNamed(next);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: const Center(
+    return const Scaffold(
+      backgroundColor: AppColors.surface,
+      body: Center(
         child: Text(
           'Barber Management',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w600,
-            color: Colors.black,
+            color: AppColors.textPrimary,
           ),
         ),
       ),

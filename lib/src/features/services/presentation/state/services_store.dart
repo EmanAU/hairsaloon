@@ -8,6 +8,8 @@ class ServicesStore extends ChangeNotifier {
 
   final HiveServicesRepository _repository;
 
+  bool _loaded = false;
+  bool _loading = false;
   List<ServiceItem> _services = const <ServiceItem>[];
   List<String> _categories = const <String>[];
   final Map<String, List<String>> _subcategoriesByCategory =
@@ -15,12 +17,26 @@ class ServicesStore extends ChangeNotifier {
 
   List<ServiceItem> get services => _services;
   List<String> get categories => _categories;
+  bool get isLoaded => _loaded;
+
+  /// Safe to call many times; only the first load hits storage.
+  Future<void> ensureLoaded() async {
+    if (_loaded || _loading) return;
+    await load();
+  }
 
   Future<void> load() async {
-    await _repository.ensureSeeded();
-    await _repository.ensureServicesForCurrentSubcategories();
-    _hydrate();
-    notifyListeners();
+    if (_loaded || _loading) return;
+    _loading = true;
+    try {
+      await _repository.ensureSeeded();
+      await _repository.ensureServicesForCurrentSubcategories();
+      _hydrate();
+      _loaded = true;
+      notifyListeners();
+    } finally {
+      _loading = false;
+    }
   }
 
   void _hydrate() {
