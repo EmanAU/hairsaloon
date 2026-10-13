@@ -99,8 +99,10 @@ class BillReceiptShare {
     return box.localToGlobal(Offset.zero) & box.size;
   }
 
-  /// Shares the receipt as a PNG image with the text receipt as caption.
-  /// Falls back to text only if the image can't be captured.
+  static const thankYouMessage = 'Thank you for your visit!';
+
+  /// Shares the receipt image with a short thank-you caption.
+  /// Falls back to the full text receipt if the image can't be captured.
   static Future<void> shareReceipt({
     required BuildContext context,
     required GlobalKey receiptKey,
@@ -111,14 +113,16 @@ class BillReceiptShare {
     String businessAddress = '',
   }) async {
     final origin = _shareOrigin(context);
-    final text = buildTextReceipt(
-      bill: bill,
-      businessName: businessName,
-      currencyCode: currencyCode,
-      businessPhone: businessPhone,
-      businessAddress: businessAddress,
-    );
     final file = await captureReceiptImage(receiptKey);
+    final text = file != null
+        ? thankYouMessage
+        : buildTextReceipt(
+            bill: bill,
+            businessName: businessName,
+            currencyCode: currencyCode,
+            businessPhone: businessPhone,
+            businessAddress: businessAddress,
+          );
 
     try {
       await SharePlus.instance.share(

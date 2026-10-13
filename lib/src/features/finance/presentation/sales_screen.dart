@@ -126,7 +126,7 @@ class _SalesScreenState extends State<SalesScreen> {
               FinanceSectionTitle(
                 'Recent Sales',
                 trailing: Text(
-                  '${bills.length} bills',
+                  '${bills.length} ${bills.length == 1 ? 'bill' : 'bills'}',
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
