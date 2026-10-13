@@ -48,7 +48,7 @@ void main() {
     ),
   ];
 
-  test('payable = commission earning minus unpaid expense cut', () {
+  test('shop expenses never reduce employee commission', () {
     final days = FinanceCalculator.employeeDays(
       employee: employee,
       bills: bills,
@@ -58,8 +58,8 @@ void main() {
     );
     expect(days, hasLength(1));
     expect(days.single.earning, 400);
-    expect(days.single.expenseCut, 100);
-    expect(days.single.dueAmount, 300);
+    expect(days.single.expenseCut, 0);
+    expect(days.single.dueAmount, 400);
   });
 
   test('settling a day lowers profit by the payout amount', () {
@@ -94,7 +94,33 @@ void main() {
       payoutsById: {payout.id: payout},
       include: (_) => true,
     );
-    expect(settledDays.single.isSettled, isTrue);
-    expect(settledDays.single.dueAmount, 0);
+    expect(settledDays.single.isSettled, isFalse);
+    expect(settledDays.single.dueAmount, 100);
   });
+  test(
+    'bonus does not pay down future commission and survives serialization',
+    () {
+      final payout = SalaryPayout(
+        id: SalaryPayout.dayKey(employee.id, day),
+        employeeId: employee.id,
+        employeeName: employee.fullName,
+        workDate: day,
+        amount: 500,
+        bonusAmount: 100,
+        settledAt: day,
+      );
+      final restored = SalaryPayout.fromMap(payout.toMap());
+      expect(restored.bonusAmount, 100);
+      final days = FinanceCalculator.employeeDays(
+        employee: employee,
+        bills: [...bills, ...bills],
+        expenses: expenses,
+        payoutsById: {payout.id: restored},
+        include: (_) => true,
+      );
+      expect(days.single.earning, 800);
+      expect(days.single.paidAmount, 500);
+      expect(days.single.dueAmount, 400);
+    },
+  );
 }

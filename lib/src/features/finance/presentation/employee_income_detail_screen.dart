@@ -57,9 +57,16 @@ class _EmployeeIncomeDetailScreenState
       await context.read<PayoutsStore>().settleDays(
         employee: _employee,
         days: days,
+        amount: result.amount,
+        bonusConfirmed: result.bonusConfirmed,
         note: result.note,
       );
-      ToastService.success('Salary settled');
+      final remaining =
+          days.fold<double>(0, (sum, day) => sum + day.dueAmount) -
+          result.amount;
+      ToastService.success(
+        'Paid ${FinanceFormat.money(result.amount)} • Remaining ${FinanceFormat.money(remaining > 0 ? remaining : 0)}',
+      );
     } catch (_) {
       ToastService.error('Could not settle. Please try again.');
     }
@@ -333,11 +340,7 @@ class _DayIncomeTile extends StatelessWidget {
           Row(
             children: [
               _cell('Earning', day.earning, AppColors.textPrimary),
-              _cell(
-                'Cut',
-                day.expenseCut,
-                day.expenseCut > 0 ? AppColors.danger : AppColors.textSecondary,
-              ),
+              _cell('Bonus/Tip', day.bonusAmount, AppColors.success),
               _cell('Paid', day.paidAmount, AppColors.success),
               _cell(
                 'Due',

@@ -21,50 +21,95 @@ class PayoutsStore extends ChangeNotifier {
 
   void _reload() {
     _payouts = _repository.getAll();
-    _byId = {for (final p in _payouts) p.id: p};
+    _byId = {};
+    for (final p in _payouts.reversed) {
+      final key = SalaryPayout.dayKey(p.employeeId, p.workDate);
+      final previous = _byId[key];
+      _byId[key] = SalaryPayout(
+        id: key,
+        employeeId: p.employeeId,
+        employeeName: p.employeeName,
+        workDate: p.workDate,
+        amount: (previous?.amount ?? 0) + p.amount,
+        bonusAmount: (previous?.bonusAmount ?? 0) + p.bonusAmount,
+        settledAt: p.settledAt,
+        note: p.note,
+      );
+    }
   }
-
-  bool isDaySettled(String employeeId, DateTime day) =>
-      _byId.containsKey(SalaryPayout.dayKey(employeeId, day));
 
   double totalForPeriod(DateTime anchor, FinancePeriod period) {
     return _payouts
-        .where((p) => FinanceCalculator.periodContains(p.workDate, anchor, period))
+        .where(
+          (p) => FinanceCalculator.periodContains(p.workDate, anchor, period),
+        )
         .fold<double>(0, (sum, p) => sum + p.amount);
   }
 
-  Future<void> settleDay({
-    required EmployeeItem employee,
-    required EmployeeDayIncome day,
-    String? note,
-  }) => settleDays(employee: employee, days: [day], note: note);
+  bool _saving = false;
 
   Future<void> settleDays({
     required EmployeeItem employee,
     required List<EmployeeDayIncome> days,
+    required double amount,
+    bool bonusConfirmed = false,
     String? note,
   }) async {
+    if (_saving) throw StateError('Payment is already being saved');
+    if (!amount.isFinite || amount <= 0 || days.isEmpty) {
+      throw ArgumentError('Enter a valid payment amount');
+    }
+    final selected = {
+      for (final day in days) FinanceCalculator.dayOf(day.date): day,
+    }.values.toList()..sort((a, b) => a.date.compareTo(b.date));
+    double dueFor(EmployeeDayIncome day) {
+      final paid =
+          _byId[SalaryPayout.dayKey(employee.id, day.date)]?.incomeAmount ?? 0;
+      final due = day.payableAmount - paid;
+      return due > 0 ? due : 0;
+    }
+
+    final totalDue = selected.fold<double>(0, (sum, day) => sum + dueFor(day));
+    final payment = double.parse(amount.toStringAsFixed(2));
+    final bonus = double.parse(
+      (payment > totalDue ? payment - totalDue : 0).toStringAsFixed(2),
+    );
+    if (bonus > 0 && !bonusConfirmed) {
+      throw StateError('Confirm the extra amount as bonus/tip');
+    }
     final now = DateTime.now();
-    final trimmedNote = note?.trim();
-    final payouts = days
-        .where((d) => !d.isSettled && d.payableAmount > 0)
-        .map(
-          (d) => SalaryPayout(
-            id: SalaryPayout.dayKey(employee.id, d.date),
+    var remaining = payment - bonus;
+    final records = <SalaryPayout>[];
+    for (var i = 0; i < selected.length; i++) {
+      final day = selected[i];
+      final due = dueFor(day);
+      final allocation = double.parse(
+        (remaining < due ? remaining : due).toStringAsFixed(2),
+      );
+      final extra = i == selected.length - 1 ? bonus : 0.0;
+      if (allocation + extra > 0) {
+        records.add(
+          SalaryPayout(
+            id: '${SalaryPayout.dayKey(employee.id, day.date)}:payment:${now.microsecondsSinceEpoch}:$i',
             employeeId: employee.id,
             employeeName: employee.fullName,
-            workDate: d.date,
-            amount: d.payableAmount,
+            workDate: day.date,
+            amount: allocation + extra,
+            bonusAmount: extra,
             settledAt: now,
-            note: (trimmedNote == null || trimmedNote.isEmpty)
-                ? null
-                : trimmedNote,
+            note: note?.trim().isEmpty == true ? null : note?.trim(),
           ),
-        )
-        .toList(growable: false);
-    if (payouts.isEmpty) return;
-    await _repository.saveAll(payouts);
-    _reload();
-    notifyListeners();
+        );
+      }
+      remaining = double.parse((remaining - allocation).toStringAsFixed(2));
+    }
+    _saving = true;
+    try {
+      await _repository.saveAll(records);
+      _reload();
+      notifyListeners();
+    } finally {
+      _saving = false;
+    }
   }
 }

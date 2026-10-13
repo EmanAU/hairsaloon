@@ -60,7 +60,7 @@ class _SettledSalariesScreenState extends State<SettledSalariesScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: financeAppBar(context, 'Settled Salaries'),
+      appBar: financeAppBar(context, 'Employee Payments'),
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
@@ -107,7 +107,7 @@ class _SettledSalariesScreenState extends State<SettledSalariesScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Total Settled',
+                            'Total Paid',
                             style: TextStyle(
                               fontSize: 12.5,
                               color: AppColors.textSecondary,
@@ -139,7 +139,7 @@ class _SettledSalariesScreenState extends State<SettledSalariesScreen> {
                 const Padding(
                   padding: EdgeInsets.only(top: 8),
                   child: FinanceEmpty(
-                    message: 'No salaries settled in this period.',
+                    message: 'No employee payments in this period.',
                   ),
                 )
               else
@@ -195,7 +195,9 @@ class _PayoutCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  payout.employeeName.isEmpty ? 'Employee' : payout.employeeName,
+                  payout.employeeName.isEmpty
+                      ? 'Employee'
+                      : payout.employeeName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -206,13 +208,21 @@ class _PayoutCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Settled ${FinanceFormat.date(payout.settledAt)}, '
+                  'Paid ${FinanceFormat.date(payout.settledAt)}, '
                   '${FinanceFormat.time(payout.settledAt)}',
                   style: const TextStyle(
                     fontSize: 10.5,
                     color: AppColors.textSecondary,
                   ),
                 ),
+                if (payout.bonusAmount > 0)
+                  Text(
+                    'Includes bonus/tip: ${FinanceFormat.money(payout.bonusAmount)}',
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      color: AppColors.success,
+                    ),
+                  ),
                 if (payout.note != null)
                   Text(
                     payout.note!,

@@ -6,7 +6,14 @@ import 'package:hairsaloon/src/features/finance/presentation/finance_format.dart
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class SettleSalaryResult {
-  const SettleSalaryResult({this.note});
+  const SettleSalaryResult({
+    required this.amount,
+    required this.bonusConfirmed,
+    this.note,
+  });
+
+  final double amount;
+  final bool bonusConfirmed;
 
   final String? note;
 }
@@ -17,13 +24,13 @@ Future<SettleSalaryResult?> showSettleSalaryDialog({
   required String employeeName,
   required List<EmployeeDayIncome> days,
 }) {
-  final due = days.where((d) => !d.isSettled && d.payableAmount > 0).toList();
+  final due = days.where((d) => d.dueAmount > 0).toList();
   if (due.isEmpty) return Future.value(null);
   due.sort((a, b) => a.date.compareTo(b.date));
 
   final earning = due.fold<double>(0, (s, d) => s + d.earning);
-  final cut = due.fold<double>(0, (s, d) => s + d.expenseCut);
-  final pay = due.fold<double>(0, (s, d) => s + d.payableAmount);
+  final cut = due.fold<double>(0, (s, d) => s + d.paidAmount);
+  final pay = due.fold<double>(0, (s, d) => s + d.dueAmount);
   final dateText = due.length == 1
       ? FinanceFormat.date(due.first.date)
       : '${FinanceFormat.date(due.first.date)} - ${FinanceFormat.date(due.last.date)}';
@@ -64,9 +71,37 @@ class _SettleSheet extends StatefulWidget {
 
 class _SettleSheetState extends State<_SettleSheet> {
   final _noteCtrl = TextEditingController();
+  final _amountCtrl = TextEditingController();
+  bool _bonusConfirmed = false;
+  String? _error;
+  double get _amount => double.tryParse(_amountCtrl.text.trim()) ?? 0;
+  double get _bonus => _amount > widget.pay ? _amount - widget.pay : 0;
+  void _confirm() {
+    final text = _amountCtrl.text.trim();
+    if (!RegExp(r'^\d+(\.\d{1,2})?$').hasMatch(text) ||
+        !_amount.isFinite ||
+        _amount <= 0) {
+      setState(
+        () => _error = 'Enter a positive amount with up to 2 decimal places.',
+      );
+      return;
+    }
+    if (_bonus > 0 && !_bonusConfirmed) {
+      setState(() => _error = 'Confirm the extra amount as a bonus/tip.');
+      return;
+    }
+    Navigator.of(context).pop(
+      SettleSalaryResult(
+        amount: _amount,
+        bonusConfirmed: _bonusConfirmed,
+        note: _noteCtrl.text,
+      ),
+    );
+  }
 
   @override
   void dispose() {
+    _amountCtrl.dispose();
     _noteCtrl.dispose();
     super.dispose();
   }
@@ -74,13 +109,12 @@ class _SettleSheetState extends State<_SettleSheet> {
   @override
   Widget build(BuildContext context) {
     return AppSheetBody(
-      title: 'Settle Salary',
+      title: 'Settle Up',
       subtitle: widget.employeeName,
       icon: CupertinoIcons.checkmark_seal,
       iconColor: AppColors.success,
-      confirmLabel: 'Confirm Settle',
-      onConfirm: () =>
-          Navigator.of(context).pop(SettleSalaryResult(note: _noteCtrl.text)),
+      confirmLabel: 'Record Payment',
+      onConfirm: _confirm,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -100,19 +134,13 @@ class _SettleSheetState extends State<_SettleSheet> {
                 ),
                 if (widget.dayCount > 1) _line('Range', widget.dateText),
                 _line('Earning', FinanceFormat.money(widget.earning)),
-                _line(
-                  'Expense cut',
-                  '- ${FinanceFormat.money(widget.cut)}',
-                  color: widget.cut > 0
-                      ? AppColors.danger
-                      : AppColors.textPrimary,
-                ),
+                _line('Already paid', FinanceFormat.money(widget.cut)),
                 const Divider(height: 18, color: AppColors.border),
                 Row(
                   children: [
                     const Expanded(
                       child: Text(
-                        'Amount to pay',
+                        'Remaining due',
                         style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 13,
@@ -134,6 +162,49 @@ class _SettleSheetState extends State<_SettleSheet> {
             ),
           ),
           const SizedBox(height: 12),
+          TextField(
+            controller: _amountCtrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: appSheetInputDecoration(
+              'Payment amount',
+            ).copyWith(errorText: _error),
+            onChanged: (_) => setState(() {
+              _error = null;
+              _bonusConfirmed = false;
+            }),
+          ),
+          const SizedBox(height: 10),
+          _line(
+            'Remaining after payment',
+            FinanceFormat.money(
+              _amount < widget.pay ? widget.pay - _amount : 0,
+            ),
+          ),
+          if (_bonus > 0) ...[
+            _line(
+              'Extra bonus/tip',
+              FinanceFormat.money(_bonus),
+              color: AppColors.success,
+            ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'Confirm extra amount as bonus/tip',
+                style: TextStyle(fontSize: 12),
+              ),
+              value: _bonusConfirmed,
+              onChanged: (value) => setState(() {
+                _bonusConfirmed = value ?? false;
+                _error = null;
+              }),
+            ),
+          ],
+          const SizedBox(height: 10),
+          const Text(
+            'Shop expenses and tax are not deducted from employee earnings.',
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 10),
           TextField(
             controller: _noteCtrl,
             textInputAction: TextInputAction.done,

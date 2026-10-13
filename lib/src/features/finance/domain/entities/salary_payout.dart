@@ -7,6 +7,7 @@ class SalaryPayout {
     required this.amount,
     required this.settledAt,
     this.note,
+    this.bonusAmount = 0,
   });
 
   final String id;
@@ -16,6 +17,8 @@ class SalaryPayout {
   /// Day the employee earned this amount; profit is charged on this day.
   final DateTime workDate;
   final double amount;
+  final double bonusAmount;
+  double get incomeAmount => amount - bonusAmount;
   final DateTime settledAt;
   final String? note;
 
@@ -31,6 +34,7 @@ class SalaryPayout {
     'period': 'day',
     'anchorDate': workDate.toIso8601String(),
     'amount': amount,
+    'bonusAmount': bonusAmount,
     'createdAt': settledAt.toIso8601String(),
     'note': note,
   };
@@ -48,6 +52,7 @@ class SalaryPayout {
       employeeName: (map['employeeName'] ?? '').toString(),
       workDate: DateTime(workDate.year, workDate.month, workDate.day),
       amount: (map['amount'] as num?)?.toDouble() ?? 0,
+      bonusAmount: (map['bonusAmount'] as num?)?.toDouble() ?? 0,
       settledAt: settledAt,
       note: (note == null || note.isEmpty) ? null : note,
     );

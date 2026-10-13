@@ -19,13 +19,17 @@ class EmployeeDayIncome {
   final double earning;
   final double expenseCut;
 
-  /// Earning minus unpaid expense cut, never below zero.
+  /// Full commission earning; shop expenses are accounted for separately.
   final double payableAmount;
   final SalaryPayout? payout;
 
-  bool get isSettled => payout != null;
+  bool get isSettled => payout != null && dueAmount == 0;
   double get paidAmount => payout?.amount ?? 0;
-  double get dueAmount => isSettled ? 0 : payableAmount;
+  double get bonusAmount => payout?.bonusAmount ?? 0;
+  double get dueAmount {
+    final remaining = payableAmount - (payout?.incomeAmount ?? 0);
+    return remaining > 0.005 ? remaining : 0;
+  }
 }
 
 class FinanceDaySummary {
@@ -92,9 +96,7 @@ class FinanceCalculator {
   static double commissionPercent(String? value) {
     if (value == null || value.trim().isEmpty) return 100;
     final parsed =
-        double.tryParse(
-          value.replaceAll(',', '').replaceAll('%', '').trim(),
-        ) ??
+        double.tryParse(value.replaceAll(',', '').replaceAll('%', '').trim()) ??
         0;
     return parsed <= 0 ? 100 : parsed;
   }
@@ -121,33 +123,24 @@ class FinanceCalculator {
       );
     }
 
-    final cutByDay = <DateTime, double>{};
-    for (final e in expenses) {
-      if (norm(e.employeeName) != name || !e.isUnpaid || !include(e.date)) {
-        continue;
-      }
-      cutByDay.update(
-        dayOf(e.date),
-        (v) => v + e.amount,
-        ifAbsent: () => e.amount,
-      );
-    }
-
-    final days = <DateTime>{...salesByDay.keys, ...cutByDay.keys}.toList()
-      ..sort((a, b) => b.compareTo(a));
+    final days = <DateTime>{
+      ...salesByDay.keys,
+      ...payoutsById.values
+          .where((p) => p.employeeId == employee.id && include(p.workDate))
+          .map((p) => dayOf(p.workDate)),
+    }.toList()..sort((a, b) => b.compareTo(a));
 
     return days
         .map((day) {
           final sales = salesByDay[day] ?? 0;
           final earning = sales * percent / 100;
-          final cut = cutByDay[day] ?? 0;
-          final payable = earning - cut;
+
           return EmployeeDayIncome(
             date: day,
             sales: sales,
             earning: earning,
-            expenseCut: cut,
-            payableAmount: payable < 0 ? 0 : payable,
+            expenseCut: 0,
+            payableAmount: double.parse(earning.toStringAsFixed(2)),
             payout: payoutsById[SalaryPayout.dayKey(employee.id, day)],
           );
         })
