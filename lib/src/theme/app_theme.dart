@@ -28,10 +28,14 @@ class AppTheme {
   }
 
   static ThemeData light() {
+    // Brand yellow stays on [AppColors.primary] for surfaces/headers.
+    // ColorScheme.primary is black so Material text/icons are never yellow.
     final colorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.primary,
-      primary: AppColors.primary,
-      onPrimary: AppColors.onPrimary,
+      primary: AppColors.textPrimary,
+      onPrimary: AppColors.surface,
+      secondary: AppColors.primary,
+      onSecondary: AppColors.onPrimary,
       surface: AppColors.surface,
       onSurface: AppColors.textPrimary,
     );
@@ -42,13 +46,101 @@ class AppTheme {
     );
     return base.copyWith(
       textTheme: _compactTextTheme(base.textTheme),
-      primaryTextTheme: _compactTextTheme(base.primaryTextTheme),
+      primaryTextTheme: _compactTextTheme(base.primaryTextTheme).apply(
+        bodyColor: AppColors.textPrimary,
+        displayColor: AppColors.textPrimary,
+      ),
       appBarTheme: const AppBarTheme(
+        foregroundColor: AppColors.textPrimary,
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
         titleTextStyle: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
         ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.textPrimary,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.textPrimary,
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.onPrimary,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.onPrimary,
+        ),
+      ),
+      inputDecorationTheme: const InputDecorationTheme(
+        floatingLabelStyle: TextStyle(color: AppColors.textPrimary),
+        labelStyle: TextStyle(color: AppColors.textSecondary),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: AppColors.textPrimary, width: 1.5),
+        ),
+      ),
+      navigationRailTheme: const NavigationRailThemeData(
+        selectedIconTheme: IconThemeData(
+          color: AppColors.textPrimary,
+          size: 24,
+        ),
+        selectedLabelTextStyle: TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+        unselectedIconTheme: IconThemeData(
+          color: AppColors.textSecondary,
+          size: 22,
+        ),
+        unselectedLabelTextStyle: TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.textPrimary;
+          }
+          return null;
+        }),
+        checkColor: const WidgetStatePropertyAll(AppColors.surface),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.textPrimary;
+          }
+          return AppColors.textSecondary;
+        }),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.textPrimary;
+          }
+          return null;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.primary;
+          }
+          return null;
+        }),
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: AppColors.textPrimary,
       ),
       dialogTheme: const DialogThemeData(
         backgroundColor: AppColors.surface,

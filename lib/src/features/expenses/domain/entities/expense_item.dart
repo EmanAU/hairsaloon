@@ -23,6 +23,16 @@ class ExpenseItem {
   final String? description;
   final DateTime createdAt;
 
+  bool get isPaid => normalizeStatus(status) == 'Paid';
+  bool get isUnpaid => !isPaid;
+
+  static String normalizeStatus(String raw) {
+    final value = raw.trim().toLowerCase();
+    if (value == 'paid') return 'Paid';
+    if (value == 'unpaid') return 'Unpaid';
+    return raw.trim().isEmpty ? 'Unpaid' : raw.trim();
+  }
+
   ExpenseItem copyWith({
     String? id,
     DateTime? date,

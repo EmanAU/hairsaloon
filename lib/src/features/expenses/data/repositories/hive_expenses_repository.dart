@@ -9,14 +9,17 @@ class HiveExpensesRepository {
   final Box<Map> _box;
 
   List<ExpenseItem> getAll() {
-    if (_box.isEmpty) {
-      _seedDefaults();
-    }
     final values = _box.values
         .map((item) => _expenseFromMap(Map<String, dynamic>.from(item)))
         .toList(growable: false);
     values.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return values;
+  }
+
+  ExpenseItem? getById(String id) {
+    final raw = _box.get(id);
+    if (raw == null) return null;
+    return _expenseFromMap(Map<String, dynamic>.from(raw));
   }
 
   Future<void> add(ExpenseItem item) async {
@@ -29,12 +32,6 @@ class HiveExpensesRepository {
 
   Future<void> delete(String id) async {
     await _box.delete(id);
-  }
-
-  Future<void> _seedDefaults() async {
-    for (final item in _defaultExpenses) {
-      await _box.put(item.id, _expenseToMap(item));
-    }
   }
 }
 
@@ -59,7 +56,7 @@ ExpenseItem _expenseFromMap(Map<String, dynamic> map) {
     date: DateTime.tryParse((map['date'] ?? '').toString()) ?? DateTime.now(),
     employeeName: (map['employeeName'] ?? '').toString(),
     amount: (map['amount'] as num?)?.toDouble() ?? 0,
-    status: (map['status'] ?? '').toString(),
+    status: ExpenseItem.normalizeStatus((map['status'] ?? '').toString()),
     paymentType: (map['paymentType'] ?? '').toString(),
     expenseType: map['expenseType']?.toString(),
     quantity: (map['quantity'] as num?)?.toInt(),
@@ -69,30 +66,3 @@ ExpenseItem _expenseFromMap(Map<String, dynamic> map) {
         DateTime.now(),
   );
 }
-
-final List<ExpenseItem> _defaultExpenses = <ExpenseItem>[
-  ExpenseItem(
-    id: 'exp-1',
-    date: DateTime(2026, 3, 17),
-    employeeName: 'Ali Raza',
-    amount: 100,
-    status: 'Paid',
-    paymentType: 'Cash',
-    expenseType: 'Tea/Coffee',
-    quantity: 1,
-    description: 'Buy some coffee',
-    createdAt: DateTime(2026, 3, 17, 14, 15),
-  ),
-  ExpenseItem(
-    id: 'exp-2',
-    date: DateTime(2026, 3, 17),
-    employeeName: 'Sana Khan',
-    amount: 100,
-    status: 'Unpaid',
-    paymentType: 'Online',
-    expenseType: 'Cleaning',
-    quantity: 1,
-    description: 'Buy some coffee',
-    createdAt: DateTime(2026, 3, 17, 14, 15),
-  ),
-];

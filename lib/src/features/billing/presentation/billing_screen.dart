@@ -33,6 +33,8 @@ class _BillingScreenState extends State<BillingScreen> {
   String? _paymentType;
   bool _didAttemptSave = false;
   CustomerContact? _selectedCustomer;
+  String? _lastExistingPromptPhone;
+  bool _existingPromptOpen = false;
 
   List<String> get _categories {
     final values =
@@ -194,29 +196,38 @@ class _BillingScreenState extends State<BillingScreen> {
             ),
             const SizedBox(height: 10),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _phoneCtrl,
-                    style: const TextStyle(fontSize: 12),
-                    keyboardType: TextInputType.phone,
-                    onChanged: (_) {
-                      if (!mounted) return;
-                      final phone = _phoneCtrl.text.trim();
-                      final exact = context
-                          .read<BillingStore>()
-                          .getCustomerContactByPhone(phone);
-                      setState(() {
-                        _hidePhoneSuggestions = false;
-                        _selectedCustomer = exact;
-                      });
-                    },
-                    onSubmitted: (value) {
-                      if (value.trim().isEmpty) return;
-                      if (_hasKnownPhone(value)) return;
-                      _promptAddCustomer(initialPhone: value.trim());
-                    },
-                    decoration: _smallDecoration('Enter Customer Phone Number'),
+                  child: SizedBox(
+                    height: 44,
+                    child: TextField(
+                      controller: _phoneCtrl,
+                      style: const TextStyle(fontSize: 12),
+                      keyboardType: TextInputType.phone,
+                      onChanged: _onPhoneChanged,
+                      onSubmitted: (value) {
+                        final phone = value.trim();
+                        if (phone.isEmpty) return;
+                        final existing = context
+                            .read<BillingStore>()
+                            .getCustomerContactByPhone(phone);
+                        if (existing != null) {
+                          _promptExistingCustomer(existing);
+                          return;
+                        }
+                        if (_hasKnownPhone(phone)) return;
+                        _promptAddCustomer(initialPhone: phone);
+                      },
+                      decoration: _smallDecoration(
+                        'Enter Customer Phone Number',
+                      ).copyWith(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -226,6 +237,7 @@ class _BillingScreenState extends State<BillingScreen> {
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.black,
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -233,7 +245,10 @@ class _BillingScreenState extends State<BillingScreen> {
                     onPressed: _promptAddCustomer,
                     child: const Text(
                       'Add New',
-                      style: TextStyle(fontSize: 11),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -252,14 +267,7 @@ class _BillingScreenState extends State<BillingScreen> {
                       .take(4)
                       .map(
                         (customer) => InkWell(
-                          onTap: () {
-                            setState(() {
-                              _phoneCtrl.text = customer.phone;
-                              _hidePhoneSuggestions = true;
-                              _selectedCustomer = customer;
-                            });
-                            FocusScope.of(context).unfocus();
-                          },
+                          onTap: () => _applyCustomer(customer),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
@@ -498,7 +506,7 @@ class _BillingScreenState extends State<BillingScreen> {
           crossAxisCount: tablet ? 4 : 3,
           mainAxisSpacing: 10,
           crossAxisSpacing: 10,
-          childAspectRatio: 0.9,
+          childAspectRatio: tablet ? 1.05 : 0.9,
         ),
         itemBuilder: (context, index) {
           final filteredServices = _selectedCategory == 'All'
@@ -590,36 +598,16 @@ class _BillingScreenState extends State<BillingScreen> {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
         ),
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          if (tablet && constraints.maxWidth >= 900) {
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 420,
-                    child: ListView(children: [sections.first]),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ListView(
-                      controller: _scrollCtrl,
-                      padding: const EdgeInsets.only(bottom: 24),
-                      children: sections.skip(1).toList(),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-          return ListView(
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: tablet ? 920 : double.infinity),
+          child: ListView(
             controller: _scrollCtrl,
             padding: EdgeInsets.only(bottom: bottomSafeSpace.toDouble()),
             children: sections,
-          );
-        },
+          ),
+        ),
       ),
     );
   }
@@ -647,8 +635,142 @@ class _BillingScreenState extends State<BillingScreen> {
     );
   }
 
+  void _onPhoneChanged(String value) {
+    final phone = value.trim();
+    final store = context.read<BillingStore>();
+    final exact = store.getCustomerContactByPhone(phone);
+    setState(() {
+      _hidePhoneSuggestions = false;
+      _selectedCustomer = exact;
+      if (exact == null || phone != _lastExistingPromptPhone) {
+        _lastExistingPromptPhone = null;
+      }
+    });
+    if (exact != null && exact.name.trim().isNotEmpty) {
+      _promptExistingCustomer(exact);
+    }
+  }
+
+  void _applyCustomer(CustomerContact customer) {
+    final store = context.read<BillingStore>();
+    final full =
+        store.getCustomerContactByPhone(customer.phone) ?? customer;
+    setState(() {
+      _phoneCtrl.text = full.phone;
+      _hidePhoneSuggestions = true;
+      _selectedCustomer = full;
+      _lastExistingPromptPhone = full.phone.trim();
+    });
+    FocusScope.of(context).unfocus();
+  }
+
+  Future<void> _promptExistingCustomer(CustomerContact customer) async {
+    final phone = customer.phone.trim();
+    if (phone.isEmpty || _existingPromptOpen) return;
+    if (_lastExistingPromptPhone == phone) return;
+
+    final store = context.read<BillingStore>();
+    final full = store.getCustomerContactByPhone(phone) ?? customer;
+    if (full.name.trim().isEmpty) return;
+
+    _existingPromptOpen = true;
+    _lastExistingPromptPhone = phone;
+    try {
+      final use = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          const radius = 6.0;
+          return AlertDialog(
+            backgroundColor: AppColors.surface,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(radius),
+            ),
+            title: const Text(
+              'Customer Found',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'This phone number is already saved.',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  full.name.trim(),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  full.phone.trim(),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                ),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.onPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(radius),
+                  ),
+                ),
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text(
+                  'Use',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (!mounted || use != true) return;
+      _applyCustomer(full);
+    } finally {
+      _existingPromptOpen = false;
+    }
+  }
+
   Future<void> _promptAddCustomer({String? initialPhone}) async {
     final prefillPhone = (initialPhone ?? _phoneCtrl.text).trim();
+    if (prefillPhone.isNotEmpty) {
+      final existing = context
+          .read<BillingStore>()
+          .getCustomerContactByPhone(prefillPhone);
+      if (existing != null && existing.name.trim().isNotEmpty) {
+        await _promptExistingCustomer(existing);
+        return;
+      }
+    }
 
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController(text: prefillPhone);
@@ -833,12 +955,21 @@ class _BillingScreenState extends State<BillingScreen> {
   }
 
   List<CustomerContact> _customerMatches(String query) {
-    final matches = context.read<BillingStore>().searchCustomerContacts(query);
-    if (matches.isNotEmpty) return matches;
+    final store = context.read<BillingStore>();
+    final matches = store.searchCustomerContacts(query);
+    if (matches.isNotEmpty) {
+      return matches
+          .map((c) => store.getCustomerContactByPhone(c.phone) ?? c)
+          .toList(growable: false);
+    }
 
-    final phones = context.read<BillingStore>().searchCustomerPhones(query);
+    final phones = store.searchCustomerPhones(query);
     return phones
-        .map((phone) => CustomerContact(name: '', phone: phone))
+        .map(
+          (phone) =>
+              store.getCustomerContactByPhone(phone) ??
+              CustomerContact(name: '', phone: phone),
+        )
         .toList(growable: false);
   }
 
@@ -855,6 +986,9 @@ class _BillingScreenState extends State<BillingScreen> {
       _paymentType = null;
       _didAttemptSave = false;
       _selectedCustomer = null;
+      _lastExistingPromptPhone = null;
+      _existingPromptOpen = false;
+      _hidePhoneSuggestions = false;
     });
   }
 

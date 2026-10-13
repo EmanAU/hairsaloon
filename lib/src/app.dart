@@ -33,6 +33,7 @@ import 'package:hairsaloon/src/features/employees/presentation/employee_agreemen
 import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
 import 'package:hairsaloon/src/features/employees/presentation/employees_screen.dart';
 import 'package:hairsaloon/src/features/expenses/data/repositories/hive_expenses_repository.dart';
+import 'package:hairsaloon/src/features/expenses/presentation/expense_history_screen.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/expense_types_screen.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/state/expenses_store.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/expenses_screen.dart';
@@ -188,6 +189,8 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                       AppRoutes.financeSales: (_) => const SalesScreen(),
                       AppRoutes.expenseTypes: (_) => const ExpenseTypesScreen(),
                       AppRoutes.expenses: (_) => const ExpensesScreen(),
+                      AppRoutes.expenseHistory: (_) =>
+                          const ExpenseHistoryScreen(),
                       AppRoutes.customers: (_) => const CustomersScreen(),
                       AppRoutes.profileSettings: (_) =>
                           const ProfileSettingsScreen(),

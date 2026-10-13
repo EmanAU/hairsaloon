@@ -288,7 +288,7 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
       date: _selectedDate!,
       employeeName: _selectedEmployee!,
       amount: amount,
-      status: _selectedStatus ?? 'Paid',
+      status: ExpenseItem.normalizeStatus(_selectedStatus ?? 'Paid'),
       paymentType: _selectedPaymentType ?? 'Cash',
       expenseType: _selectedExpenseType,
       quantity: int.tryParse(_quantityCtrl.text.trim()),

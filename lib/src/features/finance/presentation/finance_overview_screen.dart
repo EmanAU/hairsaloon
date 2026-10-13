@@ -753,7 +753,7 @@ class _Header extends StatelessWidget {
                           ),
                           child: const Icon(
                             CupertinoIcons.chevron_down,
-                            color: AppColors.primary,
+                            color: AppColors.surface,
                             size: 12,
                           ),
                         ),
