@@ -7,8 +7,7 @@ class EmployeeItem {
     required this.cnicNumber,
     required this.homeAddress,
     required this.isActive,
-    this.role = EmployeeRole.employee,
-    this.managerId,
+    this.assignedToIds = const <String>[],
     this.photoBase64,
     this.speciality,
     this.employeeType,
@@ -24,9 +23,9 @@ class EmployeeItem {
   final String cnicNumber;
   final String homeAddress;
   final bool isActive;
-  final EmployeeRole role;
-  /// Manager this employee reports to (null for managers / unassigned).
-  final String? managerId;
+
+  /// Other employees this person is assigned to. Never includes [id].
+  final List<String> assignedToIds;
   final String? photoBase64;
   final String? speciality;
   final String? employeeType;
@@ -35,7 +34,8 @@ class EmployeeItem {
   final String? agreementDescription;
 
   String get fullName => '$firstName $lastName'.trim();
-  bool get isManager => role == EmployeeRole.manager;
+
+  bool get isAssigned => assignedToIds.isNotEmpty;
 
   EmployeeItem copyWith({
     String? id,
@@ -45,9 +45,7 @@ class EmployeeItem {
     String? cnicNumber,
     String? homeAddress,
     bool? isActive,
-    EmployeeRole? role,
-    String? managerId,
-    bool clearManagerId = false,
+    List<String>? assignedToIds,
     String? photoBase64,
     bool clearPhoto = false,
     String? speciality,
@@ -64,8 +62,7 @@ class EmployeeItem {
       cnicNumber: cnicNumber ?? this.cnicNumber,
       homeAddress: homeAddress ?? this.homeAddress,
       isActive: isActive ?? this.isActive,
-      role: role ?? this.role,
-      managerId: clearManagerId ? null : (managerId ?? this.managerId),
+      assignedToIds: assignedToIds ?? this.assignedToIds,
       photoBase64: clearPhoto ? null : (photoBase64 ?? this.photoBase64),
       speciality: speciality ?? this.speciality,
       employeeType: employeeType ?? this.employeeType,
@@ -77,12 +74,20 @@ class EmployeeItem {
   }
 }
 
-enum EmployeeRole {
-  employee,
-  manager;
-
-  static EmployeeRole fromStorage(String? value) {
-    if (value == EmployeeRole.manager.name) return EmployeeRole.manager;
-    return EmployeeRole.employee;
+/// Unique ids, never [selfId], never empty strings.
+List<String> sanitizeAssignedToIds({
+  required String selfId,
+  required Iterable<String> ids,
+  Set<String>? knownIds,
+}) {
+  final seen = <String>{};
+  final result = <String>[];
+  for (final raw in ids) {
+    final id = raw.trim();
+    if (id.isEmpty || id == selfId || seen.contains(id)) continue;
+    if (knownIds != null && !knownIds.contains(id)) continue;
+    seen.add(id);
+    result.add(id);
   }
+  return result;
 }

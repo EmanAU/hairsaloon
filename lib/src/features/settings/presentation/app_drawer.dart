@@ -82,15 +82,6 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
                   _Item(
-                    icon: CupertinoIcons.briefcase,
-                    title: 'Managers',
-                    showDivider: true,
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.of(context).pushNamed(AppRoutes.managers);
-                    },
-                  ),
-                  _Item(
                     icon: CupertinoIcons.person_2,
                     title: 'Customers',
                     showDivider: false,

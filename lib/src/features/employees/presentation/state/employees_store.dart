@@ -22,10 +22,9 @@ class EmployeesStore extends ChangeNotifier {
   List<String> _customCategories = const <String>[];
 
   List<EmployeeItem> get all => _all;
-  List<EmployeeItem> get employees =>
-      _all.where((e) => !e.isManager).toList(growable: false);
-  List<EmployeeItem> get managers =>
-      _all.where((e) => e.isManager).toList(growable: false);
+  List<EmployeeItem> get employees => _all;
+
+  Set<String> get _knownIds => _all.map((e) => e.id).toSet();
 
   List<String> get specialistCategories {
     final fromPeople = _all
@@ -39,59 +38,93 @@ class EmployeesStore extends ChangeNotifier {
     }.toList(growable: false);
   }
 
-  List<EmployeeItem> employeesForManager(String managerId) {
-    return employees
-        .where((e) => e.managerId == managerId)
-        .toList(growable: false);
-  }
-
-  EmployeeItem? managerOf(String? managerId) {
-    if (managerId == null || managerId.isEmpty) return null;
-    for (final manager in managers) {
-      if (manager.id == managerId) return manager;
+  EmployeeItem? byId(String? id) {
+    if (id == null || id.isEmpty) return null;
+    for (final employee in _all) {
+      if (employee.id == id) return employee;
     }
     return null;
   }
 
+  List<EmployeeItem> assignTargets({String? excludeId}) {
+    return _all
+        .where((e) => e.id != excludeId)
+        .toList(growable: false);
+  }
+
+  List<EmployeeItem> assignedPeople(EmployeeItem employee) {
+    return employee.assignedToIds
+        .map(byId)
+        .whereType<EmployeeItem>()
+        .toList(growable: false);
+  }
+
+  String assignedToLabel(EmployeeItem employee) {
+    final people = assignedPeople(employee);
+    if (people.isEmpty) return 'Unassigned';
+    return people.map((e) => e.fullName).join(', ');
+  }
+
+  List<EmployeeItem> peopleAssignedTo(String employeeId) {
+    return _all
+        .where((e) => e.assignedToIds.contains(employeeId))
+        .toList(growable: false);
+  }
+
   Future<void> add(EmployeeItem item) async {
-    await _repository.add(item);
-    await _maybePersistCategory(item.employeeType);
+    final cleaned = item.copyWith(
+      assignedToIds: sanitizeAssignedToIds(
+        selfId: item.id,
+        ids: item.assignedToIds,
+        knownIds: _knownIds,
+      ),
+    );
+    await _repository.add(cleaned);
+    await _maybePersistCategory(cleaned.employeeType);
     _reload();
   }
 
   Future<void> update(EmployeeItem item) async {
-    await _repository.update(item);
-    await _maybePersistCategory(item.employeeType);
+    final cleaned = item.copyWith(
+      assignedToIds: sanitizeAssignedToIds(
+        selfId: item.id,
+        ids: item.assignedToIds,
+        knownIds: {..._knownIds, item.id},
+      ),
+    );
+    await _repository.update(cleaned);
+    await _maybePersistCategory(cleaned.employeeType);
     _reload();
   }
 
   Future<void> delete(String id) async {
-    final target = _all.where((e) => e.id == id).firstOrNull;
-    if (target != null && target.isManager) {
-      for (final employee in employeesForManager(id)) {
-        await _repository.update(employee.copyWith(clearManagerId: true));
-      }
+    for (final employee in _all) {
+      if (!employee.assignedToIds.contains(id)) continue;
+      await _repository.update(
+        employee.copyWith(
+          assignedToIds: employee.assignedToIds
+              .where((otherId) => otherId != id)
+              .toList(growable: false),
+        ),
+      );
     }
     await _repository.delete(id);
     _reload();
   }
 
-  Future<void> assignEmployeeToManager({
+  Future<void> setAssignedTo({
     required String employeeId,
-    required String? managerId,
+    required Iterable<String> assignedToIds,
   }) async {
-    final employee = _all.where((e) => e.id == employeeId).firstOrNull;
-    if (employee == null || employee.isManager) return;
-    if (managerId != null &&
-        managers.every((manager) => manager.id != managerId)) {
-      return;
-    }
-    await _repository.update(
-      employee.copyWith(
-        managerId: managerId,
-        clearManagerId: managerId == null,
-      ),
+    final employee = byId(employeeId);
+    if (employee == null) return;
+    final next = sanitizeAssignedToIds(
+      selfId: employeeId,
+      ids: assignedToIds,
+      knownIds: _knownIds,
     );
+    if (_sameIds(employee.assignedToIds, next)) return;
+    await _repository.update(employee.copyWith(assignedToIds: next));
     _reload();
   }
 
@@ -122,5 +155,11 @@ class EmployeesStore extends ChangeNotifier {
     _all = _repository.getAll();
     _customCategories = _repository.getCustomSpecialistCategories();
     notifyListeners();
+  }
+
+  bool _sameIds(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    final other = b.toSet();
+    return a.every(other.contains);
   }
 }

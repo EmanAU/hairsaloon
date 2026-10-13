@@ -7,6 +7,7 @@ import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/business_logo_picker.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
+import 'package:hairsaloon/src/features/employees/presentation/widgets/assign_employees_sheet.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
@@ -31,7 +32,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
   late final TextEditingController _otherCategoryCtrl;
   String? _specialistCategory;
   String? _photoBase64;
-  String? _managerId;
+  List<String> _assignedToIds = const <String>[];
   bool _editing = false;
   late bool _isActive;
   bool _usingOther = false;
@@ -51,7 +52,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     _specialityCtrl = TextEditingController(text: item.speciality ?? '');
     _otherCategoryCtrl = TextEditingController();
     _photoBase64 = item.photoBase64;
-    _managerId = item.managerId;
+    _assignedToIds = List<String>.from(item.assignedToIds);
     _isActive = item.isActive;
 
     final type = (item.employeeType ?? '').trim();
@@ -80,7 +81,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     _addressCtrl.text = item.homeAddress;
     _specialityCtrl.text = item.speciality ?? '';
     _photoBase64 = item.photoBase64;
-    _managerId = item.managerId;
+    _assignedToIds = List<String>.from(item.assignedToIds);
     _isActive = item.isActive;
 
     final type = (item.employeeType ?? '').trim();
@@ -122,17 +123,33 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     return (_specialistCategory ?? '').trim();
   }
 
-  String get _managerDisplayName {
-    if (_managerId == null || _managerId!.isEmpty) return 'Unassigned';
-    final manager = context.read<EmployeesStore>().managerOf(_managerId);
-    return manager?.fullName ?? 'Unassigned';
+  String _assignedToDisplay(EmployeesStore store) {
+    if (_assignedToIds.isEmpty) return 'Unassigned';
+    final names = _assignedToIds
+        .map(store.byId)
+        .whereType<EmployeeItem>()
+        .map((e) => e.fullName)
+        .toList(growable: false);
+    return names.isEmpty ? 'Unassigned' : names.join(', ');
+  }
+
+  Future<void> _pickAssignedTo(EmployeesStore store) async {
+    final result = await showAssignEmployeesSheet(
+      context: context,
+      employeeName: widget.item.fullName,
+      others: store.assignTargets(excludeId: widget.item.id),
+      selectedIds: _assignedToIds,
+      assignedCount: (id) => store.peopleAssignedTo(id).length,
+    );
+    if (result == null || !mounted) return;
+    setState(() => _assignedToIds = result);
   }
 
   @override
   Widget build(BuildContext context) {
     final store = context.watch<EmployeesStore>();
-    final isManager = widget.item.isManager;
     final categories = store.specialistCategories;
+    final incomingCount = store.peopleAssignedTo(widget.item.id).length;
 
     return AdaptivePage(
       form: true,
@@ -145,9 +162,9 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
             onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(CupertinoIcons.back, color: AppColors.onPrimary),
           ),
-          title: Text(
-            isManager ? 'Manager Details' : 'Employee Details',
-            style: const TextStyle(
+          title: const Text(
+            'Employee Details',
+            style: TextStyle(
               color: AppColors.onPrimary,
               fontSize: 15,
               fontWeight: FontWeight.w700,
@@ -246,47 +263,32 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
               ],
               const SizedBox(height: 12),
               _editField(_specialityCtrl, 'Speciality'),
-              if (!isManager) ...[
-                const SizedBox(height: 12),
-                _labeledDropdown(
-                  label: 'Assigned manager',
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _managerId ?? '',
-                    isExpanded: true,
+              const SizedBox(height: 12),
+              _labeledDropdown(
+                label: 'Assigned to',
+                child: InkWell(
+                  onTap: () => _pickAssignedTo(store),
+                  borderRadius: BorderRadius.circular(9),
+                  child: InputDecorator(
                     decoration: _inputDecoration(),
-                    items: [
-                      const DropdownMenuItem(
-                        value: '',
-                        child: Text(
-                          'Unassigned',
-                          style: TextStyle(fontSize: 13),
-                        ),
+                    child: Text(
+                      _assignedToDisplay(store),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
                       ),
-                      ...store.managers.map(
-                        (manager) => DropdownMenuItem(
-                          value: manager.id,
-                          child: Text(
-                            manager.fullName,
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        ),
-                      ),
-                    ],
-                    onChanged: (value) => setState(
-                      () => _managerId =
-                          (value == null || value.isEmpty) ? null : value,
                     ),
                   ),
                 ),
-              ],
+              ),
               const SizedBox(height: 8),
               SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
                 dense: true,
                 activeThumbColor: AppColors.primary,
-                title: Text(
-                  isManager ? 'Manager active' : 'Employee active',
-                  style: const TextStyle(
+                title: const Text(
+                  'Employee active',
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -324,19 +326,18 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
               _viewRow('Home address', _addressCtrl.text),
               _viewRow('Specialist category', _resolvedCategory),
               _viewRow('Speciality', _specialityCtrl.text),
-              if (!isManager)
-                _viewRow('Assigned manager', _managerDisplayName),
+              _viewRow('Assigned to', _assignedToDisplay(store)),
+              _viewRow(
+                'Assigned people',
+                incomingCount == 0
+                    ? 'None'
+                    : '$incomingCount',
+              ),
               _viewRow(
                 'Status',
                 _isActive ? 'Active' : 'Inactive',
-                isLast: !isManager,
+                isLast: true,
               ),
-              if (isManager)
-                _viewRow(
-                  'Team size',
-                  '${store.employeesForManager(widget.item.id).length} employees',
-                  isLast: true,
-                ),
             ],
           ],
         ),
@@ -491,12 +492,9 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
       isActive: _isActive,
       photoBase64: _photoBase64,
       clearPhoto: _photoBase64 == null,
-      managerId: widget.item.isManager ? null : _managerId,
-      clearManagerId: !widget.item.isManager && _managerId == null,
+      assignedToIds: _assignedToIds,
     );
-    ToastService.success(
-      widget.item.isManager ? 'Manager updated' : 'Employee updated',
-    );
+    ToastService.success('Employee updated');
     if (!mounted) return;
     Navigator.of(context).pop(updated);
   }

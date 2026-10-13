@@ -150,7 +150,6 @@ void main() {
             cnicNumber: '35202-1234567-2',
             homeAddress: 'Islamabad',
             isActive: true,
-            role: EmployeeRole.manager,
           ),
         );
         await HivePayoutsRepository().saveAll([
@@ -554,7 +553,7 @@ void main() {
         '23_bill_details': AppRoutes.billDetails,
         '24_appointments': AppRoutes.appointments,
         '25_receipt_view': AppRoutes.receiptView,
-        '39_managers': AppRoutes.managers,
+        '39_employees_again': AppRoutes.employees,
         '40_expense_history': AppRoutes.expenseHistory,
         '41_profit_details': AppRoutes.financeProfit,
         '42_finance_expenses': AppRoutes.financeExpenses,
@@ -571,8 +570,8 @@ void main() {
         );
         await capture(route.key);
         await pages(route.key);
-        if (route.value == AppRoutes.employees ||
-            route.value == AppRoutes.managers) {
+        if (route.value == AppRoutes.employees &&
+            route.key == '09_employees') {
           final menus = find.byWidgetPredicate(
             (widget) =>
                 widget is PopupMenuButton<String> &&
@@ -582,22 +581,21 @@ void main() {
           if (menus.evaluate().isNotEmpty) {
             await press(menus.first);
             await capture('${route.key}_actions_menu');
-            if (route.value == AppRoutes.employees &&
-                find.text('Assign Manager').evaluate().isNotEmpty) {
-              await press(find.text('Assign Manager'));
-              await capture('assign_manager_dialog');
+            if (find.text('Assign').evaluate().isNotEmpty) {
+              await press(find.text('Assign'));
+              await capture('assign_employee_dialog');
               ToastService.navigatorKey.currentState!.pop();
             } else {
               await press(find.text('Delete'));
-              await capture('manager_delete_confirmation');
+              await capture('employee_delete_confirmation');
               ToastService.navigatorKey.currentState!.pop();
             }
             await tester.pumpAndSettle();
           }
         }
 
-        if (route.value == AppRoutes.employees ||
-            route.value == AppRoutes.managers) {
+        if (route.value == AppRoutes.employees &&
+            route.key == '09_employees') {
           final add = find.byIcon(CupertinoIcons.add);
           if (add.evaluate().isNotEmpty) {
             await press(add.first);

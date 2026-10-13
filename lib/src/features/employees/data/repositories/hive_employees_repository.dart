@@ -50,8 +50,7 @@ Map<String, dynamic> _employeeToMap(EmployeeItem item) {
     'cnicNumber': item.cnicNumber,
     'homeAddress': item.homeAddress,
     'isActive': item.isActive,
-    'role': item.role.name,
-    'managerId': item.managerId,
+    'assignedToIds': item.assignedToIds,
     'photoBase64': item.photoBase64,
     'speciality': item.speciality,
     'employeeType': item.employeeType,
@@ -62,16 +61,16 @@ Map<String, dynamic> _employeeToMap(EmployeeItem item) {
 }
 
 EmployeeItem _employeeFromMap(Map<String, dynamic> map) {
+  final id = (map['id'] ?? '').toString();
   return EmployeeItem(
-    id: (map['id'] ?? '').toString(),
+    id: id,
     firstName: (map['firstName'] ?? '').toString(),
     lastName: (map['lastName'] ?? '').toString(),
     phoneNumber: (map['phoneNumber'] ?? '').toString(),
     cnicNumber: (map['cnicNumber'] ?? '').toString(),
     homeAddress: (map['homeAddress'] ?? '').toString(),
     isActive: (map['isActive'] as bool?) ?? false,
-    role: EmployeeRole.fromStorage(map['role']?.toString()),
-    managerId: map['managerId']?.toString(),
+    assignedToIds: _assignedToIdsFrom(map, id),
     photoBase64: map['photoBase64']?.toString(),
     speciality: map['speciality']?.toString(),
     employeeType: map['employeeType']?.toString(),
@@ -79,4 +78,16 @@ EmployeeItem _employeeFromMap(Map<String, dynamic> map) {
     commission: map['commission']?.toString(),
     agreementDescription: map['agreementDescription']?.toString(),
   );
+}
+
+List<String> _assignedToIdsFrom(Map<String, dynamic> map, String selfId) {
+  final raw = map['assignedToIds'];
+  Iterable<String> ids;
+  if (raw is List) {
+    ids = raw.map((e) => e.toString());
+  } else {
+    final legacy = map['managerId']?.toString();
+    ids = (legacy != null && legacy.isNotEmpty) ? <String>[legacy] : const [];
+  }
+  return sanitizeAssignedToIds(selfId: selfId, ids: ids);
 }

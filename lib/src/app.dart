@@ -178,9 +178,6 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                         AppRoutes.appointments: (_) =>
                             const AppointmentsScreen(),
                         AppRoutes.employees: (_) => const EmployeesScreen(),
-                        AppRoutes.managers: (_) => const EmployeesScreen(
-                          initialMode: StaffListMode.managers,
-                        ),
                         AppRoutes.employeeAgreement: (_) =>
                             const EmployeeAgreementScreen(),
                         AppRoutes.serviceList: (_) => const ServiceListScreen(),
