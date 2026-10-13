@@ -37,7 +37,11 @@ import 'package:hairsaloon/src/features/expenses/presentation/expense_history_sc
 import 'package:hairsaloon/src/features/expenses/presentation/expense_types_screen.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/state/expenses_store.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/expenses_screen.dart';
+import 'package:hairsaloon/src/features/finance/data/repositories/hive_payouts_repository.dart';
 import 'package:hairsaloon/src/features/finance/presentation/employee_earnings_screen.dart';
+import 'package:hairsaloon/src/features/finance/presentation/finance_expenses_screen.dart';
+import 'package:hairsaloon/src/features/finance/presentation/profit_detail_screen.dart';
+import 'package:hairsaloon/src/features/finance/presentation/state/payouts_store.dart';
 import 'package:hairsaloon/src/features/finance/presentation/finance_overview_screen.dart';
 import 'package:hairsaloon/src/features/finance/presentation/sales_screen.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
@@ -129,6 +133,10 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                   create: (_) =>
                       ExpensesStore(repository: HiveExpensesRepository()),
                 ),
+                ChangeNotifierProvider<PayoutsStore>(
+                  create: (_) =>
+                      PayoutsStore(repository: HivePayoutsRepository()),
+                ),
                 ChangeNotifierProvider<ServicesStore>(
                   create: (_) =>
                       ServicesStore(repository: HiveServicesRepository()),
@@ -140,95 +148,103 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
               ],
               child: _DeferredStoreWarmup(
                 child: MaterialApp(
-                builder: (context, child) {
-                  final media = MediaQuery.of(context);
-                  return MediaQuery(
-                    data: media.copyWith(
-                      textScaler: TextScaler.linear(AppTheme.textScaleFactor),
-                    ),
-                    child: AdaptivePage(
-                      child: child ?? const SizedBox.shrink(),
-                    ),
-                  );
-                },
-                title: 'Business COMB',
-                debugShowCheckedModeBanner: false,
-                navigatorKey: ToastService.navigatorKey,
-                scaffoldMessengerKey: ToastService.messengerKey,
-                theme: AppTheme.light(),
-                initialRoute: AppRoutes.splash,
-                routes:
-                    <String, WidgetBuilder>{
-                      AppRoutes.splash: (_) => SplashScreen(
-                        hasBusinessProfile: bootstrap.hasBusinessProfile,
-                        hasAuthSession: bootstrap.hasAuthSession,
+                  builder: (context, child) {
+                    final media = MediaQuery.of(context);
+                    return MediaQuery(
+                      data: media.copyWith(
+                        textScaler: TextScaler.linear(AppTheme.textScaleFactor),
                       ),
-                      AppRoutes.login: (_) => const AuthEntryScreen(),
-                      AppRoutes.phonePasswordLogin: (_) =>
-                          const PhonePasswordLoginScreen(),
-                      AppRoutes.register: (_) => const RegisterScreen(),
-                      AppRoutes.businessRegistration: (_) =>
-                          const BusinessRegistrationScreen(),
-                      AppRoutes.homeShell: (_) => const DashboardShell(),
-                      AppRoutes.appointments: (_) => const AppointmentsScreen(),
-                      AppRoutes.employees: (_) => const EmployeesScreen(),
-                      AppRoutes.managers: (_) => const EmployeesScreen(
-                        initialMode: StaffListMode.managers,
-                      ),
-                      AppRoutes.employeeAgreement: (_) =>
-                          const EmployeeAgreementScreen(),
-                      AppRoutes.serviceList: (_) => const ServiceListScreen(),
-                      AppRoutes.newService: (_) => const NewServiceScreen(),
-                      AppRoutes.categories: (_) => const CategoriesScreen(),
-                      AppRoutes.subcategories: (_) =>
-                          const SubcategoriesScreen(),
-                      AppRoutes.financeOverview: (_) =>
-                          const FinanceOverviewScreen(),
-                      AppRoutes.employeeEarnings: (_) =>
-                          const EmployeeEarningsScreen(),
-                      AppRoutes.financeSales: (_) => const SalesScreen(),
-                      AppRoutes.expenseTypes: (_) => const ExpenseTypesScreen(),
-                      AppRoutes.expenses: (_) => const ExpensesScreen(),
-                      AppRoutes.expenseHistory: (_) =>
-                          const ExpenseHistoryScreen(),
-                      AppRoutes.customers: (_) => const CustomersScreen(),
-                      AppRoutes.profileSettings: (_) =>
-                          const ProfileSettingsScreen(),
-                      AppRoutes.accountProfile: (_) =>
-                          const AccountProfileScreen(),
-                      AppRoutes.savedBills: (_) => const SavedBillsScreen(),
-                    }.map(
-                      (name, builder) => MapEntry(
-                        name,
-                        (context) => AdaptivePage(
-                          form: {
-                            AppRoutes.login,
-                            AppRoutes.phonePasswordLogin,
-                            AppRoutes.register,
-                            AppRoutes.businessRegistration,
-                            AppRoutes.newService,
-                            AppRoutes.expenseTypes,
-                            AppRoutes.accountProfile,
-                            AppRoutes.profileSettings,
-                            AppRoutes.employeeAgreement,
-                          }.contains(name),
-                          child: builder(context),
-                        ),
-                      ),
-                    ),
-                onGenerateRoute: (settings) {
-                  if (settings.name == AppRoutes.billDetails) {
-                    final billId = settings.arguments as String?;
-                    if (billId == null) return null;
-                    return MaterialPageRoute(
-                      builder: (_) => AdaptivePage(
-                        child: BillDetailsScreen(billId: billId),
+                      child: AdaptivePage(
+                        child: child ?? const SizedBox.shrink(),
                       ),
                     );
-                  }
-                  return null;
-                },
-              ),
+                  },
+                  title: 'Business COMB',
+                  debugShowCheckedModeBanner: false,
+                  navigatorKey: ToastService.navigatorKey,
+                  scaffoldMessengerKey: ToastService.messengerKey,
+                  theme: AppTheme.light(),
+                  initialRoute: AppRoutes.splash,
+                  routes:
+                      <String, WidgetBuilder>{
+                        AppRoutes.splash: (_) => SplashScreen(
+                          hasBusinessProfile: bootstrap.hasBusinessProfile,
+                          hasAuthSession: bootstrap.hasAuthSession,
+                        ),
+                        AppRoutes.login: (_) => const AuthEntryScreen(),
+                        AppRoutes.phonePasswordLogin: (_) =>
+                            const PhonePasswordLoginScreen(),
+                        AppRoutes.register: (_) => const RegisterScreen(),
+                        AppRoutes.businessRegistration: (_) =>
+                            const BusinessRegistrationScreen(),
+                        AppRoutes.homeShell: (_) => const DashboardShell(),
+                        AppRoutes.appointments: (_) =>
+                            const AppointmentsScreen(),
+                        AppRoutes.employees: (_) => const EmployeesScreen(),
+                        AppRoutes.managers: (_) => const EmployeesScreen(
+                          initialMode: StaffListMode.managers,
+                        ),
+                        AppRoutes.employeeAgreement: (_) =>
+                            const EmployeeAgreementScreen(),
+                        AppRoutes.serviceList: (_) => const ServiceListScreen(),
+                        AppRoutes.newService: (_) => const NewServiceScreen(),
+                        AppRoutes.categories: (_) => const CategoriesScreen(),
+                        AppRoutes.subcategories: (_) =>
+                            const SubcategoriesScreen(),
+                        AppRoutes.financeOverview: (_) =>
+                            const FinanceOverviewScreen(),
+                        AppRoutes.employeeEarnings: (_) =>
+                            const EmployeeEarningsScreen(),
+                        AppRoutes.financeSales: (_) => const SalesScreen(),
+                        AppRoutes.financeProfit: (_) =>
+                            const ProfitDetailScreen(),
+                        AppRoutes.financeExpenses: (_) =>
+                            const FinanceExpensesScreen(),
+                        AppRoutes.financeSalaries: (_) =>
+                            const SettledSalariesScreen(),
+                        AppRoutes.expenseTypes: (_) =>
+                            const ExpenseTypesScreen(),
+                        AppRoutes.expenses: (_) => const ExpensesScreen(),
+                        AppRoutes.expenseHistory: (_) =>
+                            const ExpenseHistoryScreen(),
+                        AppRoutes.customers: (_) => const CustomersScreen(),
+                        AppRoutes.profileSettings: (_) =>
+                            const ProfileSettingsScreen(),
+                        AppRoutes.accountProfile: (_) =>
+                            const AccountProfileScreen(),
+                        AppRoutes.savedBills: (_) => const SavedBillsScreen(),
+                      }.map(
+                        (name, builder) => MapEntry(
+                          name,
+                          (context) => AdaptivePage(
+                            form: {
+                              AppRoutes.login,
+                              AppRoutes.phonePasswordLogin,
+                              AppRoutes.register,
+                              AppRoutes.businessRegistration,
+                              AppRoutes.newService,
+                              AppRoutes.expenseTypes,
+                              AppRoutes.accountProfile,
+                              AppRoutes.profileSettings,
+                              AppRoutes.employeeAgreement,
+                            }.contains(name),
+                            child: builder(context),
+                          ),
+                        ),
+                      ),
+                  onGenerateRoute: (settings) {
+                    if (settings.name == AppRoutes.billDetails) {
+                      final billId = settings.arguments as String?;
+                      if (billId == null) return null;
+                      return MaterialPageRoute(
+                        builder: (_) => AdaptivePage(
+                          child: BillDetailsScreen(billId: billId),
+                        ),
+                      );
+                    }
+                    return null;
+                  },
+                ),
               ),
             );
           },
@@ -412,8 +428,7 @@ class _SplashScreenState extends State<SplashScreen> {
       hasSession = auth.currentUser != null;
     }
 
-    final hasProfile =
-        widget.hasBusinessProfile || profile.profile != null;
+    final hasProfile = widget.hasBusinessProfile || profile.profile != null;
 
     if (!mounted) return;
     final String next;

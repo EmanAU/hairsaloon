@@ -7,6 +7,8 @@ import 'package:hairsaloon/src/features/expenses/presentation/expense_details_sc
 import 'package:hairsaloon/src/features/expenses/presentation/expense_analytics_screen.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/all_expenses_screen.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/employee_workings_screen.dart';
+import 'package:hairsaloon/src/features/expenses/domain/entities/expense_item.dart';
+import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/features/finance/presentation/employee_income_detail_screen.dart';
 import 'package:hairsaloon/src/features/finance/domain/entities/finance_period.dart';
 import 'package:hairsaloon/src/features/services/presentation/service_details_screen.dart';
@@ -87,8 +89,32 @@ void main() {
         );
         await tester.runAsync(() async {
           await HiveBootstrap.init(prefs);
-          HiveEmployeesRepository().getAll();
-          HiveExpensesRepository().getAll();
+          await HiveEmployeesRepository().add(
+            const EmployeeItem(
+              id: 'preview-employee',
+              firstName: 'Ali',
+              lastName: '',
+              phoneNumber: '+923001234567',
+              cnicNumber: '35202-1234567-1',
+              homeAddress: 'G-11 Markaz, Islamabad',
+              isActive: true,
+              commission: '10',
+            ),
+          );
+          await HiveExpensesRepository().add(
+            ExpenseItem(
+              id: 'preview-expense',
+              date: DateTime.now(),
+              employeeName: 'Ali',
+              amount: 100,
+              status: 'Paid',
+              paymentType: 'Cash',
+              expenseType: 'Tea/Coffee',
+              quantity: 1,
+              description: 'Test expense',
+              createdAt: DateTime.now(),
+            ),
+          );
           await ServicesStore(repository: HiveServicesRepository()).load();
           await Future<void>.delayed(const Duration(milliseconds: 200));
           await HiveBillingRepository().saveBill(
@@ -279,7 +305,7 @@ void main() {
             anchorDate: DateTime.now(),
           ),
           '30_all_expenses': const AllExpensesScreen(),
-          '31_expense_details': ExpenseDetailsScreen(item: expense),
+          '31_expense_details': ExpenseDetailsScreen(itemId: expense.id),
           '32_expense_analytics': ExpenseAnalyticsScreen(
             items: ctx.read<ExpensesStore>().items,
           ),

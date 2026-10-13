@@ -1,4 +1,4 @@
-import 'package:hairsaloon/src/core/storage/hive_boxes.dart';
+﻿import 'package:hairsaloon/src/core/storage/hive_boxes.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -13,9 +13,6 @@ class HiveEmployeesRepository {
   final Box<dynamic> _metaBox;
 
   List<EmployeeItem> getAll() {
-    if (_box.isEmpty) {
-      _seedDefaults();
-    }
     return _box.values
         .map((item) => _employeeFromMap(Map<String, dynamic>.from(item)))
         .toList(growable: false);
@@ -41,12 +38,6 @@ class HiveEmployeesRepository {
 
   Future<void> delete(String id) async {
     await _box.delete(id);
-  }
-
-  Future<void> _seedDefaults() async {
-    for (final item in _defaultEmployees) {
-      await _box.put(item.id, _employeeToMap(item));
-    }
   }
 }
 
@@ -89,62 +80,3 @@ EmployeeItem _employeeFromMap(Map<String, dynamic> map) {
     agreementDescription: map['agreementDescription']?.toString(),
   );
 }
-
-const List<EmployeeItem> _defaultEmployees = <EmployeeItem>[
-  EmployeeItem(
-    id: 'mgr-1',
-    firstName: 'Hassan',
-    lastName: 'Ali',
-    phoneNumber: '+923001112233',
-    cnicNumber: '35202-1111222-3',
-    homeAddress: 'F-7, Islamabad',
-    isActive: true,
-    role: EmployeeRole.manager,
-    speciality: 'Floor Manager',
-    employeeType: 'General',
-  ),
-  EmployeeItem(
-    id: 'emp-1',
-    firstName: 'Ali',
-    lastName: 'Raza',
-    phoneNumber: '+923001234567',
-    cnicNumber: '35202-1234567-1',
-    homeAddress: 'G-11 Markaz, Islamabad',
-    isActive: true,
-    role: EmployeeRole.employee,
-    managerId: 'mgr-1',
-    speciality: 'Haircut Specialist',
-    employeeType: 'Men Specialist',
-    basicSalary: '40000',
-    commission: '10',
-    agreementDescription: 'Monthly salary plus service commission.',
-  ),
-  EmployeeItem(
-    id: 'emp-2',
-    firstName: 'Sana',
-    lastName: 'Khan',
-    phoneNumber: '+923111234567',
-    cnicNumber: '35202-7654321-9',
-    homeAddress: 'F-10, Islamabad',
-    isActive: false,
-    role: EmployeeRole.employee,
-    speciality: 'Color Specialist',
-    employeeType: 'Women Specialist',
-  ),
-  EmployeeItem(
-    id: 'emp-3',
-    firstName: 'M.',
-    lastName: 'Aslam',
-    phoneNumber: '+923221234567',
-    cnicNumber: '61101-2233445-7',
-    homeAddress: 'Blue Area, Islamabad',
-    isActive: true,
-    role: EmployeeRole.employee,
-    managerId: 'mgr-1',
-    speciality: 'Haircut Specialist',
-    employeeType: 'Men Specialist',
-    basicSalary: '50000',
-    commission: '15',
-    agreementDescription: 'Fixed salary with tiered commission.',
-  ),
-];

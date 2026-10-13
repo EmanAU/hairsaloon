@@ -10,6 +10,14 @@ class HiveBootstrap {
   HiveBootstrap._();
 
   static const String _billingMigrationFlag = 'migration.billing.sp_to_hive.v1';
+  static const String _removeSeedHumansFlag = 'migration.remove_seed_humans.v1';
+  static const List<String> _seededEmployeeIds = <String>[
+    'mgr-1',
+    'emp-1',
+    'emp-2',
+    'emp-3',
+  ];
+  static const List<String> _seededExpenseIds = <String>['exp-1', 'exp-2'];
   static const String _legacyBillsKey = 'billing.saved_bills.v1';
   static const String _legacyPhonesKey = 'billing.customer_phones.v1';
   static const String _settingsTaxRateKey = 'tax_rate';
@@ -28,6 +36,16 @@ class HiveBootstrap {
       Hive.openBox<dynamic>(HiveBoxes.settings),
     ]);
     await _migrateLegacyBillingIfNeeded(prefs);
+    await _removeSeededHumansIfNeeded(prefs);
+  }
+
+  static Future<void> _removeSeededHumansIfNeeded(
+    SharedPreferences prefs,
+  ) async {
+    if (prefs.getBool(_removeSeedHumansFlag) ?? false) return;
+    await Hive.box<Map>(HiveBoxes.employees).deleteAll(_seededEmployeeIds);
+    await Hive.box<Map>(HiveBoxes.expenses).deleteAll(_seededExpenseIds);
+    await prefs.setBool(_removeSeedHumansFlag, true);
   }
 
   static Future<void> _migrateLegacyBillingIfNeeded(

@@ -1,16 +1,17 @@
-import 'package:flutter/cupertino.dart';
+﻿import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/core/storage/hive_boxes.dart';
 import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
-import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
-import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
+import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/state/expenses_store.dart';
 import 'package:hairsaloon/src/features/finance/domain/entities/finance_period.dart';
+import 'package:hairsaloon/src/features/finance/domain/finance_calculator.dart';
 import 'package:hairsaloon/src/features/finance/presentation/employee_income_detail_screen.dart';
+import 'package:hairsaloon/src/features/finance/presentation/finance_format.dart';
+import 'package:hairsaloon/src/features/finance/presentation/state/payouts_store.dart';
+import 'package:hairsaloon/src/features/finance/presentation/widgets/finance_widgets.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
 class FinanceOverviewScreen extends StatefulWidget {
@@ -24,119 +25,10 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
   DateTime _selectedDate = DateTime.now();
   FinancePeriod _period = FinancePeriod.daily;
 
-  @override
-  Widget build(BuildContext context) {
-    final bills = context.watch<BillingStore>().bills;
-    final expenses = context.watch<ExpensesStore>().items;
-    final employees = context
-        .watch<EmployeesStore>()
-        .employees
-        .where((e) => e.isActive)
-        .toList(growable: false);
-
-    final periodRevenue = bills
-        .where((b) => _isInSelectedPeriod(b.createdAt))
-        .fold<double>(0, (sum, b) => sum + b.grandTotal);
-    final periodExpenses = expenses
-        .where((e) => _isInSelectedPeriod(e.date))
-        .fold<double>(0, (sum, e) => sum + e.amount);
-    final periodProfit = periodRevenue - periodExpenses;
-    final periodTransactionCount = bills
-        .where((b) => _isInSelectedPeriod(b.createdAt))
-        .length;
-    final employeeRows = _buildEmployeeRows(
-      _selectedDate,
-      _period,
-      employees,
-      bills,
-    );
-    final isSelectedToday = _isSameDate(_selectedDate, DateTime.now());
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          _Header(
-            dateText: _periodDateLabel(),
-            onDateTap: _pickDate,
-            onResetTap: _resetToToday,
-            showReset: !isSelectedToday,
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
-              children: [
-                _periodFilterRow(),
-                const SizedBox(height: 8),
-                _todaySaleCard(
-                  amount: periodRevenue,
-                  title: _periodCardTitle(),
-                  subtitle: '$periodTransactionCount transactions',
-                  onTap: () {
-                    Navigator.of(context).pushNamed(AppRoutes.financeSales);
-                  },
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _miniStatCard(
-                        title: 'Profit',
-                        amount: periodProfit,
-                        icon: CupertinoIcons.arrow_up_right,
-                        amountColor: AppColors.success,
-                        iconColor: AppColors.success,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _miniStatCard(
-                        title: 'Expenses',
-                        amount: periodExpenses,
-                        icon: CupertinoIcons.arrow_down_right,
-                        amountColor: AppColors.danger,
-                        iconColor: AppColors.danger,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 2),
-                  child: Text(
-                    'Employee Income',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (employeeRows.isEmpty)
-                  _emptyStateCard()
-                else
-                  ...employeeRows.map(
-                    (row) => _employeeIncomeTile(context, row),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _pickDate() async {
-    final initialDate = DateTime(
-      _selectedDate.year,
-      _selectedDate.month,
-      _selectedDate.day,
-    );
-
     final picked = await showDatePicker(
       context: context,
-      initialDate: initialDate,
+      initialDate: _selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
     );
@@ -144,547 +36,349 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
     setState(() => _selectedDate = picked);
   }
 
-  void _resetToToday() {
-    setState(() => _selectedDate = DateTime.now());
+  void _open(String route) {
+    Navigator.of(context).pushNamed(
+      route,
+      arguments: FinanceRouteArgs(anchor: _selectedDate, period: _period),
+    );
   }
 
-  static bool _isSameDate(DateTime left, DateTime right) {
-    return left.year == right.year &&
-        left.month == right.month &&
-        left.day == right.day;
-  }
-
-  static List<_EmployeeIncomeRow> _buildEmployeeRows(
-    DateTime now,
-    FinancePeriod period,
-    List<EmployeeItem> employees,
-    List<Bill> bills,
-  ) {
-    final earningsByEmployee = <String, double>{};
-    for (final bill in bills) {
-      if (!_periodContains(bill.createdAt, now, period)) continue;
-      earningsByEmployee.update(
-        _norm(bill.employeeName),
-        (existing) => existing + bill.grandTotal,
-        ifAbsent: () => bill.grandTotal,
-      );
-    }
-
-    final rows = employees
-        .map((employee) {
-          final sales = earningsByEmployee[_norm(employee.fullName)] ?? 0;
-          final commissionPercent = _commissionPercent(employee.commission);
-          final earning = (sales * commissionPercent) / 100;
-          return _EmployeeIncomeRow(employee: employee, todayEarning: earning);
-        })
+  @override
+  Widget build(BuildContext context) {
+    final bills = context.watch<BillingStore>().bills;
+    final expenses = context.watch<ExpensesStore>().items;
+    final payoutsStore = context.watch<PayoutsStore>();
+    final employees = context
+        .watch<EmployeesStore>()
+        .employees
+        .where((e) => e.isActive)
         .toList(growable: false);
 
-    rows.sort((a, b) => b.todayEarning.compareTo(a.todayEarning));
-    return rows;
-  }
-
-  static double _toDouble(String? value) {
-    if (value == null || value.trim().isEmpty) return 0;
-    final normalized = value.replaceAll(',', '').replaceAll('%', '').trim();
-    return double.tryParse(normalized) ?? 0;
-  }
-
-  static double _commissionPercent(String? value) {
-    if (value == null || value.trim().isEmpty) return 100;
-    final parsed = _toDouble(value);
-    return parsed <= 0 ? 100 : parsed;
-  }
-
-  static String _norm(String value) {
-    return value.trim().toLowerCase();
-  }
-
-  static double _netDueForEmployee({
-    required EmployeeItem employee,
-    required List<Bill> bills,
-    required List<dynamic> expenses,
-    required DateTime anchor,
-    required FinancePeriod period,
-    required Box<Map> payoutBox,
-    required double earningEstimate,
-  }) {
-    final employeeName = _norm(employee.fullName);
-    final commissionPercent = _commissionPercent(employee.commission);
-
-    final salesByDay = <DateTime, double>{};
-    for (final bill in bills) {
-      if (_norm(bill.employeeName) != employeeName) continue;
-      if (!_periodContains(bill.createdAt, anchor, period)) continue;
-      final day = DateTime(
-        bill.createdAt.year,
-        bill.createdAt.month,
-        bill.createdAt.day,
-      );
-      salesByDay.update(
-        day,
-        (v) => v + bill.grandTotal,
-        ifAbsent: () => bill.grandTotal,
-      );
-    }
-
-    final expenseByDay = <DateTime, double>{};
-    for (final e in expenses) {
-      final emp = (e.employeeName as String?) ?? '';
-      if (_norm(emp) != employeeName) continue;
-      final status = (e.status as String?) ?? '';
-      if (status.trim().toLowerCase() != 'unpaid') continue;
-      final date = e.date as DateTime;
-      if (!_periodContains(date, anchor, period)) continue;
-      final day = DateTime(date.year, date.month, date.day);
-      final amount = (e.amount as double?) ?? 0.0;
-      expenseByDay.update(day, (v) => v + amount, ifAbsent: () => amount);
-    }
-
-    final days = <DateTime>{
-      ...salesByDay.keys,
-      ...expenseByDay.keys,
-    }.toList(growable: false);
-    if (days.isEmpty) {
-      // Fallback to old number if there were no day groups.
-      final safe = earningEstimate < 0 ? 0.0 : earningEstimate;
-      return safe;
-    }
-
-    double totalDue = 0.0;
-    for (final day in days) {
-      final sales = salesByDay[day] ?? 0.0;
-      final earning = (sales * commissionPercent) / 100;
-      final cut = expenseByDay[day] ?? 0.0;
-      final net = earning - cut;
-      final due = net < 0 ? 0.0 : net;
-      final payoutKey =
-          'payout:${employee.id}:day:${DateTime(day.year, day.month, day.day).toIso8601String()}';
-      final isSettled = payoutBox.get(payoutKey) != null;
-      if (!isSettled) {
-        totalDue += due;
-      }
-    }
-    return totalDue < 0 ? 0.0 : totalDue;
-  }
-
-  bool _isInSelectedPeriod(DateTime date) {
-    return _periodContains(date, _selectedDate, _period);
-  }
-
-  static bool _periodContains(
-    DateTime date,
-    DateTime anchor,
-    FinancePeriod period,
-  ) {
-    switch (period) {
-      case FinancePeriod.daily:
-        return _isSameDate(date, anchor);
-      case FinancePeriod.weekly:
-        final start = DateTime(
-          anchor.year,
-          anchor.month,
-          anchor.day,
-        ).subtract(Duration(days: anchor.weekday - 1));
-        final end = start.add(const Duration(days: 6));
-        final target = DateTime(date.year, date.month, date.day);
-        return !target.isBefore(start) && !target.isAfter(end);
-      case FinancePeriod.monthly:
-        return date.year == anchor.year && date.month == anchor.month;
-    }
-  }
-
-  String _periodCardTitle() {
-    switch (_period) {
-      case FinancePeriod.daily:
-        return 'TODAY SALE';
-      case FinancePeriod.weekly:
-        return 'WEEKLY SALE';
-      case FinancePeriod.monthly:
-        return 'MONTHLY SALE';
-    }
-  }
-
-  String _periodDateLabel() {
-    switch (_period) {
-      case FinancePeriod.daily:
-        return _formatDate(_selectedDate);
-      case FinancePeriod.weekly:
-        final start = DateTime(
-          _selectedDate.year,
-          _selectedDate.month,
-          _selectedDate.day,
-        ).subtract(Duration(days: _selectedDate.weekday - 1));
-        final end = start.add(const Duration(days: 6));
-        return '${_formatDate(start)} - ${_formatDate(end)}';
-      case FinancePeriod.monthly:
-        const months = <String>[
-          'JANUARY',
-          'FEBRUARY',
-          'MARCH',
-          'APRIL',
-          'MAY',
-          'JUNE',
-          'JULY',
-          'AUGUST',
-          'SEPTEMBER',
-          'OCTOBER',
-          'NOVEMBER',
-          'DECEMBER',
-        ];
-        return '${months[_selectedDate.month - 1]} ${_selectedDate.year}';
-    }
-  }
-
-  Widget _periodFilterRow() {
-    return Row(
-      children: [
-        _periodChip(FinancePeriod.daily, 'Daily'),
-        const SizedBox(width: 8),
-        _periodChip(FinancePeriod.weekly, 'Weekly'),
-        const SizedBox(width: 8),
-        _periodChip(FinancePeriod.monthly, 'Monthly'),
-      ],
+    final totals = FinanceCalculator.totals(
+      bills: bills,
+      expenses: expenses,
+      payouts: payoutsStore.payouts,
+      anchor: _selectedDate,
+      period: _period,
     );
-  }
 
-  Widget _periodChip(FinancePeriod value, String label) {
-    final selected = _period == value;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _period = value),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected ? AppColors.primary : Colors.grey.shade300,
-            ),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
+    bool include(DateTime d) =>
+        FinanceCalculator.periodContains(d, _selectedDate, _period);
+    final rows =
+        employees
+            .map((employee) {
+              final days = FinanceCalculator.employeeDays(
+                employee: employee,
+                bills: bills,
+                expenses: expenses,
+                payoutsById: payoutsStore.payoutsById,
+                include: include,
+              );
+              return _EmployeeRow(
+                employee: employee,
+                earning: days.fold<double>(0, (s, d) => s + d.earning),
+                due: days.fold<double>(0, (s, d) => s + d.dueAmount),
+              );
+            })
+            .toList(growable: false)
+          ..sort((a, b) => b.earning.compareTo(a.earning));
+
+    final isToday =
+        FinanceCalculator.dayOf(_selectedDate) ==
+        FinanceCalculator.dayOf(DateTime.now());
+    final tablet = MediaQuery.sizeOf(context).shortestSide >= 600;
+
+    final saleCard = _SaleCard(
+      title: '${FinanceFormat.periodWord(_period).toUpperCase()} SALE',
+      amount: totals.sales,
+      subtitle: '${totals.billCount} bills',
+      onTap: () => Navigator.of(context).pushNamed(AppRoutes.financeSales),
+    );
+    final statCards = <Widget>[
+      Expanded(
+        child: FinanceStatCard(
+          title: 'Profit',
+          amount: totals.profit,
+          icon: CupertinoIcons.arrow_up_right,
+          color: totals.profit < 0 ? AppColors.danger : AppColors.success,
+          onTap: () => _open(AppRoutes.financeProfit),
         ),
       ),
-    );
-  }
-
-  static String _formatDate(DateTime date) {
-    const months = <String>[
-      'JANUARY',
-      'FEBRUARY',
-      'MARCH',
-      'APRIL',
-      'MAY',
-      'JUNE',
-      'JULY',
-      'AUGUST',
-      'SEPTEMBER',
-      'OCTOBER',
-      'NOVEMBER',
-      'DECEMBER',
+      const SizedBox(width: 8),
+      Expanded(
+        child: FinanceStatCard(
+          title: 'Expenses',
+          amount: totals.expenses,
+          icon: CupertinoIcons.arrow_down_right,
+          color: AppColors.danger,
+          onTap: () => _open(AppRoutes.financeExpenses),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: FinanceStatCard(
+          title: 'Salaries',
+          amount: totals.salaries,
+          icon: CupertinoIcons.person_2,
+          color: AppColors.textPrimary,
+          onTap: () => _open(AppRoutes.financeSalaries),
+        ),
+      ),
     ];
-    return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year}';
-  }
 
-  static String _formatCurrency(double value) {
-    final absolute = value.abs().toStringAsFixed(1);
-    final parts = absolute.split('.');
-    final whole = parts.first;
-    final fraction = parts.last;
-
-    final withCommas = whole.replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (_) => ',',
-    );
-
-    final sign = value < 0 ? '-' : '';
-    return 'Rs.$sign$withCommas.$fraction';
-  }
-
-  Widget _todaySaleCard({
-    required double amount,
-    required String title,
-    String? subtitle,
-    VoidCallback? onTap,
-  }) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: const [
-              BoxShadow(
-                color: AppColors.shadow,
-                blurRadius: 12,
-                offset: Offset(0, 4),
-              ),
-            ],
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Column(
+        children: [
+          _Header(
+            dateText: FinanceFormat.periodLabel(_selectedDate, _period),
+            onDateTap: _pickDate,
+            onResetTap: () => setState(() => _selectedDate = DateTime.now()),
+            showReset: !isToday,
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+          Expanded(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: tablet ? 820 : double.infinity,
                 ),
-                child: const Icon(
-                  CupertinoIcons.money_dollar_circle,
-                  color: AppColors.success,
-                  size: 30,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.4,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
+                  children: [
+                    Row(
+                      children: [
+                        for (final entry in const {
+                          FinancePeriod.daily: 'Daily',
+                          FinancePeriod.weekly: 'Weekly',
+                          FinancePeriod.monthly: 'Monthly',
+                        }.entries) ...[
+                          Expanded(
+                            child: FinanceChip(
+                              label: entry.value,
+                              selected: _period == entry.key,
+                              onTap: () => setState(() => _period = entry.key),
+                            ),
+                          ),
+                          if (entry.key != FinancePeriod.monthly)
+                            const SizedBox(width: 6),
+                        ],
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    _formatCurrency(amount),
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
+                    const SizedBox(height: 10),
+                    if (tablet)
+                      IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(flex: 2, child: saleCard),
+                            const SizedBox(width: 8),
+                            ...statCards,
+                          ],
+                        ),
+                      )
+                    else ...[
+                      saleCard,
+                      const SizedBox(height: 8),
+                      IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: statCards,
+                        ),
                       ),
-                    ),
+                    ],
+                    const SizedBox(height: 14),
+                    const FinanceSectionTitle('Employee Income'),
+                    if (rows.isEmpty)
+                      const FinanceEmpty(message: 'No employees added yet.')
+                    else
+                      ...rows.map(
+                        (row) => _EmployeeTile(
+                          row: row,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => EmployeeIncomeDetailScreen(
+                                employee: row.employee,
+                                period: _period,
+                                anchorDate: _selectedDate,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
-                ],
+                ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
+}
 
-  Widget _miniStatCard({
-    required String title,
-    required double amount,
-    required IconData icon,
-    required Color amountColor,
-    required Color iconColor,
-    VoidCallback? onTap,
-  }) {
-    return SizedBox(
-      height: 120,
-      child: Material(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+class _SaleCard extends StatelessWidget {
+  const _SaleCard({
+    required this.title,
+    required this.amount,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final String title;
+  final double amount;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return FinanceCard(
+      onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(
-                  color: AppColors.shadow,
-                  blurRadius: 12,
-                  offset: Offset(0, 4),
-                ),
-              ],
+              color: AppColors.success.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
             ),
+            child: const Icon(
+              CupertinoIcons.money_dollar_circle,
+              color: AppColors.success,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, color: iconColor, size: 20),
-                const SizedBox(height: 5),
                 Text(
                   title,
                   style: const TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.4,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
-                  _formatCurrency(amount),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: amountColor,
+                  FinanceFormat.money(amount),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
                     fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 10.5,
                   ),
                 ),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _employeeIncomeTile(BuildContext context, _EmployeeIncomeRow row) {
-    final expenses = context.watch<ExpensesStore>().items;
-    final payoutBox = Hive.box<Map>(HiveBoxes.employeePayouts);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 12,
-            offset: Offset(0, 4),
+          const Icon(
+            CupertinoIcons.chevron_right,
+            size: 13,
+            color: AppColors.textSecondary,
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => EmployeeIncomeDetailScreen(
-                  employee: row.employee,
-                  period: _period,
-                  anchorDate: _selectedDate,
-                ),
+    );
+  }
+}
+
+class _EmployeeRow {
+  const _EmployeeRow({
+    required this.employee,
+    required this.earning,
+    required this.due,
+  });
+
+  final EmployeeItem employee;
+  final double earning;
+  final double due;
+}
+
+class _EmployeeTile extends StatelessWidget {
+  const _EmployeeTile({required this.row, required this.onTap});
+
+  final _EmployeeRow row;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final settled = row.due <= 0;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: FinanceCard(
+        onTap: onTap,
+        padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
+        child: Row(
+          children: [
+            EmployeeAvatar(employee: row.employee, radius: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    row.employee.fullName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Earning ${FinanceFormat.money(row.earning)}',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
               ),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
-            child: Row(
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                _EmployeeAvatar(employeeId: row.employee.id),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        row.employee.speciality?.trim().isNotEmpty == true
-                            ? row.employee.speciality!
-                            : 'General Specialist',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        row.employee.fullName,
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                Text(
+                  settled ? 'Settled' : 'Due',
+                  style: TextStyle(
+                    color: settled ? AppColors.success : AppColors.textSecondary,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    ValueListenableBuilder(
-                      valueListenable: payoutBox.listenable(),
-                      builder: (context, _, __) {
-                        final due = _netDueForEmployee(
-                          employee: row.employee,
-                          bills: context.read<BillingStore>().bills,
-                          expenses: expenses,
-                          anchor: _selectedDate,
-                          period: _period,
-                          payoutBox: payoutBox,
-                          earningEstimate: row.todayEarning,
-                        );
-                        final isSettled = due <= 0;
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              isSettled ? 'Settled' : 'Net Due',
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _formatCurrency(due),
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 6),
-                const Icon(
-                  CupertinoIcons.chevron_right,
-                  color: AppColors.textSecondary,
-                  size: 14,
+                const SizedBox(height: 2),
+                Text(
+                  FinanceFormat.money(row.due),
+                  style: TextStyle(
+                    color: settled ? AppColors.textPrimary : AppColors.danger,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _emptyStateCard() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Text(
-        'No employee data available.',
-        style: TextStyle(
-          color: AppColors.textSecondary,
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
+            const SizedBox(width: 6),
+            const Icon(
+              CupertinoIcons.chevron_right,
+              color: AppColors.textSecondary,
+              size: 13,
+            ),
+          ],
         ),
       ),
     );
@@ -708,7 +402,7 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: AppColors.primary,
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+      padding: const EdgeInsets.fromLTRB(4, 4, 8, 6),
       child: SafeArea(
         bottom: false,
         child: Row(
@@ -722,40 +416,34 @@ class _Header extends StatelessWidget {
             ),
             Expanded(
               child: Center(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
                   onTap: onDateTap,
-                  child: Container(
-                    height: 44,
-                    color: Colors.transparent,
+                  child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
-                      vertical: 6,
+                      vertical: 8,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          dateText,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
+                        Flexible(
+                          child: Text(
+                            dateText,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Container(
-                          width: 24,
-                          height: 24,
-                          decoration: const BoxDecoration(
-                            color: AppColors.textPrimary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            CupertinoIcons.chevron_down,
-                            color: AppColors.surface,
-                            size: 12,
-                          ),
+                        const SizedBox(width: 6),
+                        const Icon(
+                          CupertinoIcons.chevron_down,
+                          color: AppColors.textPrimary,
+                          size: 13,
                         ),
                       ],
                     ),
@@ -766,60 +454,16 @@ class _Header extends StatelessWidget {
             if (showReset)
               TextButton(
                 onPressed: onResetTap,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.textPrimary,
-                  textStyle: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
+                child: const Text(
+                  'Today',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
-                child: const Text('Today'),
               )
             else
-              const SizedBox.shrink(),
+              const SizedBox(width: 48),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _EmployeeIncomeRow {
-  const _EmployeeIncomeRow({
-    required this.employee,
-    required this.todayEarning,
-  });
-
-  final EmployeeItem employee;
-  final double todayEarning;
-}
-
-// (migrated to FinancePeriod in domain layer)
-
-class _EmployeeAvatar extends StatelessWidget {
-  const _EmployeeAvatar({required this.employeeId});
-
-  final String employeeId;
-
-  @override
-  Widget build(BuildContext context) {
-    final useAsset = employeeId.hashCode.isEven;
-    return Container(
-      width: 42,
-      height: 42,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(21),
-        color: Colors.grey.shade200,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: useAsset
-          ? Image.asset(
-              'assets/placeholder.png',
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(CupertinoIcons.person_fill, size: 20),
-            )
-          : const Icon(CupertinoIcons.person_fill, size: 20),
     );
   }
 }
