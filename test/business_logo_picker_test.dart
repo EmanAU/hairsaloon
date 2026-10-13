@@ -47,22 +47,33 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.text('Choose logo'));
+
+    await tester.tap(find.text('Add photo'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Choose from gallery'));
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 100)),
     );
     await tester.pumpAndSettle();
+
     expect(picker.selectedSource, ImageSource.gallery);
     expect(selected, base64Encode(bytes));
     expect(find.byType(Image), findsOneWidget);
-    await tester.tap(find.text('Remove'));
+
+    await tester.tap(find.text('Change photo'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Remove photo'));
+    await tester.pumpAndSettle();
+
     expect(selected, isNull);
-    expect(find.text('Choose logo'), findsOneWidget);
+    expect(find.text('Add photo'), findsOneWidget);
   });
 
   testWidgets('cancelling gallery preserves existing logo', (tester) async {
-    const previous = 'existing-logo';
+    final bytes = (await tester.runAsync(
+      () => File('assets/logo.png').readAsBytes(),
+    ))!;
+    final previous = base64Encode(bytes);
     var changed = false;
     await tester.pumpWidget(
       MaterialApp(
@@ -75,8 +86,13 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.text('Change logo'));
+
+    await tester.tap(find.text('Change photo'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Choose from gallery'));
+    await tester.pumpAndSettle();
+
     expect(changed, isFalse);
+    expect(find.byType(Image), findsOneWidget);
   });
 }
