@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
+import 'package:hairsaloon/src/core/widgets/app_sheet.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class BusinessLogo extends StatelessWidget {
@@ -200,66 +201,45 @@ class _BusinessLogoPickerState extends State<BusinessLogoPicker> {
     final hasPhoto = _previewBytes != null ||
         (widget.value != null && widget.value!.isNotEmpty);
 
-    await showModalBottomSheet<void>(
+    final action = await showAppSheet<String>(
       context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.textSecondary.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.photo_camera_rounded),
-                  title: const Text('Take photo'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _pick(ImageSource.camera);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.photo_library_rounded),
-                  title: const Text('Choose from gallery'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _pick(ImageSource.gallery);
-                  },
-                ),
-                if (hasPhoto)
-                  ListTile(
-                    leading: const Icon(
-                      Icons.delete_outline_rounded,
-                      color: AppColors.danger,
-                    ),
-                    title: const Text(
-                      'Remove photo',
-                      style: TextStyle(color: AppColors.danger),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      setState(() => _previewBytes = null);
-                      widget.onChanged(null);
-                    },
-                  ),
-              ],
+      builder: (sheetContext) => AppSheetBody(
+        title: widget.title,
+        subtitle: 'Choose where to get the image from.',
+        icon: Icons.image_outlined,
+        showCancel: false,
+        child: Column(
+          children: [
+            AppSheetOption(
+              label: 'Take photo',
+              icon: Icons.photo_camera_rounded,
+              onTap: () => Navigator.pop(sheetContext, 'camera'),
             ),
-          ),
-        );
-      },
+            AppSheetOption(
+              label: 'Choose from gallery',
+              icon: Icons.photo_library_rounded,
+              onTap: () => Navigator.pop(sheetContext, 'gallery'),
+            ),
+            if (hasPhoto)
+              AppSheetOption(
+                label: 'Remove photo',
+                icon: Icons.delete_outline_rounded,
+                onTap: () => Navigator.pop(sheetContext, 'remove'),
+              ),
+          ],
+        ),
+      ),
     );
+    if (!mounted) return;
+    switch (action) {
+      case 'camera':
+        _pick(ImageSource.camera);
+      case 'gallery':
+        _pick(ImageSource.gallery);
+      case 'remove':
+        setState(() => _previewBytes = null);
+        widget.onChanged(null);
+    }
   }
 
   @override

@@ -11,5 +11,7 @@ class AppColors {
   static const Color success = Color(0xFF3BAE4A);
   static const Color danger = Color(0xFFE84545);
   static const Color shadow = Color(0x14000000);
+  static const Color border = Color(0xFFE6E6E6);
+  static const Color iconMuted = Color(0xFF9A9A9A);
   static const Color avatarBackground = Color(0xFFFFE2CC);
 }

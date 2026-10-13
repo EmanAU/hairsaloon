@@ -1,4 +1,5 @@
 import 'package:hairsaloon/src/core/services/toast_service.dart';
+import 'package:hairsaloon/src/core/widgets/app_sheet.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
@@ -676,81 +677,44 @@ class _BillingScreenState extends State<BillingScreen> {
     _existingPromptOpen = true;
     _lastExistingPromptPhone = phone;
     try {
-      final use = await showDialog<bool>(
+      final use = await showAppSheet<bool>(
         context: context,
-        builder: (dialogContext) {
-          const radius = 6.0;
-          return AlertDialog(
-            backgroundColor: AppColors.surface,
-            surfaceTintColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(radius),
+        builder: (sheetContext) => AppSheetBody(
+          title: 'Customer Found',
+          subtitle: 'This number is already saved.',
+          icon: CupertinoIcons.person_crop_circle_badge_checkmark,
+          onCancel: () => Navigator.of(sheetContext).pop(false),
+          confirmLabel: 'Use Customer',
+          onConfirm: () => Navigator.of(sheetContext).pop(true),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(12),
             ),
-            title: const Text(
-              'Customer Found',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'This phone number is already saved.',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 12),
                 Text(
                   full.name.trim(),
                   style: const TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   full.phone.trim(),
                   style: const TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: 13,
+                    fontSize: 12.5,
                   ),
                 ),
               ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                ),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.onPrimary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(radius),
-                  ),
-                ),
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text(
-                  'Use',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ),
-            ],
-          );
-        },
+          ),
+        ),
       );
 
       if (!mounted || use != true) return;
@@ -772,128 +736,26 @@ class _BillingScreenState extends State<BillingScreen> {
       }
     }
 
-    final nameCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController(text: prefillPhone);
-    try {
-      final result = await showDialog<CustomerContact?>(
-        context: context,
-        builder: (dialogContext) {
-          const radius = 6.0;
-          return AlertDialog(
-            backgroundColor: AppColors.primary,
-            surfaceTintColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(radius),
-            ),
-            title: const Text(
-              'Add Customer',
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameCtrl,
-                  textInputAction: TextInputAction.next,
-                  style: const TextStyle(color: Colors.black),
-                  decoration: InputDecoration(
-                    labelText: 'Customer Name',
-                    labelStyle: const TextStyle(color: Colors.black87),
-                    filled: true,
-                    fillColor: Colors.white,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(radius),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: phoneCtrl,
-                  keyboardType: TextInputType.phone,
-                  textInputAction: TextInputAction.done,
-                  style: const TextStyle(color: Colors.black),
-                  decoration: InputDecoration(
-                    labelText: 'Customer Number',
-                    labelStyle: const TextStyle(color: Colors.black87),
-                    filled: true,
-                    fillColor: Colors.white,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(radius),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(null),
-                style: TextButton.styleFrom(foregroundColor: Colors.black87),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(radius),
-                  ),
-                ),
-                onPressed: () {
-                  final name = nameCtrl.text.trim();
-                  final phone = phoneCtrl.text.trim();
-                  if (phone.isEmpty) return;
-                  Navigator.of(
-                    dialogContext,
-                  ).pop(CustomerContact(name: name, phone: phone));
-                },
-                child: const Text(
-                  'Save',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ),
-            ],
-          );
-        },
-      );
+    final result = await showAppSheet<CustomerContact>(
+      context: context,
+      builder: (_) => _AddCustomerSheet(initialPhone: prefillPhone),
+    );
+    if (!mounted || result == null) return;
 
-      if (!mounted || result == null) return;
+    await context.read<BillingStore>().addOrUpdateCustomerContact(
+      name: result.name,
+      phone: result.phone,
+    );
+    if (!mounted) return;
 
-      await context.read<BillingStore>().addOrUpdateCustomerContact(
-        name: result.name,
-        phone: result.phone,
-      );
-      if (!mounted) return;
+    setState(() {
+      _phoneCtrl.text = result.phone;
+      _hidePhoneSuggestions = true;
+      _selectedCustomer = result;
+    });
 
-      setState(() {
-        _phoneCtrl.text = result.phone;
-        _hidePhoneSuggestions = true;
-        _selectedCustomer = result;
-      });
-
-      FocusScope.of(context).unfocus();
-      _scrollToServices();
-    } finally {
-      nameCtrl.dispose();
-      phoneCtrl.dispose();
-    }
+    FocusScope.of(context).unfocus();
+    _scrollToServices();
   }
 
   Future<void> _saveBill() async {
@@ -1016,6 +878,76 @@ class _BillingScreenState extends State<BillingScreen> {
     final type = (match.first.employeeType ?? '').trim();
     if (type.isEmpty) return fullName;
     return '$fullName • $type';
+  }
+}
+
+class _AddCustomerSheet extends StatefulWidget {
+  const _AddCustomerSheet({required this.initialPhone});
+
+  final String initialPhone;
+
+  @override
+  State<_AddCustomerSheet> createState() => _AddCustomerSheetState();
+}
+
+class _AddCustomerSheetState extends State<_AddCustomerSheet> {
+  final _nameCtrl = TextEditingController();
+  late final _phoneCtrl = TextEditingController(text: widget.initialPhone);
+  bool _phoneError = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final phone = _phoneCtrl.text.trim();
+    if (phone.isEmpty) {
+      setState(() => _phoneError = true);
+      return;
+    }
+    Navigator.of(
+      context,
+    ).pop(CustomerContact(name: _nameCtrl.text.trim(), phone: phone));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSheetBody(
+      title: 'Add Customer',
+      subtitle: 'Save the customer for faster billing next time.',
+      icon: CupertinoIcons.person_add,
+      confirmLabel: 'Save Customer',
+      onConfirm: _submit,
+      child: Column(
+        children: [
+          TextField(
+            controller: _nameCtrl,
+            autofocus: widget.initialPhone.isNotEmpty,
+            textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.next,
+            style: const TextStyle(fontSize: 13.5),
+            decoration: appSheetInputDecoration('Customer Name'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _phoneCtrl,
+            keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _submit(),
+            onChanged: (_) {
+              if (_phoneError) setState(() => _phoneError = false);
+            },
+            style: const TextStyle(fontSize: 13.5),
+            decoration: appSheetInputDecoration(
+              'Customer Number',
+            ).copyWith(errorText: _phoneError ? 'Number is required' : null),
+          ),
+        ],
+      ),
+    );
   }
 }
 

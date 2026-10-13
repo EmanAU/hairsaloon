@@ -44,6 +44,7 @@ import 'package:hairsaloon/src/features/finance/presentation/profit_detail_scree
 import 'package:hairsaloon/src/features/finance/presentation/state/payouts_store.dart';
 import 'package:hairsaloon/src/features/finance/presentation/finance_overview_screen.dart';
 import 'package:hairsaloon/src/features/finance/presentation/sales_screen.dart';
+import 'package:hairsaloon/src/features/finance/presentation/settled_salaries_screen.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/features/services/data/repositories/hive_services_repository.dart';
 import 'package:hairsaloon/src/features/settings/presentation/profile_settings_screen.dart';
@@ -73,14 +74,9 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
   @override
   void initState() {
     super.initState();
-    final size =
-        WidgetsBinding.instance.platformDispatcher.views.first.physicalSize /
-        WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
-    SystemChrome.setPreferredOrientations(
-      size.shortestSide >= 600
-          ? const []
-          : const [DeviceOrientation.portraitUp],
-    );
+    SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+    ]);
     _bootstrapFuture = _bootstrap();
   }
 

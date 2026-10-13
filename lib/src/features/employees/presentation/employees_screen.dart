@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:hairsaloon/src/core/layout/safe_scroll_padding.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:hairsaloon/src/core/widgets/app_confirm_dialog.dart';
+import 'package:hairsaloon/src/core/widgets/app_sheet.dart';
 import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/business_logo_picker.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
@@ -355,83 +356,61 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     EmployeeItem employee,
   ) async {
     final managers = store.managers;
-    await showModalBottomSheet<void>(
+    const unassigned = '';
+    final selected = await showAppSheet<String>(
       context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+      builder: (sheetContext) => AppSheetBody(
+        title: 'Assign Manager',
+        subtitle: employee.fullName,
+        icon: CupertinoIcons.person_2,
+        showCancel: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppSheetOption(
+              label: 'Unassigned',
+              icon: CupertinoIcons.person_crop_circle_badge_xmark,
+              selected: employee.managerId == null,
+              onTap: () => Navigator.pop(sheetContext, unassigned),
+            ),
+            if (managers.isEmpty)
               const Padding(
-                padding: EdgeInsets.fromLTRB(16, 14, 16, 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Assign Manager',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
+                padding: EdgeInsets.symmetric(vertical: 10),
+                child: Text(
+                  'No managers yet. Add a manager first.',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
                   ),
                 ),
               ),
-              ListTile(
-                title: const Text('Unassigned'),
-                trailing: employee.managerId == null
-                    ? const Icon(Icons.check, size: 18)
-                    : null,
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  await store.assignEmployeeToManager(
-                    employeeId: employee.id,
-                    managerId: null,
-                  );
-                  ToastService.success('Manager unassigned');
-                },
-              ),
-              if (managers.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    'No managers yet. Add a manager first.',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ...managers.map(
-                (manager) => ListTile(
-                  title: Text(manager.fullName),
-                  subtitle: Text(
+            for (final manager in managers)
+              AppSheetOption(
+                label: manager.fullName,
+                subtitle:
                     '${store.employeesForManager(manager.id).length} employees',
-                    style: const TextStyle(fontSize: 11),
-                  ),
-                  trailing: employee.managerId == manager.id
-                      ? const Icon(Icons.check, size: 18)
-                      : null,
-                  onTap: () async {
-                    Navigator.pop(sheetContext);
-                    await store.assignEmployeeToManager(
-                      employeeId: employee.id,
-                      managerId: manager.id,
-                    );
-                    ToastService.success(
-                      'Assigned to ${manager.fullName}',
-                    );
-                  },
-                ),
+                icon: CupertinoIcons.person_crop_circle,
+                selected: employee.managerId == manager.id,
+                onTap: () => Navigator.pop(sheetContext, manager.id),
               ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
+    if (selected == null) return;
+
+    final managerId = selected == unassigned ? null : selected;
+    if (managerId == employee.managerId) return;
+    await store.assignEmployeeToManager(
+      employeeId: employee.id,
+      managerId: managerId,
+    );
+    if (managerId == null) {
+      ToastService.success('Manager unassigned');
+      return;
+    }
+    final manager = managers.firstWhere((m) => m.id == managerId);
+    ToastService.success('Assigned to ${manager.fullName}');
   }
 
   Widget _addForm(EmployeesStore store) {

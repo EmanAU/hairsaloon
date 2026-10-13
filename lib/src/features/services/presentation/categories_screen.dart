@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/core/layout/safe_scroll_padding.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:hairsaloon/src/core/widgets/app_confirm_dialog.dart';
+import 'package:hairsaloon/src/core/widgets/app_sheet.dart';
 import 'package:hairsaloon/src/features/services/presentation/state/services_store.dart';
 import 'package:hairsaloon/src/features/services/presentation/subcategories_screen.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
@@ -169,103 +170,19 @@ class CategoriesScreen extends StatelessWidget {
     String? existing,
   }) async {
     final isEdit = existing != null;
-    final controller = TextEditingController(text: existing ?? '');
-    final saved = await showDialog<bool>(
+    final name = await showAppTextInputSheet(
       context: context,
-      builder: (dialogContext) {
-        return SafeArea(
-          child: AlertDialog(
-            backgroundColor: AppColors.surface,
-            surfaceTintColor: const Color(0x00000000),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            title: Text(
-              isEdit ? 'Rename Category' : 'Add Category',
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            content: TextField(
-              controller: controller,
-              autofocus: true,
-              textCapitalization: TextCapitalization.words,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 14,
-              ),
-              decoration: InputDecoration(
-                hintText: 'e.g. Hair Care',
-                hintStyle: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
-                filled: true,
-                fillColor: AppColors.background,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(9),
-                  borderSide: const BorderSide(color: Color(0xFFE1E1E1)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(9),
-                  borderSide: const BorderSide(color: Color(0xFFE1E1E1)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(9),
-                  borderSide: const BorderSide(
-                    color: AppColors.primary,
-                    width: 1.5,
-                  ),
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.onPrimary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                ),
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: Text(
-                  isEdit ? 'Update' : 'Add',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+      title: isEdit ? 'Rename Category' : 'Add Category',
+      subtitle: isEdit ? 'Current: $existing' : 'Group related services.',
+      icon: CupertinoIcons.square_grid_2x2,
+      label: 'Category name',
+      hint: 'e.g. Hair Care',
+      initialValue: existing ?? '',
+      confirmLabel: isEdit ? 'Update' : 'Add',
+      textCapitalization: TextCapitalization.words,
+      validator: (value) => value.isEmpty ? 'Enter a category name' : null,
     );
-
-    if (saved != true || !context.mounted) return;
-    final name = controller.text.trim();
-    if (name.isEmpty) {
-      ToastService.error('Enter a category name');
-      return;
-    }
+    if (name == null || !context.mounted) return;
 
     final store = context.read<ServicesStore>();
     if (isEdit) {

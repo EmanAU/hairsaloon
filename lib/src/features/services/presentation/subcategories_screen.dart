@@ -5,6 +5,7 @@ import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:hairsaloon/src/core/widgets/app_confirm_dialog.dart';
 import 'package:hairsaloon/src/features/services/presentation/state/services_store.dart';
 import 'package:hairsaloon/src/features/services/presentation/subcategory_services_screen.dart';
+import 'package:hairsaloon/src/features/services/presentation/widgets/service_edit_sheet.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
@@ -375,105 +376,36 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
   }
 
   Future<void> _showEditSubcategoryDialog(String oldName) async {
-    final nameController = TextEditingController(text: oldName);
     final currentPrice =
         context
             .read<ServicesStore>()
             .serviceFor(category: _selectedCategory, subcategory: oldName)
             ?.price ??
         0.0;
-    final priceController = TextEditingController(
-      text: currentPrice <= 0 ? '' : currentPrice.toStringAsFixed(0),
-    );
 
-    final shouldUpdate = await showDialog<bool>(
+    final result = await showServiceEditSheet(
       context: context,
-      builder: (dialogContext) {
-        return SafeArea(
-          child: AlertDialog(
-            backgroundColor: AppColors.surface,
-            surfaceTintColor: const Color(0x00000000),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            title: const Text(
-              'Edit Subcategory',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  style: const TextStyle(color: AppColors.textPrimary),
-                  decoration: _fieldDecoration('Subcategory name'),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: priceController,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: AppColors.textPrimary),
-                  decoration: _fieldDecoration('Price'),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.onPrimary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                ),
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text(
-                  'Update',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+      title: 'Edit Subcategory',
+      nameLabel: 'Subcategory name',
+      name: oldName,
+      price: currentPrice,
     );
+    if (result == null || !mounted) return;
 
-    if (shouldUpdate != true || !mounted) return;
-
-    final newName = nameController.text.trim();
-    final parsed = double.tryParse(priceController.text.trim());
-    if (newName.isEmpty || parsed == null || parsed <= 0) {
-      ToastService.error('Enter valid name and price.');
-      return;
-    }
-
-    final renamed = await context.read<ServicesStore>().renameSubcategory(
+    final store = context.read<ServicesStore>();
+    final renamed = await store.renameSubcategory(
       category: _selectedCategory,
       oldName: oldName,
-      newName: newName,
+      newName: result.name,
     );
     if (!renamed) {
       ToastService.error('Unable to update. Name may already exist.');
       return;
     }
-    await context.read<ServicesStore>().updatePriceForSubcategory(
+    await store.updatePriceForSubcategory(
       category: _selectedCategory,
-      subcategory: newName,
-      price: parsed,
+      subcategory: result.name,
+      price: result.price,
     );
     ToastService.success('Subcategory updated');
   }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:hairsaloon/src/core/widgets/app_sheet.dart';
 
-/// Confirm dialog with readable colors and SafeArea (status + nav bars).
+/// Compact confirmation dialog (300-400 wide) in the shared sheet style.
 Future<bool?> showAppConfirmDialog({
   required BuildContext context,
   required String title,
@@ -9,76 +9,23 @@ Future<bool?> showAppConfirmDialog({
   String cancelLabel = 'Cancel',
   String confirmLabel = 'Confirm',
   bool isDestructive = false,
+  IconData? icon,
 }) {
-  return showDialog<bool>(
+  return showAppDialog<bool>(
     context: context,
-    barrierDismissible: true,
-    builder: (dialogContext) {
-      final media = MediaQuery.of(dialogContext);
-      return SafeArea(
-        minimum: const EdgeInsets.symmetric(vertical: 12),
-        child: AlertDialog(
-          backgroundColor: AppColors.surface,
-          surfaceTintColor: const Color(0x00000000),
-          insetPadding: EdgeInsets.fromLTRB(
-            24,
-            24 + media.padding.top,
-            24,
-            24 + media.padding.bottom,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          title: Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          content: Text(
-            message,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 13,
-              height: 1.4,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(
-                cancelLabel,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor:
-                    isDestructive ? AppColors.danger : AppColors.primary,
-                foregroundColor:
-                    isDestructive ? AppColors.surface : AppColors.onPrimary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(9),
-                ),
-              ),
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(
-                confirmLabel,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    },
+    builder: (dialogContext) => AppSheetBody(
+      title: title,
+      subtitle: message,
+      icon:
+          icon ??
+          (isDestructive
+              ? Icons.delete_outline_rounded
+              : Icons.help_outline_rounded),
+      destructive: isDestructive,
+      cancelLabel: cancelLabel,
+      onCancel: () => Navigator.of(dialogContext).pop(false),
+      confirmLabel: confirmLabel,
+      onConfirm: () => Navigator.of(dialogContext).pop(true),
+    ),
   );
 }

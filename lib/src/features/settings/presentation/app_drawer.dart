@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
+import 'package:hairsaloon/src/core/widgets/app_confirm_dialog.dart';
+import 'package:hairsaloon/src/core/widgets/app_sheet.dart';
 import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
@@ -162,242 +164,49 @@ class AppDrawer extends StatelessWidget {
   static Future<void> _showTaxRateDialog(BuildContext context) async {
     final settingsStore = context.read<SettingsStore>();
     final current = settingsStore.taxRate.toStringAsFixed(0);
-    final controller = TextEditingController(text: current);
 
-    final didSave = await showDialog<bool>(
+    final value = await showAppTextInputSheet(
       context: context,
-      builder: (dialogContext) => SafeArea(
-        child: AlertDialog(
-          backgroundColor: AppColors.surface,
-          surfaceTintColor: const Color(0x00000000),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          title: const Text(
-            'Tax Rate',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Current: $current%',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: controller,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 14,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'e.g. 16',
-                  hintStyle: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                  ),
-                  suffixText: '%',
-                  suffixStyle: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                  filled: true,
-                  fillColor: _headerBg,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 12,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(9),
-                    borderSide: const BorderSide(color: _divider),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(9),
-                    borderSide: const BorderSide(
-                      color: AppColors.primary,
-                      width: 1.5,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(9),
-                    borderSide: const BorderSide(color: _divider),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.onPrimary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(9),
-                ),
-              ),
-              onPressed: () {
-                final value = double.tryParse(controller.text.trim());
-                if (value == null || value < 0) {
-                  Navigator.of(dialogContext).pop(false);
-                  return;
-                }
-                settingsStore.setTaxRate(value);
-                Navigator.of(dialogContext).pop(true);
-              },
-              child: const Text(
-                'Save',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
-        ),
-      ),
+      title: 'Tax Rate',
+      subtitle: 'Current: $current%. Applied to every new bill.',
+      icon: CupertinoIcons.percent,
+      label: 'Tax rate',
+      hint: 'e.g. 16',
+      initialValue: current,
+      suffixText: '%',
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      validator: (value) {
+        final parsed = double.tryParse(value);
+        if (parsed == null || parsed < 0 || parsed > 100) {
+          return 'Enter a value between 0 and 100';
+        }
+        return null;
+      },
     );
-    if (didSave != true) return;
+    if (value == null) return;
+    await settingsStore.setTaxRate(double.parse(value));
     ToastService.success('Tax rate saved');
   }
 
   static Future<void> _showCurrencyDialog(BuildContext context) async {
     final settingsStore = context.read<SettingsStore>();
     final current = settingsStore.currencyCode;
-    final controller = TextEditingController(text: current);
 
-    final didSave = await showDialog<bool>(
+    final value = await showAppTextInputSheet(
       context: context,
-      builder: (dialogContext) => SafeArea(
-        child: AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          title: const Text(
-            'Currency Change',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Current: $current',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: controller,
-                textCapitalization: TextCapitalization.characters,
-                maxLength: 3,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 14,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'e.g. PKR',
-                  hintStyle: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                  ),
-                  filled: true,
-                  fillColor: _headerBg,
-                  counterText: '',
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 12,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(9),
-                    borderSide: const BorderSide(color: _divider),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(9),
-                    borderSide: const BorderSide(
-                      color: AppColors.primary,
-                      width: 1.5,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(9),
-                    borderSide: const BorderSide(color: _divider),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.onPrimary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(9),
-                ),
-              ),
-              onPressed: () async {
-                final next = controller.text.trim().toUpperCase();
-                if (next.length != 3) {
-                  Navigator.of(dialogContext).pop(false);
-                  return;
-                }
-                await settingsStore.setCurrencyCode(next);
-                if (dialogContext.mounted) {
-                  Navigator.of(dialogContext).pop(true);
-                }
-              },
-              child: const Text(
-                'Save',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
-        ),
-      ),
+      title: 'Currency',
+      subtitle: 'Current: $current. Use a 3-letter code.',
+      icon: CupertinoIcons.money_dollar_circle,
+      label: 'Currency code',
+      hint: 'e.g. PKR',
+      initialValue: current,
+      maxLength: 3,
+      textCapitalization: TextCapitalization.characters,
+      validator: (value) =>
+          value.length == 3 ? null : 'Enter a 3-letter code',
     );
-
-    if (didSave != true) return;
+    if (value == null) return;
+    await settingsStore.setCurrencyCode(value.toUpperCase());
     ToastService.success('Currency updated');
   }
 
@@ -408,54 +217,13 @@ class AppDrawer extends StatelessWidget {
   static Future<void> _handleLogout(BuildContext context) async {
     final navigator = Navigator.of(context);
     final authStore = context.read<AuthStore>();
-    final shouldLogout = await showDialog<bool>(
+    final shouldLogout = await showAppConfirmDialog(
       context: context,
-      builder: (dialogContext) => SafeArea(
-        child: AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          title: const Text(
-            'Logout',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          content: const Text(
-            'Are you sure you want to logout?',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.danger,
-                foregroundColor: AppColors.surface,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(9),
-                ),
-              ),
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text(
-                'Logout',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
-        ),
-      ),
+      title: 'Logout',
+      message: 'Are you sure you want to logout?',
+      confirmLabel: 'Logout',
+      isDestructive: true,
+      icon: CupertinoIcons.square_arrow_right,
     );
 
     if (shouldLogout != true) return;

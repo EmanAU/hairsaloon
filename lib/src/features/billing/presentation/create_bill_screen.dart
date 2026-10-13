@@ -1,4 +1,5 @@
 import 'package:hairsaloon/src/core/layout/adaptive_page.dart';
+import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
@@ -323,23 +324,13 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
       grandTotal: _grandTotal,
     );
     await context.read<BillingStore>().addBill(bill);
+    if (!mounted) return;
     Navigator.of(
       context,
     ).pushReplacementNamed(AppRoutes.billDetails, arguments: bill.id);
   }
 
   void _showMessage(String message) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
+    ToastService.info(message);
   }
 }

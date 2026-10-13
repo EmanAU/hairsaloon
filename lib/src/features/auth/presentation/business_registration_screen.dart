@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
+import 'package:hairsaloon/src/core/widgets/app_confirm_dialog.dart';
 import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/entities/business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/business_logo_picker.dart';
@@ -319,22 +320,13 @@ class _BusinessRegistrationScreenState
   Future<void> _confirmExit() async {
     if (_exitDialogOpen) return;
     _exitDialogOpen = true;
-    final exit = await showDialog<bool>(
+    final exit = await showAppConfirmDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Exit app?'),
-        content: const Text('Your business setup has not been saved yet.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Stay'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Exit'),
-          ),
-        ],
-      ),
+      title: 'Exit app?',
+      message: 'Your business setup has not been saved yet.',
+      cancelLabel: 'Stay',
+      confirmLabel: 'Exit',
+      icon: Icons.logout_rounded,
     );
     _exitDialogOpen = false;
     if (exit == true && mounted) await SystemNavigator.pop();

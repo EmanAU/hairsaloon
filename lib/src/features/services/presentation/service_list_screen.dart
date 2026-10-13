@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/services/domain/entities/service_item.dart';
 import 'package:hairsaloon/src/features/services/presentation/state/services_store.dart';
 import 'package:hairsaloon/src/features/services/presentation/subcategory_services_screen.dart';
+import 'package:hairsaloon/src/features/services/presentation/widgets/service_edit_sheet.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
@@ -633,113 +634,32 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
     required String oldSubcategory,
     required double currentPrice,
   }) async {
-    final nameController = TextEditingController(text: oldSubcategory);
-    final priceController = TextEditingController(
-      text: currentPrice <= 0 ? '' : currentPrice.toStringAsFixed(0),
-    );
-
-    final result = await showDialog<bool>(
+    final result = await showServiceEditSheet(
       context: context,
-      builder: (dialogContext) {
-        const radius = 6.0;
-        InputDecoration fieldDecoration(String label) {
-          return InputDecoration(
-            labelText: label,
-            labelStyle: const TextStyle(color: Colors.black87),
-            filled: true,
-            fillColor: Colors.white,
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(radius),
-              borderSide: BorderSide.none,
-            ),
-          );
-        }
-
-        return AlertDialog(
-          backgroundColor: AppColors.primary,
-          surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radius),
-          ),
-          title: const Text(
-            'Edit Service',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                style: const TextStyle(color: Colors.black),
-                decoration: fieldDecoration('Service Name'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: priceController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.black),
-                decoration: fieldDecoration('Price'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              style: TextButton.styleFrom(foregroundColor: Colors.black87),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(radius),
-                ),
-              ),
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text(
-                'Update',
-                style: TextStyle(fontWeight: FontWeight.w800),
-              ),
-            ),
-          ],
-        );
-      },
+      title: 'Edit Service',
+      nameLabel: 'Service name',
+      name: oldSubcategory,
+      price: currentPrice,
     );
+    if (result == null || !mounted) return;
 
-    if (result != true || !mounted) return;
-
-    final newName = nameController.text.trim();
-    final parsed = double.tryParse(priceController.text.trim());
-    if (newName.isEmpty || parsed == null || parsed <= 0) {
-      _showMessage('Enter valid service name and price.');
-      return;
-    }
-
-    final renamed = await context.read<ServicesStore>().renameSubcategory(
+    final store = context.read<ServicesStore>();
+    final renamed = await store.renameSubcategory(
       category: widget.category,
       oldName: oldSubcategory,
-      newName: newName,
+      newName: result.name,
     );
     if (!renamed) {
       _showMessage('Unable to update. Name may already exist.');
       return;
     }
 
-    await context.read<ServicesStore>().updatePriceForSubcategory(
+    await store.updatePriceForSubcategory(
       category: widget.category,
-      subcategory: newName,
-      price: parsed,
+      subcategory: result.name,
+      price: result.price,
     );
-
+    if (!mounted) return;
     setState(() {});
     _showMessage('Service updated.');
   }

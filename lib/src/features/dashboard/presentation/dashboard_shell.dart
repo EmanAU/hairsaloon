@@ -2,6 +2,7 @@ import 'package:hairsaloon/src/core/layout/adaptive_page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hairsaloon/src/core/widgets/app_confirm_dialog.dart';
 import 'package:hairsaloon/src/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:hairsaloon/src/features/billing/presentation/billing_screen.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/expenses_screen.dart';
@@ -19,7 +20,10 @@ class _DashboardShellState extends State<DashboardShell> {
   int _currentIndex = 0;
   bool _isExitDialogOpen = false;
 
-  void _onTap(int index) => setState(() => _currentIndex = index);
+  void _onTap(int index) {
+    if (index == _currentIndex) return;
+    setState(() => _currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,42 +47,12 @@ class _DashboardShellState extends State<DashboardShell> {
         body: tablet
             ? Row(
                 children: [
-                  SafeArea(
-                    child: NavigationRail(
-                      selectedIndex: _currentIndex,
-                      onDestinationSelected: _onTap,
-                      labelType: NavigationRailLabelType.all,
-                      backgroundColor: Colors.white,
-                      indicatorColor: AppColors.primary,
-                      leading: Builder(
-                        builder: (context) => IconButton(
-                          tooltip: 'Open menu',
-                          onPressed: () => Scaffold.of(context).openDrawer(),
-                          icon: const Icon(Icons.menu_rounded),
-                        ),
-                      ),
-                      destinations: const [
-                        NavigationRailDestination(
-                          icon: Icon(CupertinoIcons.house),
-                          selectedIcon: Icon(CupertinoIcons.house_fill),
-                          label: Text('Home'),
-                        ),
-                        NavigationRailDestination(
-                          icon: Icon(CupertinoIcons.doc_plaintext),
-                          selectedIcon: Icon(CupertinoIcons.doc_text_fill),
-                          label: Text('Billing'),
-                        ),
-                        NavigationRailDestination(
-                          icon: Icon(CupertinoIcons.money_dollar_circle),
-                          selectedIcon: Icon(
-                            CupertinoIcons.money_dollar_circle_fill,
-                          ),
-                          label: Text('Expense'),
-                        ),
-                      ],
-                    ),
+                  _SideRail(currentIndex: _currentIndex, onTap: _onTap),
+                  const VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: AppColors.border,
                   ),
-                  const VerticalDivider(width: 1),
                   Expanded(child: body),
                 ],
               )
@@ -101,46 +75,12 @@ class _DashboardShellState extends State<DashboardShell> {
   Future<void> _showExitDialog() async {
     if (_isExitDialogOpen) return;
     _isExitDialogOpen = true;
-    final shouldExit = await showDialog<bool>(
+    final shouldExit = await showAppConfirmDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text(
-          'Exit App',
-          style: TextStyle(
-            color: Color(0xFFF5F5F5),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        content: const Text(
-          'Are you sure you want to exit the app?',
-          style: TextStyle(color: Color(0xFF8A8A8A), fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Color(0xFF8A8A8A)),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(
-              'Exit',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
+      title: 'Exit App',
+      message: 'Are you sure you want to exit the app?',
+      confirmLabel: 'Exit',
+      icon: CupertinoIcons.power,
     );
     _isExitDialogOpen = false;
     if (shouldExit == true && mounted) {
@@ -148,8 +88,6 @@ class _DashboardShellState extends State<DashboardShell> {
     }
   }
 }
-
-// ── Custom Bottom Nav ─────────────────────────────────────────────────────────
 
 class _NavItem {
   final IconData icon;
@@ -180,6 +118,79 @@ const _navItems = [
   ),
 ];
 
+class _SideRail extends StatelessWidget {
+  const _SideRail({required this.currentIndex, required this.onTap});
+
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      right: false,
+      child: NavigationRail(
+        selectedIndex: currentIndex,
+        onDestinationSelected: onTap,
+        labelType: NavigationRailLabelType.all,
+        backgroundColor: AppColors.surface,
+        indicatorColor: AppColors.textPrimary,
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        minWidth: 84,
+        groupAlignment: -0.85,
+        selectedIconTheme: const IconThemeData(
+          color: AppColors.surface,
+          size: 21,
+        ),
+        unselectedIconTheme: const IconThemeData(
+          color: AppColors.iconMuted,
+          size: 21,
+        ),
+        selectedLabelTextStyle: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+        unselectedLabelTextStyle: const TextStyle(
+          color: AppColors.iconMuted,
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+        ),
+        leading: Builder(
+          builder: (context) => Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 12),
+            child: IconButton(
+              tooltip: 'Open menu',
+              onPressed: () => Scaffold.of(context).openDrawer(),
+              style: IconButton.styleFrom(
+                backgroundColor: AppColors.background,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(
+                CupertinoIcons.line_horizontal_3,
+                size: 20,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ),
+        destinations: [
+          for (final item in _navItems)
+            NavigationRailDestination(
+              icon: Icon(item.icon),
+              selectedIcon: Icon(item.activeIcon),
+              label: Text(item.label),
+              padding: const EdgeInsets.symmetric(vertical: 4),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _BottomNav extends StatelessWidget {
   const _BottomNav({required this.currentIndex, required this.onTap});
 
@@ -188,42 +199,44 @@ class _BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
-            blurRadius: 24,
-            offset: const Offset(0, -4),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
-            offset: const Offset(0, -1),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: EdgeInsets.only(
-          top: 12,
-          bottom: bottomPadding > 0 ? bottomPadding : 14,
+    return Padding(
+      padding: EdgeInsets.fromLTRB(14, 0, 14, bottomInset > 0 ? bottomInset : 14),
+      child: Container(
+        height: 62,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x1F000000),
+              blurRadius: 24,
+              offset: Offset(0, 8),
+            ),
+          ],
         ),
         child: Row(
-          children: List.generate(_navItems.length, (i) {
-            final item = _navItems[i];
-            final isActive = i == currentIndex;
-
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => onTap(i),
-                behavior: HitTestBehavior.opaque,
-                child: _NavTile(item: item, isActive: isActive),
+          children: [
+            for (var i = 0; i < _navItems.length; i++)
+              Expanded(
+                child: Semantics(
+                  button: true,
+                  selected: i == currentIndex,
+                  label: _navItems[i].label,
+                  child: GestureDetector(
+                    onTap: () => onTap(i),
+                    behavior: HitTestBehavior.opaque,
+                    child: _NavTile(
+                      item: _navItems[i],
+                      isActive: i == currentIndex,
+                    ),
+                  ),
+                ),
               ),
-            );
-          }),
+          ],
         ),
       ),
     );
@@ -236,40 +249,43 @@ class _NavTile extends StatelessWidget {
   final _NavItem item;
   final bool isActive;
 
+  static const _duration = Duration(milliseconds: 200);
+
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    final color = isActive ? AppColors.surface : AppColors.iconMuted;
+    return Center(
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+        duration: _duration,
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        height: 42,
+        padding: EdgeInsets.symmetric(horizontal: isActive ? 16 : 12),
         decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.primary.withValues(alpha: 0.22)
-              : Colors.transparent,
+          color: isActive ? AppColors.textPrimary : const Color(0x00000000),
           borderRadius: BorderRadius.circular(14),
         ),
-        child: Column(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              isActive ? item.activeIcon : item.icon,
-              size: 22,
-              color: isActive ? Colors.black : const Color(0xFFAAAAAA),
-            ),
-            const SizedBox(height: 4),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 220),
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-                color: isActive ? Colors.black : const Color(0xFFAAAAAA),
-                letterSpacing: 0.1,
-              ),
-              child: Text(item.label),
+            Icon(isActive ? item.activeIcon : item.icon, size: 20, color: color),
+            AnimatedSize(
+              duration: _duration,
+              curve: Curves.easeOutCubic,
+              child: isActive
+                  ? Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Text(
+                        item.label,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          color: AppColors.surface,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
             ),
           ],
         ),
