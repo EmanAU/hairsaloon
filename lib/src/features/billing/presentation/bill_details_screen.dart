@@ -150,124 +150,72 @@ class _CustomerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = bill.customerName.trim();
-    final phone = bill.customerPhone.trim();
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : '';
+    String orDash(String value) => value.trim().isEmpty ? '-' : value.trim();
     return _Card(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                ),
-                child: initial.isEmpty
-                    ? const Icon(
-                        CupertinoIcons.person_fill,
-                        size: 19,
-                        color: AppColors.textPrimary,
-                      )
-                    : Text(
-                        initial,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name.isEmpty ? 'Walk-in customer' : name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      phone.isEmpty ? 'No phone number' : phone,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          _InfoRow(
+            label: 'Customer',
+            value: bill.customerName.trim().isEmpty
+                ? 'Walk-in customer'
+                : bill.customerName.trim(),
+            emphasize: true,
           ),
-          const SizedBox(height: 12),
-          const Divider(height: 1, color: AppColors.border),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              _MetaChip(
-                icon: CupertinoIcons.number,
-                label: 'Bill ${bill.shortNumber}',
-              ),
-              _MetaChip(
-                icon: CupertinoIcons.calendar,
-                label: BillReceiptShare.formatDateTime(bill.createdAt),
-              ),
-              if (bill.employeeName.trim().isNotEmpty)
-                _MetaChip(
-                  icon: CupertinoIcons.scissors,
-                  label: bill.employeeName.trim(),
-                ),
-              if (bill.paymentType.trim().isNotEmpty)
-                _MetaChip(
-                  icon: CupertinoIcons.creditcard,
-                  label: bill.paymentType.trim(),
-                ),
-            ],
+          _InfoRow(label: 'Phone', value: orDash(bill.customerPhone)),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 6),
+            child: Divider(height: 1, color: AppColors.border),
           ),
+          _InfoRow(label: 'Bill No', value: bill.shortNumber),
+          _InfoRow(
+            label: 'Date',
+            value: BillReceiptShare.formatDateTime(bill.createdAt),
+          ),
+          _InfoRow(label: 'Staff', value: orDash(bill.employeeName)),
+          _InfoRow(label: 'Payment', value: orDash(bill.paymentType)),
         ],
       ),
     );
   }
 }
 
-class _MetaChip extends StatelessWidget {
-  const _MetaChip({required this.icon, required this.label});
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({
+    required this.label,
+    required this.value,
+    this.emphasize = false,
+  });
 
-  final IconData icon;
   final String label;
+  final String value;
+  final bool emphasize;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(8),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 12, color: AppColors.textSecondary),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+          SizedBox(
+            width: 84,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: emphasize ? 14 : 13,
+                fontWeight: emphasize ? FontWeight.w700 : FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
         ],
@@ -453,21 +401,19 @@ class _Actions extends StatelessWidget {
           children: [
             Expanded(
               child: Builder(
-                builder: (buttonContext) => OutlinedButton.icon(
+                builder: (buttonContext) => OutlinedButton(
                   onPressed: sharing ? null : () => onShare(buttonContext),
                   style: appSecondaryButtonStyle(),
-                  icon: const Icon(CupertinoIcons.share, size: 17),
-                  label: Text(sharing ? 'Preparing…' : 'Share'),
+                  child: Text(sharing ? 'Preparing…' : 'Share'),
                 ),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: FilledButton.icon(
+              child: FilledButton(
                 onPressed: onReceipt,
                 style: appPrimaryButtonStyle(),
-                icon: const Icon(CupertinoIcons.doc_text, size: 17),
-                label: const Text('Receipt'),
+                child: const Text('Receipt'),
               ),
             ),
           ],
