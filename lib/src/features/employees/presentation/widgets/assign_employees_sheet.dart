@@ -3,8 +3,8 @@ import 'package:hairsaloon/src/core/widgets/app_sheet.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
-/// Multi-select sheet. Returns the chosen ids (empty = unassigned), or null
-/// if cancelled.
+/// Assignment sheet. Returns selected manager ids (empty = unassigned),
+/// or null if cancelled.
 Future<List<String>?> showAssignEmployeesSheet({
   required BuildContext context,
   required String employeeName,
@@ -45,6 +45,7 @@ class _AssignEmployeesSheet extends StatefulWidget {
 }
 
 class _AssignEmployeesSheetState extends State<_AssignEmployeesSheet> {
+  /// Empty set = unassigned. Supports one or more managers.
   late final Set<String> _selected = {
     for (final id in widget.initialIds)
       if (widget.isBlocked?.call(id) != true) id,
@@ -52,25 +53,41 @@ class _AssignEmployeesSheetState extends State<_AssignEmployeesSheet> {
 
   bool _blocked(String id) => widget.isBlocked?.call(id) == true;
 
+  void _unassign() {
+    setState(() => _selected.clear());
+  }
+
+  void _toggle(String id) {
+    if (_blocked(id)) return;
+    setState(() {
+      if (_selected.contains(id)) {
+        _selected.remove(id);
+      } else {
+        _selected.add(id);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final unassigned = _selected.isEmpty;
     return AppSheetBody(
       title: 'Assigned to',
       subtitle: widget.employeeName,
       icon: CupertinoIcons.person_2,
-      confirmLabel: 'Apply',
+      confirmLabel: unassigned ? 'Set Unassigned' : 'Apply Assignment',
       onConfirm: () => Navigator.of(context).pop(
-        _selected.where((id) => !_blocked(id)).toList(),
+        _selected.where((id) => !_blocked(id)).toList(growable: false),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AppSheetOption(
             label: 'Unassigned',
-            subtitle: 'Not assigned to anyone',
+            subtitle: 'Clear assignment — not under anyone',
             icon: CupertinoIcons.person_crop_circle_badge_xmark,
-            selected: _selected.isEmpty,
-            onTap: () => setState(_selected.clear),
+            selected: unassigned,
+            onTap: _unassign,
           ),
           if (widget.others.isEmpty)
             const Padding(
@@ -83,8 +100,20 @@ class _AssignEmployeesSheetState extends State<_AssignEmployeesSheet> {
                 ),
               ),
             )
-          else
+          else ...[
+            const Padding(
+              padding: EdgeInsets.only(top: 4, bottom: 8),
+              child: Text(
+                'Assign to',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
             ...widget.others.map(_option),
+          ],
         ],
       ),
     );
@@ -92,6 +121,7 @@ class _AssignEmployeesSheetState extends State<_AssignEmployeesSheet> {
 
   Widget _option(EmployeeItem other) {
     final blocked = _blocked(other.id);
+    final selected = !blocked && _selected.contains(other.id);
     final count = widget.assignedCount(other.id);
     final status = other.isActive ? 'Active' : 'Inactive';
     final subtitle = blocked
@@ -103,18 +133,9 @@ class _AssignEmployeesSheetState extends State<_AssignEmployeesSheet> {
       label: other.fullName,
       subtitle: subtitle,
       icon: CupertinoIcons.person_crop_circle,
-      selected: !blocked && _selected.contains(other.id),
+      selected: selected,
       enabled: !blocked,
-      onTap: () {
-        if (blocked) return;
-        setState(() {
-          if (_selected.contains(other.id)) {
-            _selected.remove(other.id);
-          } else {
-            _selected.add(other.id);
-          }
-        });
-      },
+      onTap: () => _toggle(other.id),
     );
   }
 }

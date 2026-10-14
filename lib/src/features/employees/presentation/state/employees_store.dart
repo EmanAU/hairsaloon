@@ -130,12 +130,15 @@ class EmployeesStore extends ChangeNotifier {
   }) async {
     final employee = byId(employeeId);
     if (employee == null) return;
-    final next = sanitizeAssignedToIds(
-      selfId: employeeId,
-      ids: assignedToIds,
-      knownIds: _knownIds,
-      employees: _all,
-    );
+    // Empty list is a valid unassign — never treat it as "no change" wrongly.
+    final next = assignedToIds.isEmpty
+        ? const <String>[]
+        : sanitizeAssignedToIds(
+            selfId: employeeId,
+            ids: assignedToIds,
+            knownIds: _knownIds,
+            employees: _all,
+          );
     if (_sameIds(employee.assignedToIds, next)) return;
     await _repository.update(employee.copyWith(assignedToIds: next));
     _reload();

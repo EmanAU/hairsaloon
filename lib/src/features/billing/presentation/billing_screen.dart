@@ -1,4 +1,5 @@
 import 'package:hairsaloon/src/core/services/toast_service.dart';
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:hairsaloon/src/core/widgets/app_sheet.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -223,10 +224,11 @@ class _BillingScreenState extends State<BillingScreen> {
                       controller: _phoneCtrl,
                       style: const TextStyle(fontSize: 12),
                       keyboardType: TextInputType.phone,
+                      inputFormatters: [PkPhoneInputFormatter()],
                       onChanged: _onPhoneChanged,
                       onSubmitted: (value) {
-                        final phone = value.trim();
-                        if (phone.isEmpty) return;
+                        final phone = PkPhone.normalize(value);
+                        if (!PkPhone.isValid(phone)) return;
                         final existing = context
                             .read<BillingStore>()
                             .getCustomerContactByPhone(phone);
@@ -239,7 +241,7 @@ class _BillingScreenState extends State<BillingScreen> {
                       },
                       decoration:
                           _smallDecoration(
-                            'Enter Customer Phone Number',
+                            'Customer phone (+923462254477)',
                           ).copyWith(
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 10,
@@ -1160,8 +1162,12 @@ class _AddCustomerSheet extends StatefulWidget {
 
 class _AddCustomerSheetState extends State<_AddCustomerSheet> {
   final _nameCtrl = TextEditingController();
-  late final _phoneCtrl = TextEditingController(text: widget.initialPhone);
-  bool _phoneError = false;
+  late final _phoneCtrl = TextEditingController(
+    text: widget.initialPhone.trim().isEmpty
+        ? PkPhone.prefix
+        : PkPhone.normalize(widget.initialPhone),
+  );
+  String? _phoneError;
 
   @override
   void dispose() {
@@ -1171,9 +1177,10 @@ class _AddCustomerSheetState extends State<_AddCustomerSheet> {
   }
 
   void _submit() {
-    final phone = _phoneCtrl.text.trim();
-    if (phone.isEmpty) {
-      setState(() => _phoneError = true);
+    final phone = PkPhone.normalize(_phoneCtrl.text);
+    final error = PkPhone.validationError(phone);
+    if (error != null) {
+      setState(() => _phoneError = error);
       return;
     }
     Navigator.of(
@@ -1203,15 +1210,16 @@ class _AddCustomerSheetState extends State<_AddCustomerSheet> {
           TextField(
             controller: _phoneCtrl,
             keyboardType: TextInputType.phone,
+            inputFormatters: [PkPhoneInputFormatter()],
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _submit(),
             onChanged: (_) {
-              if (_phoneError) setState(() => _phoneError = false);
+              if (_phoneError != null) setState(() => _phoneError = null);
             },
             style: const TextStyle(fontSize: 13.5),
             decoration: appSheetInputDecoration(
-              'Customer Number',
-            ).copyWith(errorText: _phoneError ? 'Number is required' : null),
+              'Customer Number (+923462254477)',
+            ).copyWith(errorText: _phoneError),
           ),
         ],
       ),

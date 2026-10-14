@@ -246,6 +246,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     String label, {
     int maxLines = 1,
     TextInputType? keyboard,
+    List<TextInputFormatter>? inputFormatters,
+    String? Function(String?)? validator,
   }) {
     const radius = BorderRadius.all(Radius.circular(9));
     return Column(
@@ -266,6 +268,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           controller: controller,
           maxLines: maxLines,
           keyboardType: keyboard,
+          inputFormatters: inputFormatters,
           style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 13,
@@ -294,8 +297,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             errorStyle: TextStyle(fontSize: 11),
             hintStyle: TextStyle(color: _hint, fontSize: 13),
           ),
-          validator: (value) =>
-              (value == null || value.trim().isEmpty) ? 'Required' : null,
+          validator: validator ??
+              (value) =>
+                  (value == null || value.trim().isEmpty) ? 'Required' : null,
         ),
       ],
     );
@@ -375,7 +379,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     if (state == null || !state.validate()) return;
     final updated = BusinessProfile(
       businessName: _nameCtrl.text.trim(),
-      phoneNumber: _phoneCtrl.text.trim(),
+      phoneNumber: PkPhone.normalize(_phoneCtrl.text),
       businessType: _businessType,
       city: _city,
       area: _areaCtrl.text.trim(),

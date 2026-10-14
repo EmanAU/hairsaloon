@@ -226,11 +226,21 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             ),
             PopupMenuButton<String>(
               onSelected: (value) => _onMenuAction(store, e, value),
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'assign', child: Text('Assign')),
-                PopupMenuItem(value: 'agreement', child: Text('Agreement')),
-                PopupMenuItem(value: 'edit', child: Text('Edit')),
-                PopupMenuItem(value: 'delete', child: Text('Delete')),
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'assign',
+                  child: Text(
+                    e.assignedToIds.isEmpty ? 'Assign' : 'Change assignment',
+                  ),
+                ),
+                if (e.assignedToIds.isNotEmpty)
+                  const PopupMenuItem(
+                    value: 'unassign',
+                    child: Text('Unassign'),
+                  ),
+                const PopupMenuItem(value: 'agreement', child: Text('Agreement')),
+                const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                const PopupMenuItem(value: 'delete', child: Text('Delete')),
               ],
               icon: const Icon(CupertinoIcons.ellipsis_vertical, size: 18),
             ),
@@ -265,6 +275,19 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   ) async {
     if (value == 'assign') {
       await _showAssignSheet(store, e);
+      return;
+    }
+    if (value == 'unassign') {
+      final confirm = await showAppConfirmDialog(
+        context: context,
+        title: 'Unassign employee?',
+        message: 'Remove ${e.fullName} from their current assignment?',
+        cancelLabel: 'Cancel',
+        confirmLabel: 'Unassign',
+      );
+      if (confirm != true) return;
+      await store.setAssignedTo(employeeId: e.id, assignedToIds: const []);
+      ToastService.success('Unassigned');
       return;
     }
     if (value == 'agreement') {

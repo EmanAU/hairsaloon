@@ -228,24 +228,32 @@ class _DashboardScreenState extends State<DashboardScreen>
                               title: 'Employees',
                               detail: '$team active',
                               icon: CupertinoIcons.person_2,
+                              tint: AppColors.homeSage,
+                              accent: AppColors.homeOlive,
                               onTap: () => open(AppRoutes.employees),
                             ),
                             _Shortcut(
                               title: 'Rate List',
                               detail: 'Services & prices',
                               icon: CupertinoIcons.scissors,
+                              tint: AppColors.homePeach,
+                              accent: AppColors.homeTerracotta,
                               onTap: () => open(AppRoutes.serviceList),
                             ),
                             _Shortcut(
                               title: 'Customers',
                               detail: 'Visits & history',
                               icon: CupertinoIcons.person_crop_rectangle,
+                              tint: AppColors.homeLavender,
+                              accent: AppColors.homePlum,
                               onTap: () => open(AppRoutes.customers),
                             ),
                             _Shortcut(
                               title: 'Finance',
                               detail: 'Income & expenses',
                               icon: CupertinoIcons.chart_bar,
+                              tint: AppColors.homeSand,
+                              accent: AppColors.homeBronze,
                               onTap: () => open(AppRoutes.financeOverview),
                             ),
                           ],
@@ -521,30 +529,36 @@ class _Shortcut extends StatelessWidget {
     required this.title,
     required this.detail,
     required this.icon,
+    required this.tint,
+    required this.accent,
     required this.onTap,
   });
   final String title;
   final String detail;
   final IconData icon;
+  final Color tint;
+  final Color accent;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface,
+      color: tint,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.homeBorder),
+        side: BorderSide(color: accent.withValues(alpha: 0.14)),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
+        splashColor: accent.withValues(alpha: 0.12),
+        highlightColor: accent.withValues(alpha: 0.06),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 16, color: AppColors.homeBronze),
+              Icon(icon, size: 16, color: accent),
               const SizedBox(height: 5),
               Text(
                 title,
@@ -559,9 +573,9 @@ class _Shortcut extends StatelessWidget {
                 detail,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 9,
-                  color: AppColors.textSecondary,
+                  color: accent.withValues(alpha: 0.75),
                 ),
               ),
             ],
