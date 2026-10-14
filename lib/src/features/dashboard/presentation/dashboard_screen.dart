@@ -90,8 +90,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       arguments: FinanceRouteArgs(anchor: _today, period: FinancePeriod.daily),
     );
 
-    return ColoredBox(
-      color: AppColors.homeCanvas,
+    return DecoratedBox(
+      decoration: const BoxDecoration(color: Color(0xFFFFFDF0)),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final tablet = constraints.maxWidth >= 600;
@@ -126,7 +126,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
-                                  color: AppColors.homeInk,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                             ),
@@ -143,7 +143,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 'View finance',
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color: AppColors.homeInk,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                             ),
@@ -154,7 +154,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                           decoration: BoxDecoration(
                             color: AppColors.surface,
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.homeBorder),
+                            border: Border.all(color: AppColors.border),
                           ),
                           clipBehavior: Clip.antiAlias,
                           child: Column(
@@ -168,10 +168,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 prominent: true,
                                 onTap: () => finance(AppRoutes.financeSales),
                               ),
-                              const Divider(
-                                height: 1,
-                                color: AppColors.homeBorder,
-                              ),
+                              const Divider(height: 1, color: AppColors.border),
                               IntrinsicHeight(
                                 child: Row(
                                   children: [
@@ -186,7 +183,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     ),
                                     const VerticalDivider(
                                       width: 1,
-                                      color: AppColors.homeBorder,
+                                      color: AppColors.border,
                                     ),
                                     Expanded(
                                       child: _Stat(
@@ -209,7 +206,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.homeInk,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -228,32 +225,32 @@ class _DashboardScreenState extends State<DashboardScreen>
                               title: 'Employees',
                               detail: '$team active',
                               icon: CupertinoIcons.person_2,
-                              tint: AppColors.homeSage,
-                              accent: AppColors.homeOlive,
+                              tint: AppColors.surface,
+                              accent: AppColors.textPrimary,
                               onTap: () => open(AppRoutes.employees),
                             ),
                             _Shortcut(
                               title: 'Rate List',
                               detail: 'Services & prices',
                               icon: CupertinoIcons.scissors,
-                              tint: AppColors.homePeach,
-                              accent: AppColors.homeTerracotta,
+                              tint: AppColors.surface,
+                              accent: AppColors.textPrimary,
                               onTap: () => open(AppRoutes.serviceList),
                             ),
                             _Shortcut(
                               title: 'Customers',
                               detail: 'Visits & history',
                               icon: CupertinoIcons.person_crop_rectangle,
-                              tint: AppColors.homeLavender,
-                              accent: AppColors.homePlum,
+                              tint: AppColors.surface,
+                              accent: AppColors.textPrimary,
                               onTap: () => open(AppRoutes.customers),
                             ),
                             _Shortcut(
                               title: 'Finance',
                               detail: 'Income & expenses',
                               icon: CupertinoIcons.chart_bar,
-                              tint: AppColors.homeSand,
-                              accent: AppColors.homeBronze,
+                              tint: AppColors.surface,
+                              accent: AppColors.textPrimary,
                               onTap: () => open(AppRoutes.financeOverview),
                             ),
                           ],
@@ -300,28 +297,9 @@ class _BusinessHeader extends StatelessWidget {
       clipper: const _HeaderCurve(),
       child: Stack(
         children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/home_salon.png',
-              fit: BoxFit.cover,
-              alignment: const Alignment(0.5, 0.1),
-              cacheWidth: 1200,
-              errorBuilder: (_, error, stack) =>
-                  const ColoredBox(color: AppColors.homeInk),
-            ),
-          ),
-          Positioned.fill(
+          const Positioned.fill(
             child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.72),
-                    Colors.black.withValues(alpha: 0.32),
-                  ],
-                ),
-              ),
+              decoration: BoxDecoration(color: Color(0xFFFFEB3B)),
             ),
           ),
           SafeArea(
@@ -340,7 +318,7 @@ class _BusinessHeader extends StatelessWidget {
                             tooltip: 'Open menu',
                             onPressed: () => Scaffold.of(context).openDrawer(),
                             style: IconButton.styleFrom(
-                              backgroundColor: Colors.white.withValues(
+                              backgroundColor: AppColors.onPrimary.withValues(
                                 alpha: 0.12,
                               ),
                               minimumSize: const Size(40, 40),
@@ -350,7 +328,7 @@ class _BusinessHeader extends StatelessWidget {
                             ),
                             icon: const Icon(
                               CupertinoIcons.bars,
-                              color: Colors.white,
+                              color: AppColors.onPrimary,
                               size: 18,
                             ),
                           ),
@@ -358,7 +336,7 @@ class _BusinessHeader extends StatelessWidget {
                           Text(
                             date,
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.onPrimary,
                               fontSize: 10,
                               fontWeight: FontWeight.w500,
                             ),
@@ -369,7 +347,7 @@ class _BusinessHeader extends StatelessWidget {
                       const Text(
                         'Welcome back',
                         style: TextStyle(
-                          color: Color(0xFFE4D8C7),
+                          color: AppColors.onPrimary,
                           fontSize: 10,
                         ),
                       ),
@@ -377,7 +355,7 @@ class _BusinessHeader extends StatelessWidget {
                       Text(
                         name,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.onPrimary,
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
                           letterSpacing: -0.4,
@@ -391,7 +369,7 @@ class _BusinessHeader extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Color(0xFFE4D8C7),
+                            color: AppColors.onPrimary,
                             fontSize: 10,
                             height: 1.3,
                           ),
@@ -504,7 +482,7 @@ class _Stat extends StatelessWidget {
                       height: 1.15,
                       fontWeight: FontWeight.w700,
                       letterSpacing: -0.4,
-                      color: AppColors.homeInk,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ),
@@ -548,7 +526,7 @@ class _Shortcut extends StatelessWidget {
       color: tint,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: accent.withValues(alpha: 0.14)),
+        side: const BorderSide(color: AppColors.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -561,14 +539,21 @@ class _Shortcut extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 18, color: accent),
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 18, color: AppColors.onPrimary),
+              ),
               const SizedBox(height: 6),
               Text(
                 title,
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.homeInk,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 3),
@@ -579,7 +564,7 @@ class _Shortcut extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  color: accent.withValues(alpha: 0.8),
+                  color: AppColors.textSecondary,
                 ),
               ),
             ],

@@ -36,17 +36,13 @@ class _DashboardShellState extends State<DashboardShell> {
 
     final tablet = AdaptivePage.isTablet(context);
     final canvas = _currentIndex == 0
-        ? AppColors.homeCanvas
+        ? const Color(0xFFFFFDF0)
         : AppColors.background;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
         statusBarColor: const Color(0x00000000),
-        statusBarIconBrightness: _currentIndex == 0
-            ? Brightness.light
-            : Brightness.dark,
-        statusBarBrightness: _currentIndex == 0
-            ? Brightness.dark
-            : Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
         systemNavigationBarColor: canvas,
         systemNavigationBarIconBrightness: Brightness.dark,
         systemNavigationBarDividerColor: canvas,
@@ -125,13 +121,13 @@ const _navItems = [
     label: 'Home',
   ),
   _NavItem(
-    icon: CupertinoIcons.doc_plaintext,
-    activeIcon: CupertinoIcons.doc_text_fill,
+    icon: Icons.receipt_long_outlined,
+    activeIcon: Icons.receipt_long,
     label: 'Billing',
   ),
   _NavItem(
-    icon: CupertinoIcons.money_dollar_circle,
-    activeIcon: CupertinoIcons.money_dollar_circle_fill,
+    icon: Icons.account_balance_wallet_outlined,
+    activeIcon: Icons.account_balance_wallet,
     label: 'Expense',
   ),
 ];
@@ -227,17 +223,17 @@ class _BottomNav extends StatelessWidget {
         bottomInset > 0 ? bottomInset + 4 : 10,
       ),
       child: Container(
-        height: 54,
+        height: 70,
         padding: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(color: AppColors.border),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x14000000),
-              blurRadius: 16,
-              offset: Offset(0, 6),
+              color: Color(0x0D000000),
+              blurRadius: 22,
+              offset: Offset(0, 4),
             ),
           ],
         ),
@@ -245,7 +241,7 @@ class _BottomNav extends StatelessWidget {
           children: [
             for (var i = 0; i < _navItems.length; i++)
               Expanded(
-                flex: i == currentIndex ? 2 : 1,
+                flex: 1,
                 child: Tooltip(
                   message: _navItems[i].label,
                   child: Semantics(
@@ -271,57 +267,42 @@ class _BottomNav extends StatelessWidget {
 
 class _NavTile extends StatelessWidget {
   const _NavTile({required this.item, required this.isActive});
-
   final _NavItem item;
   final bool isActive;
 
-  static const _duration = Duration(milliseconds: 200);
-
   @override
   Widget build(BuildContext context) {
-    final color = isActive ? AppColors.surface : AppColors.iconMuted;
-    return Center(
-      child: AnimatedContainer(
-        duration: _duration,
-        curve: Curves.easeOutCubic,
-        height: 36,
-        padding: EdgeInsets.symmetric(horizontal: isActive ? 12 : 10),
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.textPrimary : const Color(0x00000000),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
+    return SizedBox(
+      height: 70,
+      width: double.infinity,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            width: 58,
+            height: 32,
+            decoration: BoxDecoration(
+              color: isActive ? AppColors.primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(
               isActive ? item.activeIcon : item.icon,
-              size: 18,
-              color: color,
+              size: 23,
+              color: isActive ? AppColors.textPrimary : AppColors.textSecondary,
             ),
-            Flexible(
-              child: AnimatedSize(
-                duration: _duration,
-                curve: Curves.easeOutCubic,
-                child: isActive
-                    ? Padding(
-                        padding: const EdgeInsets.only(left: 6),
-                        child: Text(
-                          item.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.surface,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            item.label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+              color: isActive ? AppColors.textPrimary : AppColors.textSecondary,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
