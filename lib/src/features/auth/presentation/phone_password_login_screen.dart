@@ -46,8 +46,13 @@ class _PhonePasswordLoginScreenState extends State<PhonePasswordLoginScreen> {
 
     if (!mounted) return;
     if (auth.currentUser != null && auth.error == null) {
+      final profile = context.read<BusinessProfileNotifier>();
+      if (profile.profile == null) {
+        await profile.load();
+      }
+      if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil(
-        context.read<BusinessProfileNotifier>().profile == null
+        profile.profile == null
             ? AppRoutes.businessRegistration
             : AppRoutes.homeShell,
         (route) => false,

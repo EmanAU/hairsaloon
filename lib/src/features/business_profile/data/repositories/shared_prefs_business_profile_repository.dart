@@ -10,6 +10,7 @@ class SharedPrefsBusinessProfileRepository
     : _prefs = prefs;
 
   static const storageKey = 'business_profile_v1';
+  static const _scopedFlagKey = 'profile.scoped.v1';
 
   final SharedPreferences _prefs;
 
@@ -19,24 +20,51 @@ class SharedPrefsBusinessProfileRepository
   }
 
   Future<void> migrateLegacyProfile() async {
-    if (_prefs.getBool('profile.scoped.v1') == true) return;
     final key = _accountKey;
-    final raw = _prefs.getString(storageKey);
-    if (key != null && raw != null && !_prefs.containsKey(key)) {
-      await _prefs.setString(key, raw);
+    final legacy = _prefs.getString(storageKey);
+    final hasLegacy = legacy != null && legacy.trim().isNotEmpty;
+
+    // Session not ready yet — keep the flag unset so a later boot can migrate.
+    if (key == null) {
+      if (!hasLegacy) {
+        await _prefs.setBool(_scopedFlagKey, true);
+      }
+      return;
+    }
+
+    if (hasLegacy && !_prefs.containsKey(key)) {
+      await _prefs.setString(key, legacy);
+    }
+    if (hasLegacy) {
       await _prefs.remove(storageKey);
     }
-    await _prefs.setBool('profile.scoped.v1', true);
+    await _prefs.setBool(_scopedFlagKey, true);
   }
 
   @override
   Future<BusinessProfile?> getProfile() async {
     final key = _accountKey;
     if (key == null) return null;
-    final raw = _prefs.getString(key);
+
+    var raw = _prefs.getString(key);
+    if (raw == null || raw.trim().isEmpty) {
+      // Recover profiles left under the pre-scoping key (or after a migrate
+      // that ran before the auth session was available).
+      raw = await _recoverLegacyProfile(key);
+    }
     if (raw == null || raw.trim().isEmpty) return null;
+
     final model = BusinessProfileModel.fromJsonString(raw);
     return model.toEntity();
+  }
+
+  Future<String?> _recoverLegacyProfile(String scopedKey) async {
+    final legacy = _prefs.getString(storageKey);
+    if (legacy == null || legacy.trim().isEmpty) return null;
+    await _prefs.setString(scopedKey, legacy);
+    await _prefs.remove(storageKey);
+    await _prefs.setBool(_scopedFlagKey, true);
+    return legacy;
   }
 
   @override
@@ -47,6 +75,11 @@ class SharedPrefsBusinessProfileRepository
     if (!await _prefs.setString(key, raw)) {
       throw StateError('Could not save business profile.');
     }
+    // Drop any leftover unscoped copy so restarts always read the scoped key.
+    if (_prefs.containsKey(storageKey)) {
+      await _prefs.remove(storageKey);
+    }
+    await _prefs.setBool(_scopedFlagKey, true);
   }
 
   @override

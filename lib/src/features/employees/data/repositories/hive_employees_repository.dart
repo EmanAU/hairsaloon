@@ -21,7 +21,10 @@ class HiveEmployeesRepository {
   List<String> getCustomSpecialistCategories() {
     final raw = _metaBox.get(_specialistCategoriesKey);
     if (raw is! List) return const <String>[];
-    return raw.map((e) => e.toString()).where((e) => e.trim().isNotEmpty).toList();
+    return raw
+        .map((e) => e.toString())
+        .where((e) => e.trim().isNotEmpty)
+        .toList();
   }
 
   Future<void> saveCustomSpecialistCategories(List<String> categories) async {
@@ -50,7 +53,7 @@ Map<String, dynamic> _employeeToMap(EmployeeItem item) {
     'cnicNumber': item.cnicNumber,
     'homeAddress': item.homeAddress,
     'isActive': item.isActive,
-    'assignedToIds': item.assignedToIds,
+    'isManager': item.isManager,
     'photoBase64': item.photoBase64,
     'speciality': item.speciality,
     'employeeType': item.employeeType,
@@ -70,7 +73,7 @@ EmployeeItem _employeeFromMap(Map<String, dynamic> map) {
     cnicNumber: (map['cnicNumber'] ?? '').toString(),
     homeAddress: (map['homeAddress'] ?? '').toString(),
     isActive: (map['isActive'] as bool?) ?? false,
-    assignedToIds: _assignedToIdsFrom(map, id),
+    isManager: (map['isManager'] as bool?) ?? false,
     photoBase64: map['photoBase64']?.toString(),
     speciality: map['speciality']?.toString(),
     employeeType: map['employeeType']?.toString(),
@@ -78,16 +81,4 @@ EmployeeItem _employeeFromMap(Map<String, dynamic> map) {
     commission: map['commission']?.toString(),
     agreementDescription: map['agreementDescription']?.toString(),
   );
-}
-
-List<String> _assignedToIdsFrom(Map<String, dynamic> map, String selfId) {
-  final raw = map['assignedToIds'];
-  Iterable<String> ids;
-  if (raw is List) {
-    ids = raw.map((e) => e.toString());
-  } else {
-    final legacy = map['managerId']?.toString();
-    ids = (legacy != null && legacy.isNotEmpty) ? <String>[legacy] : const [];
-  }
-  return sanitizeAssignedToIds(selfId: selfId, ids: ids);
 }

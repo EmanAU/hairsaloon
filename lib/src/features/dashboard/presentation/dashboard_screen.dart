@@ -124,8 +124,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                               child: Text(
                                 'Today at a glance',
                                 style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
                                   color: AppColors.homeInk,
                                 ),
                               ),
@@ -207,8 +207,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                         const Text(
                           'Manage business',
                           style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
                             color: AppColors.homeInk,
                           ),
                         ),
@@ -217,7 +217,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 2,
-                                mainAxisExtent: 78,
+                                mainAxisExtent: 92,
                                 crossAxisSpacing: 8,
                                 mainAxisSpacing: 8,
                               ),
@@ -553,29 +553,30 @@ class _Shortcut extends StatelessWidget {
         splashColor: accent.withValues(alpha: 0.12),
         highlightColor: accent.withValues(alpha: 0.06),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 16, color: accent),
-              const SizedBox(height: 5),
+              Icon(icon, size: 18, color: accent),
+              const SizedBox(height: 6),
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.homeInk,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               Text(
                 detail,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 9,
-                  color: accent.withValues(alpha: 0.75),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: accent.withValues(alpha: 0.8),
                 ),
               ),
             ],

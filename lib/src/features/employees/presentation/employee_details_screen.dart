@@ -8,7 +8,6 @@ import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/business_logo_picker.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
-import 'package:hairsaloon/src/features/employees/presentation/widgets/assign_employees_sheet.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
@@ -33,9 +32,9 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
   late final TextEditingController _otherCategoryCtrl;
   String? _specialistCategory;
   String? _photoBase64;
-  List<String> _assignedToIds = const <String>[];
   bool _editing = false;
   late bool _isActive;
+  late bool _isManager;
   bool _usingOther = false;
 
   @override
@@ -53,8 +52,8 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     _specialityCtrl = TextEditingController(text: item.speciality ?? '');
     _otherCategoryCtrl = TextEditingController();
     _photoBase64 = item.photoBase64;
-    _assignedToIds = List<String>.from(item.assignedToIds);
     _isActive = item.isActive;
+    _isManager = item.isManager;
 
     final type = (item.employeeType ?? '').trim();
     final defaults = EmployeesStore.defaultSpecialistCategories
@@ -82,8 +81,8 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     _addressCtrl.text = item.homeAddress;
     _specialityCtrl.text = item.speciality ?? '';
     _photoBase64 = item.photoBase64;
-    _assignedToIds = List<String>.from(item.assignedToIds);
     _isActive = item.isActive;
+    _isManager = item.isManager;
 
     final type = (item.employeeType ?? '').trim();
     final defaults = EmployeesStore.defaultSpecialistCategories
@@ -124,34 +123,14 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     return (_specialistCategory ?? '').trim();
   }
 
-  String _assignedToDisplay(EmployeesStore store) {
-    if (_assignedToIds.isEmpty) return 'Unassigned';
-    final names = _assignedToIds
-        .map(store.byId)
-        .whereType<EmployeeItem>()
-        .map((e) => e.fullName)
-        .toList(growable: false);
-    return names.isEmpty ? 'Unassigned' : names.join(', ');
-  }
-
-  Future<void> _pickAssignedTo(EmployeesStore store) async {
-    final result = await showAssignEmployeesSheet(
-      context: context,
-      employeeName: widget.item.fullName,
-      others: store.assignTargets(excludeId: widget.item.id),
-      selectedIds: _assignedToIds,
-      assignedCount: (id) => store.peopleAssignedTo(id).length,
-      isBlocked: (id) => store.wouldCreateCycle(widget.item.id, id),
-    );
-    if (result == null || !mounted) return;
-    setState(() => _assignedToIds = result);
-  }
-
   @override
   Widget build(BuildContext context) {
     final store = context.watch<EmployeesStore>();
     final categories = store.specialistCategories;
-    final incomingCount = store.peopleAssignedTo(widget.item.id).length;
+    final otherManager = store.manager;
+    final replacingManager = _isManager &&
+        otherManager != null &&
+        otherManager.id != widget.item.id;
 
     return AdaptivePage(
       form: true,
@@ -265,25 +244,30 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
               ],
               const SizedBox(height: 12),
               _editField(_specialityCtrl, 'Speciality'),
-              const SizedBox(height: 12),
-              _labeledDropdown(
-                label: 'Assigned to',
-                child: InkWell(
-                  onTap: () => _pickAssignedTo(store),
-                  borderRadius: BorderRadius.circular(9),
-                  child: InputDecorator(
-                    decoration: _inputDecoration(),
-                    child: Text(
-                      _assignedToDisplay(store),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+              const SizedBox(height: 8),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                activeThumbColor: AppColors.primary,
+                title: const Text(
+                  'Shop manager',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
+                subtitle: Text(
+                  replacingManager
+                      ? 'Will replace ${otherManager.fullName} as the only manager'
+                      : 'Only one manager allowed; they can still work',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                value: _isManager,
+                onChanged: (value) => setState(() => _isManager = value),
               ),
-              const SizedBox(height: 8),
               SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
                 dense: true,
@@ -328,13 +312,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
               _viewRow('Home address', _addressCtrl.text),
               _viewRow('Specialist category', _resolvedCategory),
               _viewRow('Speciality', _specialityCtrl.text),
-              _viewRow('Assigned to', _assignedToDisplay(store)),
-              _viewRow(
-                'Assigned people',
-                incomingCount == 0
-                    ? 'None'
-                    : '$incomingCount',
-              ),
+              _viewRow('Role', _isManager ? 'Manager' : 'Employee'),
               _viewRow(
                 'Status',
                 _isActive ? 'Active' : 'Inactive',
@@ -492,9 +470,9 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
       speciality: speciality,
       employeeType: category,
       isActive: _isActive,
+      isManager: _isManager,
       photoBase64: _photoBase64,
       clearPhoto: _photoBase64 == null,
-      assignedToIds: _assignedToIds,
     );
     ToastService.success('Employee updated');
     if (!mounted) return;

@@ -1,81 +1,28 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 
-EmployeeItem _emp(String id, {List<String> assignedTo = const []}) {
-  return EmployeeItem(
-    id: id,
-    firstName: id,
-    lastName: '',
-    phoneNumber: '',
-    cnicNumber: '',
-    homeAddress: '',
-    isActive: true,
-    assignedToIds: assignedTo,
-  );
-}
-
 void main() {
-  test('blocks reverse assignment when A is already assigned to B', () {
-    final employees = [
-      _emp('ali', assignedTo: ['bilal']),
-      _emp('bilal'),
-    ];
-
-    expect(
-      wouldCreateAssignmentCycle(
-        employeeId: 'bilal',
-        targetId: 'ali',
-        employees: employees,
-      ),
-      isTrue,
+  test('only one manager role is represented on an employee', () {
+    const ali = EmployeeItem(
+      id: 'ali',
+      firstName: 'Ali',
+      lastName: '',
+      phoneNumber: '+923001234567',
+      cnicNumber: '35202-1234567-1',
+      homeAddress: 'City',
+      isActive: true,
+      isManager: true,
     );
-    expect(
-      wouldCreateAssignmentCycle(
-        employeeId: 'ali',
-        targetId: 'bilal',
-        employees: employees,
-      ),
-      isFalse,
+    const bilal = EmployeeItem(
+      id: 'bilal',
+      firstName: 'Bilal',
+      lastName: '',
+      phoneNumber: '+923001234568',
+      cnicNumber: '35202-1234567-2',
+      homeAddress: 'City',
+      isActive: true,
     );
-  });
-
-  test('blocks longer hierarchy cycles', () {
-    final employees = [
-      _emp('a', assignedTo: ['b']),
-      _emp('b', assignedTo: ['c']),
-      _emp('c'),
-    ];
-
-    expect(
-      wouldCreateAssignmentCycle(
-        employeeId: 'c',
-        targetId: 'a',
-        employees: employees,
-      ),
-      isTrue,
-    );
-    expect(
-      wouldCreateAssignmentCycle(
-        employeeId: 'a',
-        targetId: 'c',
-        employees: employees,
-      ),
-      isFalse,
-    );
-  });
-
-  test('sanitizeAssignedToIds drops reverse targets', () {
-    final employees = [
-      _emp('ali', assignedTo: ['bilal']),
-      _emp('bilal'),
-      _emp('cara'),
-    ];
-
-    final cleaned = sanitizeAssignedToIds(
-      selfId: 'bilal',
-      ids: ['ali', 'cara'],
-      employees: employees,
-    );
-    expect(cleaned, ['cara']);
+    expect(ali.isManager, isTrue);
+    expect(bilal.isManager, isFalse);
   });
 }

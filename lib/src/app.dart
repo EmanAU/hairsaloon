@@ -322,14 +322,13 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
     await HiveBootstrap.init(prefs);
 
     final repository = SharedPrefsBusinessProfileRepository(prefs: prefs);
-    await repository.migrateLegacyProfile();
     final profileNotifier = BusinessProfileNotifier(
       getBusinessProfile: GetBusinessProfile(repository),
       saveBusinessProfile: SaveBusinessProfile(repository),
       clearBusinessProfile: ClearBusinessProfile(repository),
     );
-    await profileNotifier.load();
 
+    // Auth session first — profile keys are scoped to the signed-in user id.
     final session = LocalAuthSessionDataSource(prefs: prefs);
     final authRepository = LocalAuthRepository(prefs: prefs, session: session);
     final authStore = AuthStore(
@@ -344,6 +343,13 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
     final hasAuthSession = await authStore.hasLocalSession();
     if (hasAuthSession) {
       await authStore.loadCurrentUser();
+    } else {
+      await profileNotifier.load();
+    }
+    await repository.migrateLegacyProfile();
+    // Reload after migrate so a recovered legacy profile is in memory.
+    if (hasAuthSession && profileNotifier.profile == null) {
+      await profileNotifier.load();
     }
 
     return _AppBootstrap(
@@ -421,7 +427,7 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future<void>.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
 
-    // Re-check live session so a saved login always opens Home until logout.
+    // Re-check live session + profile so a saved login always opens Home.
     final auth = context.read<AuthStore>();
     final profile = context.read<BusinessProfileNotifier>();
 
@@ -432,9 +438,11 @@ class _SplashScreenState extends State<SplashScreen> {
     if (hasSession && auth.currentUser == null) {
       await auth.loadCurrentUser();
       hasSession = auth.currentUser != null;
+    } else if (hasSession && profile.profile == null) {
+      await profile.load();
     }
 
-    final hasProfile = widget.hasBusinessProfile || profile.profile != null;
+    final hasProfile = profile.profile != null || widget.hasBusinessProfile;
 
     if (!mounted) return;
     final String next;

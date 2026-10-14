@@ -56,6 +56,7 @@ class EmployeeModel {
     required this.cnicNumber,
     required this.homeAddress,
     required this.isActive,
+    this.isManager = false,
     this.photoUrl,
     this.speciality,
     this.employeeType,
@@ -73,6 +74,9 @@ class EmployeeModel {
   final String cnicNumber;
   final String homeAddress;
   final bool isActive;
+
+  /// At most one employee per shop should be manager.
+  final bool isManager;
   final String? photoUrl;
   final String? speciality;
   final String? employeeType;
@@ -80,20 +84,6 @@ class EmployeeModel {
   final double commissionPercent;
   final String? agreementDescription;
   final DateTime createdAt;
-}
-
-class EmployeeAssignmentModel {
-  const EmployeeAssignmentModel({
-    required this.id,
-    required this.shopId,
-    required this.employeeId,
-    required this.assignedToEmployeeId,
-  });
-
-  final String id;
-  final String shopId; // Shop.id
-  final String employeeId; // Employee.id
-  final String assignedToEmployeeId; // Employee.id
 }
 
 class CategoryModel {

@@ -14,7 +14,6 @@ import 'package:hairsaloon/src/features/employees/presentation/employee_agreemen
 import 'package:hairsaloon/src/features/employees/presentation/employee_details_screen.dart';
 import 'package:hairsaloon/src/features/employees/presentation/employee_history_screen.dart';
 import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
-import 'package:hairsaloon/src/features/employees/presentation/widgets/assign_employees_sheet.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
@@ -31,7 +30,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   String _statusTab = 'All';
   String? _photoBase64;
   String? _specialistCategory;
-  List<String> _assignedToIds = const <String>[];
   bool _newActive = true;
 
   final _firstNameCtrl = TextEditingController();
@@ -132,9 +130,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   }
 
   Widget _staffCard(EmployeesStore store, EmployeeItem e) {
-    final assignedLabel = store.assignedToLabel(e);
-    final incoming = store.peopleAssignedTo(e.id).length;
-
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () {
@@ -185,32 +180,16 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  if ((e.employeeType ?? '').trim().isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    _chip(e.employeeType!.trim()),
-                  ],
                   const SizedBox(height: 4),
-                  Text(
-                    assignedLabel == 'Unassigned'
-                        ? 'Unassigned'
-                        : 'Assigned to: $assignedLabel',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                    ),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      if (e.isManager) _chip('Manager'),
+                      if ((e.employeeType ?? '').trim().isNotEmpty)
+                        _chip(e.employeeType!.trim()),
+                    ],
                   ),
-                  if (incoming > 0) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      '$incoming assigned',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -228,16 +207,11 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
               onSelected: (value) => _onMenuAction(store, e, value),
               itemBuilder: (_) => [
                 PopupMenuItem(
-                  value: 'assign',
+                  value: e.isManager ? 'remove_manager' : 'make_manager',
                   child: Text(
-                    e.assignedToIds.isEmpty ? 'Assign' : 'Change assignment',
+                    e.isManager ? 'Remove as manager' : 'Make manager',
                   ),
                 ),
-                if (e.assignedToIds.isNotEmpty)
-                  const PopupMenuItem(
-                    value: 'unassign',
-                    child: Text('Unassign'),
-                  ),
                 const PopupMenuItem(value: 'agreement', child: Text('Agreement')),
                 const PopupMenuItem(value: 'edit', child: Text('Edit')),
                 const PopupMenuItem(value: 'delete', child: Text('Delete')),
@@ -273,21 +247,35 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     EmployeeItem e,
     String value,
   ) async {
-    if (value == 'assign') {
-      await _showAssignSheet(store, e);
-      return;
-    }
-    if (value == 'unassign') {
+    if (value == 'make_manager') {
+      final current = store.manager;
+      final message = current == null || current.id == e.id
+          ? 'Make ${e.fullName} the shop manager? They can still work as an employee.'
+          : '${current.fullName} is the current manager. Replace them with ${e.fullName}?';
       final confirm = await showAppConfirmDialog(
         context: context,
-        title: 'Unassign employee?',
-        message: 'Remove ${e.fullName} from their current assignment?',
+        title: 'Make manager?',
+        message: message,
         cancelLabel: 'Cancel',
-        confirmLabel: 'Unassign',
+        confirmLabel: 'Make manager',
       );
       if (confirm != true) return;
-      await store.setAssignedTo(employeeId: e.id, assignedToIds: const []);
-      ToastService.success('Unassigned');
+      await store.setManager(e.id);
+      ToastService.success('${e.fullName} is now manager');
+      return;
+    }
+    if (value == 'remove_manager') {
+      final confirm = await showAppConfirmDialog(
+        context: context,
+        title: 'Remove manager?',
+        message:
+            'Remove manager role from ${e.fullName}? They remain an employee.',
+        cancelLabel: 'Cancel',
+        confirmLabel: 'Remove',
+      );
+      if (confirm != true) return;
+      await store.removeManager(e.id);
+      ToastService.success('Manager role removed');
       return;
     }
     if (value == 'agreement') {
@@ -309,12 +297,11 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       return;
     }
     if (value == 'delete') {
-      final incoming = store.peopleAssignedTo(e.id).length;
       final confirm = await showAppConfirmDialog(
         context: context,
         title: 'Delete Employee',
-        message: incoming > 0
-            ? 'Delete ${e.fullName}? They will be removed from any assignments.'
+        message: e.isManager
+            ? 'Delete ${e.fullName}? They are currently the manager.'
             : 'Delete ${e.fullName}?',
         cancelLabel: 'Cancel',
         confirmLabel: 'Delete',
@@ -326,34 +313,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     }
   }
 
-  Future<void> _showAssignSheet(
-    EmployeesStore store,
-    EmployeeItem employee,
-  ) async {
-    final result = await showAssignEmployeesSheet(
-      context: context,
-      employeeName: employee.fullName,
-      others: store.assignTargets(excludeId: employee.id),
-      selectedIds: employee.assignedToIds,
-      assignedCount: (id) => store.peopleAssignedTo(id).length,
-      isBlocked: (id) => store.wouldCreateCycle(employee.id, id),
-    );
-    if (result == null) return;
-    await store.setAssignedTo(employeeId: employee.id, assignedToIds: result);
-    ToastService.success(
-      result.isEmpty ? 'Unassigned' : 'Assignment updated',
-    );
-  }
-
   Widget _addForm(EmployeesStore store) {
     final categories = store.specialistCategories;
     final showOther = _specialistCategory == 'Other';
-    final assignedPeople = store.employees
-        .where((e) => _assignedToIds.contains(e.id))
-        .toList(growable: false);
-    final assignedLabel = assignedPeople.isEmpty
-        ? 'Unassigned'
-        : assignedPeople.map((e) => e.fullName).join(', ');
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -441,21 +403,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             const SizedBox(height: 8),
             _field(_specialityCtrl, 'Speciality'),
             const SizedBox(height: 8),
-            _assignedToField(
-              label: assignedLabel,
-              onTap: () async {
-                final result = await showAssignEmployeesSheet(
-                  context: context,
-                  employeeName: 'New employee',
-                  others: store.assignTargets(),
-                  selectedIds: _assignedToIds,
-                  assignedCount: (id) => store.peopleAssignedTo(id).length,
-                );
-                if (result == null || !mounted) return;
-                setState(() => _assignedToIds = result);
-              },
-            ),
-            const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
@@ -504,39 +451,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _assignedToField({
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: InputDecorator(
-        decoration: _dropdownDecoration('Assigned to (optional)'),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ),
-            const Icon(
-              CupertinoIcons.chevron_down,
-              size: 14,
-              color: AppColors.textSecondary,
             ),
           ],
         ),
@@ -630,7 +544,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       cnicNumber: _cnicCtrl.text.trim(),
       homeAddress: _addressCtrl.text.trim(),
       isActive: _newActive,
-      assignedToIds: _assignedToIds,
       photoBase64: _photoBase64,
       speciality: _specialityCtrl.text.trim(),
       employeeType: category,
@@ -666,7 +579,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     _specialityCtrl.clear();
     _otherCategoryCtrl.clear();
     _specialistCategory = null;
-    _assignedToIds = const <String>[];
     _photoBase64 = null;
     _newActive = true;
   }
