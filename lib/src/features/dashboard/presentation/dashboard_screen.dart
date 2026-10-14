@@ -1,58 +1,51 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/finance/presentation/widgets/finance_widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:hairsaloon/src/core/widgets/made_with_love_credit.dart';
+import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
 import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
-import 'package:hairsaloon/src/features/expenses/presentation/state/expenses_store.dart';
-import 'package:hairsaloon/src/features/finance/domain/entities/finance_period.dart';
 import 'package:hairsaloon/src/features/finance/domain/finance_calculator.dart';
-import 'package:hairsaloon/src/features/finance/presentation/state/payouts_store.dart';
-import 'package:hairsaloon/src/features/finance/presentation/finance_format.dart';
+import 'package:hairsaloon/src/features/finance/domain/entities/finance_period.dart';
+import 'package:hairsaloon/src/features/finance/presentation/widgets/finance_widgets.dart';
 import 'package:hairsaloon/src/features/settings/presentation/state/settings_store.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
-
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen>
     with WidgetsBindingObserver {
-  late DateTime _today;
-  Timer? _dayTimer;
-
+  DateTime _today = FinanceCalculator.dayOf(DateTime.now());
+  Timer? _timer;
   @override
   void initState() {
     super.initState();
-    _today = FinanceCalculator.dayOf(DateTime.now());
     WidgetsBinding.instance.addObserver(this);
-    _dayTimer = Timer.periodic(
-      const Duration(minutes: 1),
-      (_) => _refreshDay(),
-    );
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) => _refresh());
   }
 
-  void _refreshDay() {
-    final day = FinanceCalculator.dayOf(DateTime.now());
-    if (day != _today) setState(() => _today = day);
+  void _refresh() {
+    final today = FinanceCalculator.dayOf(DateTime.now());
+    if (today != _today) setState(() => _today = today);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _refreshDay();
+    if (state == AppLifecycleState.resumed) _refresh();
   }
 
   @override
   void dispose() {
-    _dayTimer?.cancel();
+    _timer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -60,213 +53,158 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   Widget build(BuildContext context) {
     final profile = context.watch<BusinessProfileNotifier>().profile;
-    final name = profile?.businessName.trim() ?? '';
+    final owner = context.watch<AuthStore>().currentUser?.name.trim() ?? '';
+    final business = profile?.businessName.trim() ?? '';
     final address = profile?.address.trim() ?? '';
-    final location = address.isNotEmpty
-        ? address
-        : [
-            profile?.area.trim(),
-            profile?.city.trim(),
-          ].whereType<String>().where((s) => s.isNotEmpty).join(', ');
-    final totals = FinanceCalculator.totals(
-      bills: context.watch<BillingStore>().bills,
-      expenses: context.watch<ExpensesStore>().items,
-      payouts: context.watch<PayoutsStore>().payouts,
-      anchor: _today,
-      period: FinancePeriod.daily,
-    );
+    final billing = context.watch<BillingStore>();
     final team = context
         .watch<EmployeesStore>()
         .employees
         .where((e) => e.isActive)
         .length;
+    final customers = billing.bills
+        .map((b) {
+          final name = b.customerName.trim();
+          final phone = b.customerPhone.trim();
+          return name.isNotEmpty
+              ? (phone.isEmpty ? name : '$name • $phone')
+              : (phone.isEmpty ? 'Walk-in Customer' : phone);
+        })
+        .toSet()
+        .length;
+    final sales = billing.bills
+        .where((b) => FinanceCalculator.dayOf(b.createdAt) == _today)
+        .fold<double>(0, (sum, b) => sum + b.grandTotal);
     final currency = context.watch<SettingsStore>().currencyCode;
-    String amount(double value) => value
+    final money = sales
         .toStringAsFixed(2)
         .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
     void open(String route) => Navigator.of(context).pushNamed(route);
-    void finance(String route) => Navigator.of(context).pushNamed(
-      route,
-      arguments: FinanceRouteArgs(anchor: _today, period: FinancePeriod.daily),
-    );
-
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: Color(0xFFFFFDF0)),
+    return ColoredBox(
+      color: const Color(0xFFF6F7F9),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final tablet = constraints.maxWidth >= 600;
-          final bottomPad = MediaQuery.paddingOf(context).bottom;
           return ListView(
-            physics: const ClampingScrollPhysics(),
-            padding: EdgeInsets.only(bottom: 72 + bottomPad),
+            padding: EdgeInsets.only(
+              bottom: 82 + MediaQuery.paddingOf(context).bottom,
+            ),
             children: [
-              _BusinessHeader(
-                name: name.isEmpty ? 'Your business' : name,
-                location: location,
-                date: FinanceFormat.date(_today),
+              _Header(
+                owner: owner.isEmpty ? 'Welcome' : owner,
+                business: business.isEmpty ? 'Your business' : business,
+                address: address,
+                logo: profile?.logoBase64,
               ),
               Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 900),
+                  constraints: const BoxConstraints(maxWidth: 850),
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      tablet ? 24 : 16,
-                      12,
-                      tablet ? 24 : 16,
-                      0,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: tablet ? 24 : 12),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        const SizedBox(height: 10),
                         Row(
                           children: [
-                            const Expanded(
-                              child: Text(
-                                'Today at a glance',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textPrimary,
-                                ),
+                            Expanded(
+                              child: _MiniStat(
+                                label: 'Employees',
+                                value: '$team',
+                                asset: 'employees',
+                                tint: const Color(0xFFE9FBE4),
+                                onTap: () => open(AppRoutes.employees),
                               ),
                             ),
-                            TextButton(
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                ),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: _MiniStat(
+                                label: 'Customers',
+                                value: '$customers',
+                                asset: 'customers',
+                                tint: const Color(0xFFEBF1FF),
+                                onTap: () => open(AppRoutes.customers),
                               ),
-                              onPressed: () => open(AppRoutes.financeOverview),
-                              child: const Text(
-                                'View finance',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: AppColors.textPrimary,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: _MiniStat(
+                                label: 'Sales today',
+                                value: '$currency $money',
+                                asset: 'rates',
+                                tint: const Color(0xFFFFF5D9),
+                                onTap: () => Navigator.of(context).pushNamed(
+                                  AppRoutes.financeSales,
+                                  arguments: FinanceRouteArgs(
+                                    anchor: _today,
+                                    period: FinancePeriod.daily,
+                                  ),
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Column(
-                            children: [
-                              _Stat(
-                                label: "Today's sales",
-                                value: amount(totals.sales),
-                                currency: currency,
-                                subtitle:
-                                    '${totals.billCount} ${totals.billCount == 1 ? 'bill' : 'bills'} created',
-                                prominent: true,
-                                onTap: () => finance(AppRoutes.financeSales),
-                              ),
-                              const Divider(height: 1, color: AppColors.border),
-                              IntrinsicHeight(
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: _Stat(
-                                        label: 'Net profit',
-                                        value: amount(totals.profit),
-                                        currency: currency,
-                                        onTap: () =>
-                                            finance(AppRoutes.financeProfit),
-                                      ),
-                                    ),
-                                    const VerticalDivider(
-                                      width: 1,
-                                      color: AppColors.border,
-                                    ),
-                                    Expanded(
-                                      child: _Stat(
-                                        label: 'Expenses',
-                                        value: amount(totals.expenses),
-                                        currency: currency,
-                                        onTap: () =>
-                                            finance(AppRoutes.financeExpenses),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        const Text(
-                          'Manage business',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         GridView(
                           gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
+                              SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 2,
-                                mainAxisExtent: 92,
-                                crossAxisSpacing: 8,
-                                mainAxisSpacing: 8,
+                                mainAxisExtent: tablet ? 198 : 158,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
                               ),
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           children: [
                             _Shortcut(
                               title: 'Employees',
-                              detail: '$team active',
-                              icon: CupertinoIcons.person_2,
-                              tint: AppColors.surface,
-                              accent: AppColors.textPrimary,
+                              detail: 'Manage your team\nmembers and roles.',
+                              asset: 'employees',
+                              tint: const Color(0xFFF0FBDD),
                               onTap: () => open(AppRoutes.employees),
                             ),
                             _Shortcut(
                               title: 'Rate List',
-                              detail: 'Services & prices',
-                              icon: CupertinoIcons.scissors,
-                              tint: AppColors.surface,
-                              accent: AppColors.textPrimary,
+                              detail: 'View services\nand pricing.',
+                              asset: 'rates',
+                              tint: const Color(0xFFFFF4DB),
                               onTap: () => open(AppRoutes.serviceList),
                             ),
                             _Shortcut(
                               title: 'Customers',
-                              detail: 'Visits & history',
-                              icon: CupertinoIcons.person_crop_rectangle,
-                              tint: AppColors.surface,
-                              accent: AppColors.textPrimary,
+                              detail: 'Manage customer\ndetails and records.',
+                              asset: 'customers',
+                              tint: const Color(0xFFEAF0FF),
                               onTap: () => open(AppRoutes.customers),
                             ),
                             _Shortcut(
                               title: 'Finance',
-                              detail: 'Income & expenses',
-                              icon: CupertinoIcons.chart_bar,
-                              tint: AppColors.surface,
-                              accent: AppColors.textPrimary,
+                              detail:
+                                  'Track income, expenses\nand financial reports.',
+                              asset: 'finance',
+                              tint: const Color(0xFFE1FBEC),
                               onTap: () => open(AppRoutes.financeOverview),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 2),
-                        Center(
-                          child: Transform.translate(
-                            offset: const Offset(0, -6),
-                            child: MadeWithLoveCredit(
-                              fontSize: 9.5,
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Divider(color: AppColors.border),
+                            ),
+                            const SizedBox(width: 12),
+                            MadeWithLoveCredit(
+                              fontSize: 9,
                               onTap: () async => launchUrl(
                                 Uri.parse('http://www.intelligement.com/'),
                                 mode: LaunchMode.externalApplication,
                               ),
                             ),
-                          ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Divider(color: AppColors.border),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -281,296 +219,474 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 }
 
-class _BusinessHeader extends StatelessWidget {
-  const _BusinessHeader({
-    required this.name,
-    required this.location,
-    required this.date,
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.owner,
+    required this.business,
+    required this.address,
+    this.logo,
   });
-  final String name;
-  final String location;
-  final String date;
-
+  final String owner, business, address;
+  final String? logo;
   @override
   Widget build(BuildContext context) {
-    return ClipPath(
-      clipper: const _HeaderCurve(),
-      child: Stack(
-        children: [
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(color: Color(0xFFFFEB3B)),
-            ),
+    ImageProvider? avatar;
+    if (logo?.isNotEmpty ?? false) {
+      try {
+        avatar = MemoryImage(base64Decode(logo!));
+      } on FormatException {
+        avatar = null;
+      }
+    }
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(26)),
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFE5FF97), Color(0xFFCAFC58), Color(0xFFB8F73E)],
           ),
-          SafeArea(
-            bottom: false,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 900),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 28),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          IconButton(
-                            tooltip: 'Open menu',
-                            onPressed: () => Scaffold.of(context).openDrawer(),
-                            style: IconButton.styleFrom(
-                              backgroundColor: AppColors.onPrimary.withValues(
-                                alpha: 0.12,
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -40,
+              top: -65,
+              child: Container(
+                width: 260,
+                height: 150,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.24),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+              ),
+            ),
+            Positioned(
+              right: -10,
+              bottom: 28,
+              child: Opacity(
+                opacity: 0.65,
+                child: Image.asset(
+                  'assets/home_shop.png',
+                  width: 165,
+                  height: 165,
+                  cacheWidth: 400,
+                ),
+              ),
+            ),
+            SafeArea(
+              bottom: false,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 850),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 8, 18, 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            IconButton(
+                              tooltip: 'Open menu',
+                              onPressed: () =>
+                                  Scaffold.of(context).openDrawer(),
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.white.withValues(
+                                  alpha: 0.3,
+                                ),
+                                elevation: 3,
+                                shadowColor: Colors.black12,
+                                minimumSize: const Size(44, 44),
                               ),
-                              minimumSize: const Size(40, 40),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                              icon: const Icon(
+                                CupertinoIcons.bars,
+                                size: 20,
+                                color: Colors.black,
                               ),
                             ),
-                            icon: const Icon(
-                              CupertinoIcons.bars,
-                              color: AppColors.onPrimary,
-                              size: 18,
+                            const Spacer(),
+                            IconButton(
+                              tooltip: 'Business profile',
+                              onPressed: () => Navigator.of(
+                                context,
+                              ).pushNamed(AppRoutes.profileSettings),
+                              icon: CircleAvatar(
+                                radius: 20,
+                                backgroundColor: Colors.white,
+                                child: avatar == null
+                                    ? const Icon(
+                                        CupertinoIcons.person_fill,
+                                        color: AppColors.homeInk,
+                                        size: 23,
+                                      )
+                                    : ClipOval(
+                                        child: Image(
+                                          image: avatar,
+                                          width: 36,
+                                          height: 36,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, error, stack) =>
+                                              const Icon(
+                                                CupertinoIcons.person_fill,
+                                              ),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 7),
+                        const Text(
+                          'WELCOME BACK',
+                          style: TextStyle(
+                            fontSize: 9,
+                            letterSpacing: 1.6,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF485929),
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 65),
+                          child: Text(
+                            owner,
+                            style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                              height: 1.12,
+                              letterSpacing: -0.7,
+                              color: Colors.black,
                             ),
                           ),
-                          const Spacer(),
-                          Text(
-                            date,
-                            style: const TextStyle(
-                              color: AppColors.onPrimary,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
+                        ),
+                        if (address.isNotEmpty) ...[
+                          const SizedBox(height: 7),
+                          Container(
+                            constraints: const BoxConstraints(maxWidth: 240),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 9,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  CupertinoIcons.location_solid,
+                                  size: 11,
+                                  color: AppColors.homeInk,
+                                ),
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(
+                                    address,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 14),
-                      const Text(
-                        'Welcome back',
-                        style: TextStyle(
-                          color: AppColors.onPrimary,
-                          fontSize: 10,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        name,
-                        style: const TextStyle(
-                          color: AppColors.onPrimary,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.4,
-                          height: 1.15,
-                        ),
-                      ),
-                      if (location.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          location,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.onPrimary,
-                            fontSize: 10,
-                            height: 1.3,
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.72),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: IntrinsicHeight(
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  flex: 6,
+                                  child: _Identity(
+                                    label: 'Business Name',
+                                    value: business,
+                                    icon: CupertinoIcons.bag_fill,
+                                  ),
+                                ),
+                                const VerticalDivider(
+                                  width: 16,
+                                  color: Color(0xFFD7E9B6),
+                                ),
+                                Expanded(
+                                  flex: 4,
+                                  child: _Identity(
+                                    label: 'Owner Name',
+                                    value: owner,
+                                    icon: CupertinoIcons.person_fill,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeaderCurve extends CustomClipper<Path> {
-  const _HeaderCurve();
-  @override
-  Path getClip(Size size) => Path()
-    ..lineTo(0, size.height - 18)
-    ..quadraticBezierTo(
-      size.width * 0.28,
-      size.height + 10,
-      size.width * 0.65,
-      size.height - 8,
-    )
-    ..quadraticBezierTo(
-      size.width * 0.88,
-      size.height - 20,
-      size.width,
-      size.height - 10,
-    )
-    ..lineTo(size.width, 0)
-    ..close();
-  @override
-  bool shouldReclip(_HeaderCurve oldClipper) => false;
-}
-
-class _Stat extends StatelessWidget {
-  const _Stat({
-    required this.label,
-    required this.value,
-    required this.currency,
-    required this.onTap,
-    this.subtitle,
-    this.prominent = false,
-  });
-  final String label;
-  final String value;
-  final String currency;
-  final String? subtitle;
-  final bool prominent;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            prominent ? 14 : 12,
-            prominent ? 12 : 10,
-            prominent ? 14 : 12,
-            prominent ? 12 : 10,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  if (prominent)
-                    const Icon(
-                      CupertinoIcons.arrow_up_right,
-                      size: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                currency,
-                style: const TextStyle(
-                  fontSize: 8,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 1),
-              SizedBox(
-                width: double.infinity,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: prominent ? 22 : 16,
-                      height: 1.15,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.4,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 3),
-                Text(
-                  subtitle!,
-                  style: const TextStyle(
-                    fontSize: 9,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ],
-          ),
+          ],
         ),
       ),
     );
   }
+}
+
+class _Identity extends StatelessWidget {
+  const _Identity({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+  final String label, value;
+  final IconData icon;
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFDDFBB7),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 17, color: const Color(0xFF4B8C1F)),
+      ),
+      const SizedBox(width: 7),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 8,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 10,
+                height: 1.15,
+                fontWeight: FontWeight.w700,
+                color: Colors.black,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+class _MiniStat extends StatelessWidget {
+  const _MiniStat({
+    required this.label,
+    required this.value,
+    required this.asset,
+    required this.tint,
+    required this.onTap,
+  });
+  final String label, value, asset;
+  final Color tint;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(12),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 26,
+              height: 30,
+              decoration: BoxDecoration(
+                color: tint,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Image.asset('assets/home_$asset.png', cacheWidth: 100),
+            ),
+            const SizedBox(width: 5),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 8,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      value,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _Shortcut extends StatelessWidget {
   const _Shortcut({
     required this.title,
     required this.detail,
-    required this.icon,
+    required this.asset,
     required this.tint,
-    required this.accent,
     required this.onTap,
   });
-  final String title;
-  final String detail;
-  final IconData icon;
+  final String title, detail, asset;
   final Color tint;
-  final Color accent;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: tint,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.border),
-      ),
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x090F172A),
+          blurRadius: 14,
+          offset: Offset(0, 5),
+        ),
+      ],
+    ),
+    child: Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        splashColor: accent.withValues(alpha: 0.12),
-        highlightColor: accent.withValues(alpha: 0.06),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, size: 18, color: AppColors.onPrimary),
+        child: Stack(
+          children: [
+            Positioned.fill(child: CustomPaint(painter: _CardWash(tint))),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: Image.asset(
+                              'assets/home_$asset.png',
+                              width: 76,
+                              height: 76,
+                              cacheWidth: 240,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: tint,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            CupertinoIcons.chevron_right,
+                            size: 12,
+                            color: AppColors.homeInk,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.black,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    detail,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      height: 1.25,
+                      color: Color(0xFF7B8194),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                detail,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    ),
+  );
+}
+
+class _CardWash extends CustomPainter {
+  const _CardWash(this.tint);
+  final Color tint;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(12, 12)
+      ..lineTo(size.width * .48, 12)
+      ..cubicTo(
+        size.width * .65,
+        12,
+        size.width * .38,
+        size.height * .4,
+        size.width * .8,
+        size.height * .52,
+      )
+      ..quadraticBezierTo(size.width, size.height * .6, size.width, size.height)
+      ..lineTo(12, size.height)
+      ..close();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [tint, tint.withValues(alpha: 0)],
+        ).createShader(Offset.zero & size),
     );
   }
+
+  @override
+  bool shouldRepaint(_CardWash oldDelegate) => tint != oldDelegate.tint;
 }

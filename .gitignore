@@ -55,3 +55,5 @@ app.*.map.json
 
 # Excluded platform backups
 /.platform-backup/
+config.bat
+node_modules

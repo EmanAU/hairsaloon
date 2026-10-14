@@ -157,7 +157,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                       ),
                     );
                   },
-                  title: 'Business COMB',
+                  title: 'TrimMatrix',
                   debugShowCheckedModeBanner: false,
                   navigatorKey: ToastService.navigatorKey,
                   scaffoldMessengerKey: ToastService.messengerKey,
@@ -261,17 +261,9 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      home: Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 12),
-              Text(message),
-            ],
-          ),
-        ),
+      home: const Scaffold(
+        backgroundColor: AppColors.surface,
+        body: Center(child: TrimMatrixBrand()),
       ),
     );
   }
@@ -460,16 +452,28 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return const Scaffold(
       backgroundColor: AppColors.surface,
-      body: Center(
-        child: Text(
-          'Barber Management',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      ),
+      body: Center(child: TrimMatrixBrand()),
     );
   }
+}
+
+class TrimMatrixBrand extends StatelessWidget {
+  const TrimMatrixBrand({super.key});
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Image.asset('assets/trimmatrix_logo.png', width: 220, height: 220),
+      const SizedBox(height: 12),
+      const Text(
+        'TrimMatrix',
+        style: TextStyle(
+          fontSize: 30,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.8,
+          color: AppColors.textPrimary,
+        ),
+      ),
+    ],
+  );
 }
