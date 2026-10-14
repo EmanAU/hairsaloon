@@ -18,7 +18,17 @@ class SalesScreen extends StatefulWidget {
 }
 
 class _SalesScreenState extends State<SalesScreen> {
-  static const _payments = ['All', 'Cash', 'Card', 'Online'];
+  List<String> get _payments => {
+    'All',
+    'Cash',
+    'Card',
+    'Online',
+    ...context
+        .read<BillingStore>()
+        .bills
+        .map((b) => b.paymentType)
+        .where((p) => p.isNotEmpty),
+  }.toList();
 
   FinancePeriod? _period;
   DateTime? _anchor;
@@ -40,7 +50,9 @@ class _SalesScreenState extends State<SalesScreen> {
     final bills = context
         .watch<BillingStore>()
         .bills
-        .where((b) => FinanceCalculator.periodContains(b.createdAt, anchor, period))
+        .where(
+          (b) => FinanceCalculator.periodContains(b.createdAt, anchor, period),
+        )
         .where(
           (b) =>
               _payment == 'All' ||
@@ -108,19 +120,14 @@ class _SalesScreenState extends State<SalesScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  for (final p in _payments) ...[
-                    Expanded(
-                      child: FinanceChip(
-                        label: p,
-                        selected: _payment == p,
-                        onTap: () => setState(() => _payment = p),
-                      ),
-                    ),
-                    if (p != _payments.last) const SizedBox(width: 6),
-                  ],
-                ],
+              DropdownButtonFormField<String>(
+                initialValue: _payment,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Payment method'),
+                items: _payments
+                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                    .toList(),
+                onChanged: (p) => setState(() => _payment = p ?? 'All'),
               ),
               const SizedBox(height: 12),
               FinanceSectionTitle(

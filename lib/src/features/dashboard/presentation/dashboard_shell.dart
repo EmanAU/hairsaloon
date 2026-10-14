@@ -35,31 +35,49 @@ class _DashboardShellState extends State<DashboardShell> {
     };
 
     final tablet = AdaptivePage.isTablet(context);
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        _handleBackPressed();
-      },
-      child: Scaffold(
-        extendBody: !tablet,
-        drawer: const AppDrawer(),
-        body: tablet
-            ? Row(
-                children: [
-                  _SideRail(currentIndex: _currentIndex, onTap: _onTap),
-                  const VerticalDivider(
-                    width: 1,
-                    thickness: 1,
-                    color: AppColors.border,
-                  ),
-                  Expanded(child: body),
-                ],
-              )
-            : body,
-        bottomNavigationBar: tablet
-            ? null
-            : _BottomNav(currentIndex: _currentIndex, onTap: _onTap),
+    final canvas = _currentIndex == 0
+        ? AppColors.homeCanvas
+        : AppColors.background;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: const Color(0x00000000),
+        statusBarIconBrightness: _currentIndex == 0
+            ? Brightness.light
+            : Brightness.dark,
+        statusBarBrightness: _currentIndex == 0
+            ? Brightness.dark
+            : Brightness.light,
+        systemNavigationBarColor: canvas,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarDividerColor: canvas,
+      ),
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+          _handleBackPressed();
+        },
+        child: Scaffold(
+          backgroundColor: canvas,
+          extendBody: !tablet,
+          drawer: const AppDrawer(),
+          body: tablet
+              ? Row(
+                  children: [
+                    _SideRail(currentIndex: _currentIndex, onTap: _onTap),
+                    const VerticalDivider(
+                      width: 1,
+                      thickness: 1,
+                      color: AppColors.border,
+                    ),
+                    Expanded(child: body),
+                  ],
+                )
+              : body,
+          bottomNavigationBar: tablet
+              ? null
+              : _BottomNav(currentIndex: _currentIndex, onTap: _onTap),
+        ),
       ),
     );
   }
@@ -202,19 +220,24 @@ class _BottomNav extends StatelessWidget {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(14, 0, 14, bottomInset > 0 ? bottomInset : 14),
+      padding: EdgeInsets.fromLTRB(
+        12,
+        0,
+        12,
+        bottomInset > 0 ? bottomInset + 4 : 10,
+      ),
       child: Container(
-        height: 62,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        height: 54,
+        padding: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: AppColors.border),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x1F000000),
-              blurRadius: 24,
-              offset: Offset(0, 8),
+              color: Color(0x14000000),
+              blurRadius: 16,
+              offset: Offset(0, 6),
             ),
           ],
         ),
@@ -222,6 +245,7 @@ class _BottomNav extends StatelessWidget {
           children: [
             for (var i = 0; i < _navItems.length; i++)
               Expanded(
+                flex: i == currentIndex ? 2 : 1,
                 child: Tooltip(
                   message: _navItems[i].label,
                   child: Semantics(
@@ -260,34 +284,41 @@ class _NavTile extends StatelessWidget {
       child: AnimatedContainer(
         duration: _duration,
         curve: Curves.easeOutCubic,
-        height: 42,
-        padding: EdgeInsets.symmetric(horizontal: isActive ? 16 : 12),
+        height: 36,
+        padding: EdgeInsets.symmetric(horizontal: isActive ? 12 : 10),
         decoration: BoxDecoration(
           color: isActive ? AppColors.textPrimary : const Color(0x00000000),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(isActive ? item.activeIcon : item.icon, size: 20, color: color),
-            AnimatedSize(
-              duration: _duration,
-              curve: Curves.easeOutCubic,
-              child: isActive
-                  ? Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Text(
-                        item.label,
-                        maxLines: 1,
-                        style: const TextStyle(
-                          color: AppColors.surface,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.2,
+            Icon(
+              isActive ? item.activeIcon : item.icon,
+              size: 18,
+              color: color,
+            ),
+            Flexible(
+              child: AnimatedSize(
+                duration: _duration,
+                curve: Curves.easeOutCubic,
+                child: isActive
+                    ? Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.surface,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2,
+                          ),
                         ),
-                      ),
-                    )
-                  : const SizedBox.shrink(),
+                      )
+                    : const SizedBox.shrink(),
+              ),
             ),
           ],
         ),

@@ -1,6 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
+import 'package:hairsaloon/src/features/business_profile/domain/business_options.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/entities/business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/business_logo_picker.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
@@ -21,10 +24,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
-  final _typeCtrl = TextEditingController();
-  final _cityCtrl = TextEditingController();
   final _areaCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
+  String _businessType = BusinessOptions.defaultBusinessType;
+  String _city = BusinessOptions.defaultCity;
   bool _isEditing = false;
   bool _hydrated = false;
   String? _logo;
@@ -41,9 +44,18 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   void _applyProfile(BusinessProfile profile) {
     _logo = profile.logoBase64;
     _nameCtrl.text = profile.businessName;
-    _phoneCtrl.text = profile.phoneNumber;
-    _typeCtrl.text = profile.businessType;
-    _cityCtrl.text = profile.city;
+    final phone = PkPhone.normalize(profile.phoneNumber);
+    _phoneCtrl.text = phone.isEmpty ? PkPhone.prefix : phone;
+    _businessType = BusinessOptions.resolve(
+      profile.businessType,
+      BusinessOptions.businessTypes,
+      BusinessOptions.defaultBusinessType,
+    );
+    _city = BusinessOptions.resolve(
+      profile.city,
+      BusinessOptions.cities,
+      BusinessOptions.defaultCity,
+    );
     _areaCtrl.text = profile.area;
     _addressCtrl.text = profile.address;
   }
@@ -52,8 +64,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
-    _typeCtrl.dispose();
-    _cityCtrl.dispose();
     _areaCtrl.dispose();
     _addressCtrl.dispose();
     super.dispose();
@@ -133,11 +143,24 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                           _phoneCtrl,
                           'Phone number',
                           keyboard: TextInputType.phone,
+                          inputFormatters: [PkPhoneInputFormatter()],
+                          validator: (v) => PkPhone.validationError(v),
                         ),
                         const SizedBox(height: 12),
-                        _editField(_typeCtrl, 'Business type'),
+                        _editDropdown(
+                          label: 'Business type',
+                          value: _businessType,
+                          options: BusinessOptions.businessTypes,
+                          onChanged: (value) =>
+                              setState(() => _businessType = value),
+                        ),
                         const SizedBox(height: 12),
-                        _editField(_cityCtrl, 'City'),
+                        _editDropdown(
+                          label: 'City',
+                          value: _city,
+                          options: BusinessOptions.cities,
+                          onChanged: (value) => setState(() => _city = value),
+                        ),
                         const SizedBox(height: 12),
                         _editField(_areaCtrl, 'Area'),
                         const SizedBox(height: 12),
@@ -171,8 +194,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     children: [
                       _viewRow('Business name', _nameCtrl.text),
                       _viewRow('Phone number', _phoneCtrl.text),
-                      _viewRow('Business type', _typeCtrl.text),
-                      _viewRow('City', _cityCtrl.text),
+                      _viewRow('Business type', _businessType),
+                      _viewRow('City', _city),
                       _viewRow('Area', _areaCtrl.text),
                       _viewRow('Address', _addressCtrl.text, isLast: true),
                     ],
@@ -278,14 +301,83 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     );
   }
 
+  Widget _editDropdown({
+    required String label,
+    required String value,
+    required List<String> options,
+    required ValueChanged<String> onChanged,
+  }) {
+    const radius = BorderRadius.all(Radius.circular(9));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        DropdownButtonFormField<String>(
+          key: ValueKey('$label-$value'),
+          initialValue: value,
+          isExpanded: true,
+          style: const TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 13,
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w500,
+          ),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+          decoration: const InputDecoration(
+            filled: false,
+            isDense: true,
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: radius,
+              borderSide: BorderSide(color: _divider),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: radius,
+              borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: radius,
+              borderSide: BorderSide(color: AppColors.danger),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: radius,
+              borderSide: BorderSide(color: AppColors.danger, width: 1.5),
+            ),
+            errorStyle: TextStyle(fontSize: 11),
+          ),
+          items: [
+            for (final option in options)
+              DropdownMenuItem(value: option, child: Text(option)),
+          ],
+          onChanged: (selected) {
+            if (selected == null) return;
+            onChanged(selected);
+          },
+          validator: (selected) =>
+              (selected == null || selected.trim().isEmpty) ? 'Required' : null,
+        ),
+      ],
+    );
+  }
+
   Future<void> _save() async {
     final state = _formKey.currentState;
     if (state == null || !state.validate()) return;
     final updated = BusinessProfile(
       businessName: _nameCtrl.text.trim(),
       phoneNumber: _phoneCtrl.text.trim(),
-      businessType: _typeCtrl.text.trim(),
-      city: _cityCtrl.text.trim(),
+      businessType: _businessType,
+      city: _city,
       area: _areaCtrl.text.trim(),
       address: _addressCtrl.text.trim(),
       logoBase64: _logo,

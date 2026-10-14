@@ -61,7 +61,7 @@ class ExpenseDetailsScreen extends StatelessWidget {
           _row('Employee', item.employeeName),
           _row('Amount', 'Rs.${item.amount.toStringAsFixed(0)}'),
           _row('Status', item.status),
-          _row('Payment', item.paymentType),
+          _row('Payment', item.isUnpaid ? 'Not paid' : item.paymentType),
           _row('Expense Type', item.expenseType ?? '-'),
           _row('Quantity', item.quantity?.toString() ?? '-'),
           _row('Description', item.description ?? '-'),

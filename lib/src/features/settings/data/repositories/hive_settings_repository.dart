@@ -2,12 +2,29 @@ import 'package:hairsaloon/src/core/storage/hive_boxes.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class HiveSettingsRepository {
-  HiveSettingsRepository({Box<dynamic>? box})
+  HiveSettingsRepository({Box<dynamic>? box, this.accountId})
     : _box = box ?? Hive.box<dynamic>(HiveBoxes.settings);
 
   static const String taxRateKey = 'tax_rate';
   static const String currencyCodeKey = 'currency_code';
   final Box<dynamic> _box;
+  final String? Function()? accountId;
+
+  String get _paymentKey =>
+      'payment_accounts.v1.${accountId?.call() ?? "local"}';
+  List<String> getPaymentAccounts() => List<String>.from(
+    _box.get(_paymentKey, defaultValue: <String>[]) as List,
+  );
+  Future<void> savePaymentAccounts(List<String> values) =>
+      _box.put(_paymentKey, values);
+
+  String get _expenseTypesKey =>
+      'expense_types.v1.${accountId?.call() ?? "local"}';
+  List<String> getCustomExpenseTypes() => List<String>.from(
+    _box.get(_expenseTypesKey, defaultValue: <String>[]) as List,
+  );
+  Future<void> saveCustomExpenseTypes(List<String> values) =>
+      _box.put(_expenseTypesKey, values);
 
   double getTaxRate() {
     final value = _box.get(taxRateKey);

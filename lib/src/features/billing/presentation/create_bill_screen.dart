@@ -178,14 +178,24 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    initialValue: _paymentType,
+                    key: ValueKey(
+                      context.watch<SettingsStore>().paymentMethods.join('|'),
+                    ),
+                    initialValue:
+                        context.read<SettingsStore>().paymentMethods.contains(
+                          _paymentType,
+                        )
+                        ? _paymentType
+                        : 'Cash',
                     style: const TextStyle(
                       fontFamily: 'Roboto',
                       fontSize: 12,
                       color: Colors.black,
                     ),
                     decoration: _smallDecoration('Payment Type'),
-                    items: const ['Cash']
+                    items: context
+                        .watch<SettingsStore>()
+                        .paymentMethods
                         .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                         .toList(),
                     onChanged: (v) =>
@@ -316,7 +326,10 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
       customerName: widget.customerName,
       customerPhone: widget.customerPhone,
       employeeName: _employee,
-      paymentType: _paymentType,
+      paymentType:
+          context.read<SettingsStore>().paymentMethods.contains(_paymentType)
+          ? _paymentType
+          : 'Cash',
       lines: _selectedLines,
       subTotal: _subTotal,
       taxPercent: _taxPercent,

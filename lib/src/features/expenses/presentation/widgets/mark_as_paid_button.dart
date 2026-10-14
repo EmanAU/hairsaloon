@@ -1,7 +1,7 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
-import 'package:hairsaloon/src/core/widgets/app_confirm_dialog.dart';
+import 'package:hairsaloon/src/core/widgets/app_sheet.dart';
+import 'package:hairsaloon/src/features/settings/presentation/state/settings_store.dart';
 import 'package:hairsaloon/src/features/expenses/domain/entities/expense_item.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/state/expenses_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
@@ -37,15 +37,33 @@ class MarkAsPaidButton extends StatelessWidget {
   }
 
   Future<void> _markPaid(BuildContext context) async {
-    final ok = await showAppConfirmDialog(
+    final methods = context.read<SettingsStore>().paymentMethods;
+    final payment = await showAppSheet<String>(
       context: context,
-      title: 'Mark as Paid',
-      message: 'Confirm this expense has been paid?',
-      confirmLabel: 'Mark Paid',
-      icon: CupertinoIcons.checkmark_circle_fill,
+      builder: (sheetContext) => AppSheetBody(
+        title: 'Mark as Paid',
+        subtitle: 'Choose how this expense was paid.',
+        showCancel: true,
+        child: Column(
+          children: [
+            for (final method in methods)
+              ListTile(
+                title: Text(method),
+                onTap: () => Navigator.of(sheetContext).pop(method),
+              ),
+          ],
+        ),
+      ),
     );
-    if (ok != true || !context.mounted) return;
-    await context.read<ExpensesStore>().markAsPaid(item.id);
-    ToastService.success('Marked as paid');
+    if (payment == null || !context.mounted) return;
+    try {
+      await context.read<ExpensesStore>().markAsPaid(
+        item.id,
+        paymentType: payment,
+      );
+      ToastService.success('Marked as paid');
+    } catch (_) {
+      ToastService.error('Could not mark expense as paid. Please try again.');
+    }
   }
 }

@@ -1,6 +1,18 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
+  static const Color homeCanvas = Color(0xFFF7F7F2);
+  static const Color homeInk = Color(0xFF202D27);
+  static const Color homeOlive = Color(0xFF435747);
+  static const Color homeHeroMuted = Color(0xFFD6DFD2);
+  static const Color homeBorder = Color(0xFFE9EBE4);
+  static const Color homeSage = Color(0xFFEDF2E7);
+  static const Color homePeach = Color(0xFFFAEEE5);
+  static const Color homeTerracotta = Color(0xFF986648);
+  static const Color homeLavender = Color(0xFFF0EDF7);
+  static const Color homePlum = Color(0xFF79658D);
+  static const Color homeSand = Color(0xFFF7F2DD);
+  static const Color homeBronze = Color(0xFF897332);
   // Matches the provided UI (lime-yellow).
   static const Color primary = Color(0xFFD4FF33);
   static const Color onPrimary = Color(0xFF000000);

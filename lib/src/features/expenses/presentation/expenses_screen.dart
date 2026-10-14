@@ -36,9 +36,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   List<ExpenseItem> get _filteredItems {
     return _items
-        .where(
-          (item) => _statusFilter == 'Paid' ? item.isPaid : item.isUnpaid,
-        )
+        .where((item) => _statusFilter == 'Paid' ? item.isPaid : item.isUnpaid)
         .toList(growable: false);
   }
 
@@ -46,8 +44,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final now = DateTime.now();
     return _items
         .where(
-          (item) =>
-              item.date.year == now.year && item.date.month == now.month,
+          (item) => item.date.year == now.year && item.date.month == now.month,
         )
         .fold(0, (sum, item) => sum + item.amount);
   }
@@ -202,9 +199,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       IconButton(
                         tooltip: 'Expenses History',
                         onPressed: () {
-                          Navigator.of(context).pushNamed(
-                            AppRoutes.expenseHistory,
-                          );
+                          Navigator.of(
+                            context,
+                          ).pushNamed(AppRoutes.expenseHistory);
                         },
                         icon: const Icon(
                           CupertinoIcons.calendar,
@@ -273,6 +270,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   height: 36,
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
                       backgroundColor: AppColors.primary,
                       foregroundColor: AppColors.onPrimary,
                       shape: RoundedRectangleBorder(

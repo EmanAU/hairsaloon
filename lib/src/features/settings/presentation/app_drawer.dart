@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/features/settings/presentation/payment_accounts_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
@@ -6,6 +7,7 @@ import 'package:hairsaloon/src/core/widgets/app_sheet.dart';
 import 'package:hairsaloon/src/core/widgets/made_with_love_credit.dart';
 import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
+import 'package:hairsaloon/src/features/expenses/presentation/manage_expense_types_screen.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/features/settings/presentation/state/settings_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
@@ -104,6 +106,34 @@ class AppDrawer extends StatelessWidget {
                   const SizedBox(height: 10),
                   const _SectionLabel('FINANCE'),
                   _Item(
+                    icon: CupertinoIcons.creditcard,
+                    title: 'Payment Accounts',
+                    showDivider: true,
+                    onTap: () {
+                      final navigator = Navigator.of(context);
+                      navigator.pop();
+                      navigator.push(
+                        MaterialPageRoute(
+                          builder: (_) => const PaymentAccountsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _Item(
+                    icon: CupertinoIcons.tag,
+                    title: 'Expense Types',
+                    showDivider: true,
+                    onTap: () {
+                      final navigator = Navigator.of(context);
+                      navigator.pop();
+                      navigator.push(
+                        MaterialPageRoute(
+                          builder: (_) => const ManageExpenseTypesScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _Item(
                     icon: CupertinoIcons.money_dollar_circle,
                     title: 'Currency Change',
                     showDivider: true,
@@ -185,8 +215,7 @@ class AppDrawer extends StatelessWidget {
       initialValue: current,
       maxLength: 3,
       textCapitalization: TextCapitalization.characters,
-      validator: (value) =>
-          value.length == 3 ? null : 'Enter a 3-letter code',
+      validator: (value) => value.length == 3 ? null : 'Enter a 3-letter code',
     );
     if (value == null) return;
     await settingsStore.setCurrencyCode(value.toUpperCase());
@@ -229,9 +258,7 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       decoration: const BoxDecoration(
         color: AppDrawer._headerBg,
-        border: Border(
-          bottom: BorderSide(color: AppDrawer._divider, width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: AppDrawer._divider, width: 1)),
       ),
       child: Row(
         children: [
@@ -394,11 +421,7 @@ class _Item extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: AppDrawer._divider),
                     ),
-                    child: Icon(
-                      icon,
-                      size: 16,
-                      color: AppDrawer._iconColor,
-                    ),
+                    child: Icon(icon, size: 16, color: AppDrawer._iconColor),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

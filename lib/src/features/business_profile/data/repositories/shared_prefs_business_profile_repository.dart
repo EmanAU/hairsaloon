@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/features/auth/data/datasources/local_auth_session_datasource.dart';
 import 'package:hairsaloon/src/features/business_profile/data/models/business_profile_model.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/entities/business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/repositories/business_profile_repository.dart';
@@ -12,9 +13,27 @@ class SharedPrefsBusinessProfileRepository
 
   final SharedPreferences _prefs;
 
+  String? get _accountKey {
+    final id = LocalAuthSessionDataSource(prefs: _prefs).readUserId();
+    return id == null ? null : '$storageKey.$id';
+  }
+
+  Future<void> migrateLegacyProfile() async {
+    if (_prefs.getBool('profile.scoped.v1') == true) return;
+    final key = _accountKey;
+    final raw = _prefs.getString(storageKey);
+    if (key != null && raw != null && !_prefs.containsKey(key)) {
+      await _prefs.setString(key, raw);
+      await _prefs.remove(storageKey);
+    }
+    await _prefs.setBool('profile.scoped.v1', true);
+  }
+
   @override
   Future<BusinessProfile?> getProfile() async {
-    final raw = _prefs.getString(storageKey);
+    final key = _accountKey;
+    if (key == null) return null;
+    final raw = _prefs.getString(key);
     if (raw == null || raw.trim().isEmpty) return null;
     final model = BusinessProfileModel.fromJsonString(raw);
     return model.toEntity();
@@ -23,11 +42,16 @@ class SharedPrefsBusinessProfileRepository
   @override
   Future<void> saveProfile(BusinessProfile profile) async {
     final raw = BusinessProfileModel.fromEntity(profile).toJsonString();
-    await _prefs.setString(storageKey, raw);
+    final key = _accountKey;
+    if (key == null) throw StateError('Sign in before saving a business.');
+    if (!await _prefs.setString(key, raw)) {
+      throw StateError('Could not save business profile.');
+    }
   }
 
   @override
   Future<void> clearProfile() async {
-    await _prefs.remove(storageKey);
+    final key = _accountKey;
+    if (key != null) await _prefs.remove(key);
   }
 }

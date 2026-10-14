@@ -75,9 +75,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations(const [
-      DeviceOrientation.portraitUp,
-    ]);
+    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
     _bootstrapFuture = _bootstrap();
   }
 
@@ -139,8 +137,11 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                       ServicesStore(repository: HiveServicesRepository()),
                 ),
                 ChangeNotifierProvider<SettingsStore>(
-                  create: (_) =>
-                      SettingsStore(repository: HiveSettingsRepository()),
+                  create: (_) => SettingsStore(
+                    repository: HiveSettingsRepository(
+                      accountId: () => bootstrap.authStore.currentUser?.id,
+                    ),
+                  ),
                 ),
               ],
               child: _DeferredStoreWarmup(
@@ -321,6 +322,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
     await HiveBootstrap.init(prefs);
 
     final repository = SharedPrefsBusinessProfileRepository(prefs: prefs);
+    await repository.migrateLegacyProfile();
     final profileNotifier = BusinessProfileNotifier(
       getBusinessProfile: GetBusinessProfile(repository),
       saveBusinessProfile: SaveBusinessProfile(repository),
@@ -336,6 +338,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
       registerUser: RegisterUser(authRepository),
       loginWithPhonePassword: LoginWithPhonePassword(authRepository),
       logout: Logout(authRepository),
+      onSessionChanged: profileNotifier.load,
     );
 
     final hasAuthSession = await authStore.hasLocalSession();

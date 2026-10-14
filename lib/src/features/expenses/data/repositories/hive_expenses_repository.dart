@@ -57,7 +57,10 @@ ExpenseItem _expenseFromMap(Map<String, dynamic> map) {
     employeeName: (map['employeeName'] ?? '').toString(),
     amount: (map['amount'] as num?)?.toDouble() ?? 0,
     status: ExpenseItem.normalizeStatus((map['status'] ?? '').toString()),
-    paymentType: (map['paymentType'] ?? '').toString(),
+    paymentType:
+        ExpenseItem.normalizeStatus((map['status'] ?? '').toString()) == 'Paid'
+        ? (map['paymentType'] ?? '').toString()
+        : '',
     expenseType: map['expenseType']?.toString(),
     quantity: (map['quantity'] as num?)?.toInt(),
     description: map['description']?.toString(),

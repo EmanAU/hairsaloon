@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:hairsaloon/src/core/widgets/app_confirm_dialog.dart';
 import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
+import 'package:hairsaloon/src/features/business_profile/domain/business_options.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/entities/business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/business_logo_picker.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
@@ -22,11 +24,11 @@ class _BusinessRegistrationScreenState
     extends State<BusinessRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
-  final _phone = TextEditingController(text: '+92 ');
-  final _city = TextEditingController(text: 'Islamabad');
+  final _phone = TextEditingController(text: PkPhone.prefix);
   final _area = TextEditingController();
   final _address = TextEditingController();
-  String _businessType = 'Hair Salon';
+  String _businessType = BusinessOptions.defaultBusinessType;
+  String _city = BusinessOptions.defaultCity;
   String? _logo;
   bool _initialized = false;
   bool _phoneLocked = false;
@@ -41,22 +43,72 @@ class _BusinessRegistrationScreenState
     final profile = context.read<BusinessProfileNotifier>().profile;
     if (profile != null) {
       _name.text = profile.businessName;
-      _city.text = profile.city;
+      _businessType = BusinessOptions.resolve(
+        profile.businessType,
+        BusinessOptions.businessTypes,
+        BusinessOptions.defaultBusinessType,
+      );
+      _city = BusinessOptions.resolve(
+        profile.city,
+        BusinessOptions.cities,
+        BusinessOptions.defaultCity,
+      );
       _area.text = profile.area;
       _address.text = profile.address;
       _logo = profile.logoBase64;
     }
     final phone = context.read<AuthStore>().currentUser?.phone;
     _phoneLocked = phone != null && phone.isNotEmpty;
-    _phone.text = _phoneLocked ? phone! : profile?.phoneNumber ?? '+92 ';
+    _phone.text = _phoneLocked
+        ? PkPhone.normalize(phone!)
+        : PkPhone.normalize(profile?.phoneNumber ?? PkPhone.prefix);
+    if (_phone.text.isEmpty) _phone.text = PkPhone.prefix;
   }
 
   @override
   void dispose() {
-    for (final controller in [_name, _phone, _city, _area, _address]) {
+    for (final controller in [_name, _phone, _area, _address]) {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  Widget _dropdown({
+    required String label,
+    required String value,
+    required List<String> options,
+    required ValueChanged<String> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label(label),
+        DropdownButtonFormField<String>(
+          key: ValueKey('$label-$value'),
+          initialValue: value,
+          isExpanded: true,
+          style: const TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 13,
+            color: AppColors.textPrimary,
+          ),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+          decoration: _decoration('Select'),
+          items: [
+            for (final option in options)
+              DropdownMenuItem(value: option, child: Text(option)),
+          ],
+          onChanged: _saving
+              ? null
+              : (selected) {
+                  if (selected == null) return;
+                  onChanged(selected);
+                },
+          validator: (selected) =>
+              (selected == null || selected.trim().isEmpty) ? 'Required' : null,
+        ),
+      ],
+    );
   }
 
   InputDecoration _decoration(String hint, {IconData? icon}) {
@@ -110,6 +162,7 @@ class _BusinessRegistrationScreenState
     TextInputType? keyboard,
     bool readOnly = false,
     int lines = 1,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,6 +174,7 @@ class _BusinessRegistrationScreenState
           enabled: !_saving,
           maxLines: lines,
           keyboardType: keyboard,
+          inputFormatters: inputFormatters,
           textInputAction: lines > 1
               ? TextInputAction.newline
               : TextInputAction.next,
@@ -130,14 +184,11 @@ class _BusinessRegistrationScreenState
             icon: readOnly ? Icons.lock_outline_rounded : null,
           ),
           validator: (value) {
+            if (controller == _phone) {
+              return PkPhone.validationError(value, required: required);
+            }
             final text = (value ?? '').trim();
             if (required && text.isEmpty) return 'Required';
-            if (controller == _phone &&
-                !RegExp(
-                  r'^\+92\d{10}$',
-                ).hasMatch(text.replaceAll(RegExp(r'[\s()-]'), ''))) {
-              return 'Enter a valid +92 phone number';
-            }
             return null;
           },
         ),
@@ -193,50 +244,35 @@ class _BusinessRegistrationScreenState
                   _field(
                     'Phone number',
                     _phone,
-                    '+92 3xx xxx xxxx',
+                    '+923462254477',
                     keyboard: TextInputType.phone,
                     readOnly: _phoneLocked,
+                    inputFormatters: _phoneLocked
+                        ? null
+                        : [PkPhoneInputFormatter()],
                   ),
                   const SizedBox(height: 14),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _label('Business type'),
-                            DropdownButtonFormField<String>(
-                              initialValue: _businessType,
-                              isExpanded: true,
-                              style: const TextStyle(
-                                fontFamily: 'Roboto',
-                                fontSize: 13,
-                                color: AppColors.textPrimary,
-                              ),
-                              icon: const Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                size: 18,
-                              ),
-                              decoration: _decoration('Select type'),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 'Hair Salon',
-                                  child: Text('Hair Salon'),
-                                ),
-                              ],
-                              onChanged: _saving
-                                  ? null
-                                  : (value) => setState(
-                                      () =>
-                                          _businessType = value ?? 'Hair Salon',
-                                    ),
-                            ),
-                          ],
+                        child: _dropdown(
+                          label: 'Business type',
+                          value: _businessType,
+                          options: BusinessOptions.businessTypes,
+                          onChanged: (value) =>
+                              setState(() => _businessType = value),
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Expanded(child: _field('City', _city, 'Your city')),
+                      Expanded(
+                        child: _dropdown(
+                          label: 'City',
+                          value: _city,
+                          options: BusinessOptions.cities,
+                          onChanged: (value) => setState(() => _city = value),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -294,12 +330,12 @@ class _BusinessRegistrationScreenState
       await notifier.save(
         BusinessProfile(
           businessName: _name.text.trim(),
-          phoneNumber: _phone.text.replaceAll(RegExp(r'[\s()-]'), ''),
+          phoneNumber: PkPhone.normalize(_phone.text),
           businessType: _businessType,
-          city: _city.text.trim(),
+          city: _city,
           area: _area.text.trim(),
           address: _address.text.trim().isEmpty
-              ? '${_area.text.trim()}, ${_city.text.trim()}'
+              ? '${_area.text.trim()}, $_city'
               : _address.text.trim(),
           logoBase64: _logo,
         ),

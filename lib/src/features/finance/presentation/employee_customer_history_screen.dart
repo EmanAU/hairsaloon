@@ -160,7 +160,9 @@ class _EmployeeCustomerHistoryScreenState
               if (days.isEmpty)
                 const Padding(
                   padding: EdgeInsets.only(top: 8),
-                  child: FinanceEmpty(message: 'No customers for these filters.'),
+                  child: FinanceEmpty(
+                    message: 'No customers for these filters.',
+                  ),
                 )
               else
                 for (final day in days) ...[
@@ -217,19 +219,22 @@ class _EmployeeCustomerHistoryScreenState
           ),
         ),
         const SizedBox(height: 6),
-        Row(
-          children: [
-            for (final p in const ['All', 'Cash', 'Card', 'Online']) ...[
-              Expanded(
-                child: FinanceChip(
-                  label: p,
-                  selected: _payment == p,
-                  onTap: () => setState(() => _payment = p),
-                ),
-              ),
-              if (p != 'Online') const SizedBox(width: 6),
-            ],
-          ],
+        DropdownButtonFormField<String>(
+          initialValue: _payment,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Payment method'),
+          items: {
+            'All',
+            'Cash',
+            'Card',
+            'Online',
+            ...context
+                .read<BillingStore>()
+                .bills
+                .map((b) => b.paymentType)
+                .where((p) => p.isNotEmpty),
+          }.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+          onChanged: (p) => setState(() => _payment = p ?? 'All'),
         ),
       ],
     );

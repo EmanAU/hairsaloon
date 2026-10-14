@@ -137,15 +137,16 @@ class _BillingScreenState extends State<BillingScreen> {
               children: [
                 const Icon(CupertinoIcons.cart, size: 22, color: Colors.black),
                 const SizedBox(width: 6),
-                Text(
-                  '${_selectedServiceIds.length.toString().padLeft(2, '0')} services used',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
+                Expanded(
+                  child: Text(
+                    '${_selectedServiceIds.length.toString().padLeft(2, '0')} services used',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
                   ),
                 ),
-                const Spacer(),
                 _DiscountChip(
                   type: _discountType,
                   value: _discountValue,
@@ -236,14 +237,15 @@ class _BillingScreenState extends State<BillingScreen> {
                         if (_hasKnownPhone(phone)) return;
                         _promptAddCustomer(initialPhone: phone);
                       },
-                      decoration: _smallDecoration(
-                        'Enter Customer Phone Number',
-                      ).copyWith(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 12,
-                        ),
-                      ),
+                      decoration:
+                          _smallDecoration(
+                            'Enter Customer Phone Number',
+                          ).copyWith(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 12,
+                            ),
+                          ),
                     ),
                   ),
                 ),
@@ -400,7 +402,19 @@ class _BillingScreenState extends State<BillingScreen> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            initialValue: _paymentType,
+                            key: ValueKey(
+                              context
+                                  .watch<SettingsStore>()
+                                  .paymentMethods
+                                  .join('|'),
+                            ),
+                            initialValue:
+                                context
+                                    .read<SettingsStore>()
+                                    .paymentMethods
+                                    .contains(_paymentType)
+                                ? _paymentType
+                                : null,
                             isExpanded: true,
                             style: const TextStyle(
                               fontFamily: 'Roboto',
@@ -419,21 +433,24 @@ class _BillingScreenState extends State<BillingScreen> {
                               }
                               return null;
                             },
-                            selectedItemBuilder: (context) =>
-                                const ['Cash', 'Card', 'Online']
-                                    .map(
-                                      (type) => Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          type,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(fontSize: 11),
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                            items: const ['Cash', 'Card', 'Online']
+                            selectedItemBuilder: (context) => context
+                                .read<SettingsStore>()
+                                .paymentMethods
+                                .map(
+                                  (type) => Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      type,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(fontSize: 11),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                            items: context
+                                .watch<SettingsStore>()
+                                .paymentMethods
                                 .map(
                                   (type) => DropdownMenuItem(
                                     value: type,
@@ -676,8 +693,7 @@ class _BillingScreenState extends State<BillingScreen> {
 
   void _applyCustomer(CustomerContact customer) {
     final store = context.read<BillingStore>();
-    final full =
-        store.getCustomerContactByPhone(customer.phone) ?? customer;
+    final full = store.getCustomerContactByPhone(customer.phone) ?? customer;
     setState(() {
       _phoneCtrl.text = full.phone;
       _hidePhoneSuggestions = true;
@@ -749,9 +765,9 @@ class _BillingScreenState extends State<BillingScreen> {
   Future<void> _promptAddCustomer({String? initialPhone}) async {
     final prefillPhone = (initialPhone ?? _phoneCtrl.text).trim();
     if (prefillPhone.isNotEmpty) {
-      final existing = context
-          .read<BillingStore>()
-          .getCustomerContactByPhone(prefillPhone);
+      final existing = context.read<BillingStore>().getCustomerContactByPhone(
+        prefillPhone,
+      );
       if (existing != null && existing.name.trim().isNotEmpty) {
         await _promptExistingCustomer(existing);
         return;
@@ -1069,15 +1085,16 @@ class _DiscountSheetState extends State<_DiscountSheet> {
             onSubmitted: (_) => _apply(),
             onChanged: (_) => setState(() => _error = null),
             style: const TextStyle(fontSize: 13.5),
-            decoration: appSheetInputDecoration(
-              _type == BillDiscountType.percent
-                  ? 'Discount percentage'
-                  : 'Discount amount',
-              prefixText: _type == BillDiscountType.amount ? 'Rs. ' : null,
-            ).copyWith(
-              suffixText: _type == BillDiscountType.percent ? '%' : null,
-              errorText: _error,
-            ),
+            decoration:
+                appSheetInputDecoration(
+                  _type == BillDiscountType.percent
+                      ? 'Discount percentage'
+                      : 'Discount amount',
+                  prefixText: _type == BillDiscountType.amount ? 'Rs. ' : null,
+                ).copyWith(
+                  suffixText: _type == BillDiscountType.percent ? '%' : null,
+                  errorText: _error,
+                ),
           ),
           const SizedBox(height: 10),
           Row(

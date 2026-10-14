@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
@@ -21,7 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController(text: '+92 ');
+  final _phoneCtrl = TextEditingController(text: PkPhone.prefix);
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   bool _showPassword = false;
@@ -43,12 +44,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final auth = context.read<AuthStore>();
     await auth.startRegistration(
       name: _nameCtrl.text.trim(),
-      phone: _phoneCtrl.text.trim(),
+      phone: PkPhone.normalize(_phoneCtrl.text),
       password: _passwordCtrl.text,
     );
 
     if (!mounted) return;
-    if (auth.currentUser != null) {
+    if (auth.currentUser != null && auth.error == null) {
       Navigator.of(context).pushNamedAndRemoveUntil(
         AppRoutes.businessRegistration,
         (route) => false,
@@ -189,26 +190,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         TextFormField(
                           controller: _phoneCtrl,
                           keyboardType: TextInputType.phone,
+                          inputFormatters: [PkPhoneInputFormatter()],
                           style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 14.sp,
                           ),
                           decoration: _fieldDecoration(
-                            hint: '+92 3xx xxx xxxx',
+                            hint: '+923462254477',
                             prefix: Icon(
                               Icons.phone_rounded,
                               color: AppColors.textSecondary,
                               size: 20.r,
                             ),
                           ),
-                          validator: (v) {
-                            final val = (v ?? '').trim();
-                            if (val.isEmpty || val == '+92') return 'Required';
-                            if (!val.startsWith('+92')) {
-                              return 'Must start with +92';
-                            }
-                            return null;
-                          },
+                          validator: (v) => PkPhone.validationError(v),
                         ),
                         SizedBox(height: 16.h),
                         _label('Password'),

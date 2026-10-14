@@ -13,12 +13,14 @@ class AuthStore extends ChangeNotifier {
     required RegisterUser registerUser,
     required LoginWithPhonePassword loginWithPhonePassword,
     required Logout logout,
+    this.onSessionChanged,
   }) : _hasSession = hasSession,
        _getCurrentUser = getCurrentUser,
        _registerUser = registerUser,
        _loginWithPhonePassword = loginWithPhonePassword,
        _logout = logout;
 
+  final Future<void> Function()? onSessionChanged;
   final HasSession _hasSession;
   final GetCurrentUser _getCurrentUser;
   final RegisterUser _registerUser;
@@ -39,6 +41,7 @@ class AuthStore extends ChangeNotifier {
     _setLoading(true);
     try {
       _currentUser = await _getCurrentUser();
+      await onSessionChanged?.call();
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -59,6 +62,7 @@ class AuthStore extends ChangeNotifier {
         phone: phone,
         password: password,
       );
+      await onSessionChanged?.call();
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -74,6 +78,7 @@ class AuthStore extends ChangeNotifier {
         phone: phone,
         password: password,
       );
+      await onSessionChanged?.call();
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -87,6 +92,7 @@ class AuthStore extends ChangeNotifier {
     try {
       await _logout();
       _currentUser = null;
+      await onSessionChanged?.call();
       _error = null;
     } catch (e) {
       _error = e.toString();

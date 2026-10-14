@@ -28,6 +28,7 @@ class ExpensesStore extends ChangeNotifier {
   Future<void> add(ExpenseItem item) async {
     final normalized = item.copyWith(
       status: ExpenseItem.normalizeStatus(item.status),
+      paymentType: item.isUnpaid ? '' : item.paymentType,
     );
     await _repository.add(normalized);
     reload();
@@ -36,15 +37,16 @@ class ExpensesStore extends ChangeNotifier {
   Future<void> update(ExpenseItem item) async {
     final normalized = item.copyWith(
       status: ExpenseItem.normalizeStatus(item.status),
+      paymentType: item.isUnpaid ? '' : item.paymentType,
     );
     await _repository.update(normalized);
     reload();
   }
 
-  Future<void> markAsPaid(String id) async {
+  Future<void> markAsPaid(String id, {String paymentType = 'Cash'}) async {
     final existing = getById(id);
     if (existing == null || existing.isPaid) return;
-    await update(existing.copyWith(status: 'Paid'));
+    await update(existing.copyWith(status: 'Paid', paymentType: paymentType));
   }
 
   Future<void> markAsUnpaid(String id) async {

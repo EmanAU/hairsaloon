@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hairsaloon/src/core/layout/safe_scroll_padding.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:hairsaloon/src/core/widgets/app_confirm_dialog.dart';
 import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/business_logo_picker.dart';
@@ -35,7 +36,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
   final _firstNameCtrl = TextEditingController();
   final _lastNameCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController(text: '+92');
+  final _phoneCtrl = TextEditingController(text: PkPhone.prefix);
   final _cnicCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
   final _specialityCtrl = TextEditingController();
@@ -369,7 +370,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
               _phoneCtrl,
               'Phone Number',
               keyboardType: TextInputType.phone,
-              inputFormatters: [_PhonePkFormatter()],
+              inputFormatters: [PkPhoneInputFormatter()],
             ),
             const SizedBox(height: 8),
             _field(
@@ -572,8 +573,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       validator: (v) {
         final value = (v ?? '').trim();
         if (value.isEmpty) return 'Required';
-        if (hint == 'Phone Number' && !_isValidPkPhone(value)) {
-          return 'Use +92 followed by 10 digits';
+        if (hint == 'Phone Number') {
+          return PkPhone.validationError(value);
         }
         if (hint == 'CNIC Number' && !_isValidCnic(value)) {
           return 'Use format: 12345-1234567-1';
@@ -602,7 +603,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       firstName: _firstNameCtrl.text.trim(),
       lastName: _lastNameCtrl.text.trim(),
-      phoneNumber: _phoneCtrl.text.trim(),
+      phoneNumber: PkPhone.normalize(_phoneCtrl.text),
       cnicNumber: _cnicCtrl.text.trim(),
       homeAddress: _addressCtrl.text.trim(),
       isActive: _newActive,
@@ -636,7 +637,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   void _resetFormFields() {
     _firstNameCtrl.clear();
     _lastNameCtrl.clear();
-    _phoneCtrl.text = '+92';
+    _phoneCtrl.text = PkPhone.prefix;
     _cnicCtrl.clear();
     _addressCtrl.clear();
     _specialityCtrl.clear();
@@ -677,8 +678,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       ),
     );
   }
-
-  bool _isValidPkPhone(String value) => RegExp(r'^\+92\d{10}$').hasMatch(value);
 
   bool _isValidCnic(String value) =>
       RegExp(r'^\d{5}-\d{7}-\d$').hasMatch(value);
@@ -746,32 +745,3 @@ class _CnicFormatter extends TextInputFormatter {
   }
 }
 
-class _PhonePkFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final text = newValue.text;
-    final onlyDigits = text.replaceAll(RegExp(r'[^0-9]'), '');
-
-    String afterPrefixDigits;
-    if (text.startsWith('+92')) {
-      afterPrefixDigits = text.substring(3).replaceAll(RegExp(r'[^0-9]'), '');
-    } else if (onlyDigits.startsWith('92')) {
-      afterPrefixDigits = onlyDigits.substring(2);
-    } else {
-      afterPrefixDigits = onlyDigits;
-    }
-
-    if (afterPrefixDigits.length > 10) {
-      afterPrefixDigits = afterPrefixDigits.substring(0, 10);
-    }
-
-    final formatted = '+92$afterPrefixDigits';
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
-  }
-}

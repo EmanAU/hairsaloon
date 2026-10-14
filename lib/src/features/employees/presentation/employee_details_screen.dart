@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:hairsaloon/src/core/layout/adaptive_page.dart';
 import 'package:hairsaloon/src/core/layout/safe_scroll_padding.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/business_logo_picker.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
@@ -219,7 +220,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
                 _phoneCtrl,
                 'Phone number',
                 keyboardType: TextInputType.phone,
-                inputFormatters: [_PhonePkFormatter()],
+                inputFormatters: [PkPhoneInputFormatter()],
               ),
               const SizedBox(height: 12),
               _editField(
@@ -457,7 +458,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
   Future<void> _save(EmployeesStore store) async {
     final first = _firstNameCtrl.text.trim();
     final last = _lastNameCtrl.text.trim();
-    final phone = _phoneCtrl.text.trim();
+    final phone = PkPhone.normalize(_phoneCtrl.text);
     final cnic = _cnicCtrl.text.trim();
     final address = _addressCtrl.text.trim();
     final speciality = _specialityCtrl.text.trim();
@@ -465,7 +466,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     if (first.isEmpty ||
         last.isEmpty ||
         address.isEmpty ||
-        !_isValidPkPhone(phone) ||
+        !PkPhone.isValid(phone) ||
         !_isValidCnic(cnic)) {
       ToastService.error('Please fill valid details');
       return;
@@ -500,8 +501,6 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     Navigator.of(context).pop(updated);
   }
 
-  bool _isValidPkPhone(String value) => RegExp(r'^\+92\d{10}$').hasMatch(value);
-
   bool _isValidCnic(String value) =>
       RegExp(r'^\d{5}-\d{7}-\d$').hasMatch(value);
 }
@@ -520,36 +519,6 @@ class _CnicFormatter extends TextInputFormatter {
       buffer.write(limited[i]);
     }
     final formatted = buffer.toString();
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
-  }
-}
-
-class _PhonePkFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final text = newValue.text;
-    final onlyDigits = text.replaceAll(RegExp(r'[^0-9]'), '');
-
-    String afterPrefixDigits;
-    if (text.startsWith('+92')) {
-      afterPrefixDigits = text.substring(3).replaceAll(RegExp(r'[^0-9]'), '');
-    } else if (onlyDigits.startsWith('92')) {
-      afterPrefixDigits = onlyDigits.substring(2);
-    } else {
-      afterPrefixDigits = onlyDigits;
-    }
-
-    if (afterPrefixDigits.length > 10) {
-      afterPrefixDigits = afterPrefixDigits.substring(0, 10);
-    }
-
-    final formatted = '+92$afterPrefixDigits';
     return TextEditingValue(
       text: formatted,
       selection: TextSelection.collapsed(offset: formatted.length),

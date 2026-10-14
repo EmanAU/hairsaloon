@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/features/settings/presentation/state/settings_store.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
@@ -23,19 +24,16 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
   final TextEditingController _amountCtrl = TextEditingController();
   final TextEditingController _quantityCtrl = TextEditingController();
   final TextEditingController _descriptionCtrl = TextEditingController();
+  final TextEditingController _otherTypeCtrl = TextEditingController();
 
-  static const List<String> _expenseTypes = [
-    'Utilities',
-    'Supplies',
-    'Maintenance',
-    'Tea/Coffee',
-  ];
+  static const String _otherLabel = 'Other';
 
   @override
   void dispose() {
     _amountCtrl.dispose();
     _quantityCtrl.dispose();
     _descriptionCtrl.dispose();
+    _otherTypeCtrl.dispose();
     super.dispose();
   }
 
@@ -47,6 +45,11 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
         .where((e) => e.isActive)
         .map((e) => e.fullName)
         .toList();
+    final expenseTypes = [
+      ...context.watch<SettingsStore>().expenseTypes,
+      _otherLabel,
+    ];
+    final showOther = _selectedExpenseType == _otherLabel;
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
       appBar: AppBar(
@@ -88,10 +91,21 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
                   _dropdownField(
                     value: _selectedExpenseType,
                     hint: 'Select Expense Type',
-                    items: _expenseTypes,
-                    onChanged: (value) =>
-                        setState(() => _selectedExpenseType = value),
+                    items: expenseTypes,
+                    requiredField: true,
+                    onChanged: (value) => setState(() {
+                      _selectedExpenseType = value;
+                      if (value != _otherLabel) _otherTypeCtrl.clear();
+                    }),
                   ),
+                  if (showOther) ...[
+                    const SizedBox(height: 8),
+                    _textField(
+                      controller: _otherTypeCtrl,
+                      hint: 'New expense type name',
+                      requiredField: true,
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   _textField(
                     controller: _amountCtrl,
@@ -110,16 +124,22 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
                     value: _selectedStatus,
                     hint: 'Status (Paid or Unpaid)',
                     items: const ['Paid', 'Unpaid'],
-                    onChanged: (value) =>
-                        setState(() => _selectedStatus = value),
+                    onChanged: (value) => setState(() {
+                      _selectedStatus = value;
+                      if (value == 'Unpaid') _selectedPaymentType = null;
+                    }),
                   ),
                   const SizedBox(height: 8),
                   _dropdownField(
                     value: _selectedPaymentType,
-                    hint: 'Payment Type (Cash or Online)',
-                    items: const ['Cash', 'Online'],
-                    onChanged: (value) =>
-                        setState(() => _selectedPaymentType = value),
+                    hint: _selectedStatus == 'Unpaid'
+                        ? 'Unpaid — no payment method'
+                        : 'Payment method',
+                    items: context.watch<SettingsStore>().paymentMethods,
+                    onChanged: _selectedStatus == 'Unpaid'
+                        ? null
+                        : (value) =>
+                              setState(() => _selectedPaymentType = value),
                   ),
                   const SizedBox(height: 8),
                   _textField(
@@ -200,13 +220,15 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
     required String? value,
     required String hint,
     required List<String> items,
-    required ValueChanged<String?> onChanged,
+    required ValueChanged<String?>? onChanged,
     bool requiredField = false,
   }) {
     return DropdownButtonFormField<String>(
+      key: ValueKey(hint + items.join('|')),
       isExpanded: true,
-      initialValue: value,
-      style: const TextStyle(fontFamily: 'Roboto', 
+      initialValue: items.contains(value) ? value : null,
+      style: const TextStyle(
+        fontFamily: 'Roboto',
         fontSize: 12,
         fontWeight: FontWeight.w400,
         color: Colors.black,
@@ -276,12 +298,24 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
     );
   }
 
-  void _saveExpense() {
+  Future<void> _saveExpense() async {
     final state = _formKey.currentState;
     if (state == null || !state.validate()) return;
     if (_selectedDate == null) return;
     final amount = double.tryParse(_amountCtrl.text.trim());
     if (amount == null) return;
+
+    var expenseType = _selectedExpenseType;
+    if (expenseType == _otherLabel) {
+      final custom = _otherTypeCtrl.text.trim();
+      if (custom.isEmpty) return;
+      try {
+        await context.read<SettingsStore>().addExpenseType(custom);
+      } catch (_) {
+        // Already exists — still use the typed name on this expense.
+      }
+      expenseType = custom;
+    }
 
     final expense = ExpenseItem(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
@@ -289,14 +323,17 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
       employeeName: _selectedEmployee!,
       amount: amount,
       status: ExpenseItem.normalizeStatus(_selectedStatus ?? 'Paid'),
-      paymentType: _selectedPaymentType ?? 'Cash',
-      expenseType: _selectedExpenseType,
+      paymentType: _selectedStatus == 'Unpaid'
+          ? ''
+          : (_selectedPaymentType ?? 'Cash'),
+      expenseType: expenseType,
       quantity: int.tryParse(_quantityCtrl.text.trim()),
       description: _descriptionCtrl.text.trim().isEmpty
           ? null
           : _descriptionCtrl.text.trim(),
       createdAt: DateTime.now(),
     );
+    if (!mounted) return;
     Navigator.of(context).pop(expense);
   }
 }

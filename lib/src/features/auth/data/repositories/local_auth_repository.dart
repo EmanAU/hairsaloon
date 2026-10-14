@@ -21,7 +21,16 @@ class LocalAuthRepository implements AuthRepository {
   Map<String, dynamic> _accounts() =>
       jsonDecode(_prefs.getString(_accountsKey) ?? '{}')
           as Map<String, dynamic>;
-  String _phone(String phone) => phone.replaceAll(RegExp(r'[\s()-]'), '');
+  String _phone(String phone) {
+    var value = phone.replaceAll(RegExp(r'[\s()-]'), '');
+    if (value.startsWith('0092')) value = '+${value.substring(2)}';
+    if (RegExp(r'^03\d{9}$').hasMatch(value)) {
+      value = '+92${value.substring(1)}';
+    }
+    if (RegExp(r'^92\d{10}$').hasMatch(value)) value = '+$value';
+    return value;
+  }
+
   String _hash(String password, String salt) =>
       sha256.convert(utf8.encode('$salt:$password')).toString();
   AppUser _user(Map<String, dynamic> data) => AppUser(

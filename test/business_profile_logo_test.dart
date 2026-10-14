@@ -8,7 +8,9 @@ import 'package:hairsaloon/src/features/business_profile/domain/entities/busines
 
 void main() {
   test('business logo survives saving and reloading local profile', () async {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({
+      'auth.current_user_id.v1': 'logo-test',
+    });
     final prefs = await SharedPreferences.getInstance();
     final logo = base64Encode([1, 2, 3, 4]);
     await SharedPrefsBusinessProfileRepository(prefs: prefs).saveProfile(
