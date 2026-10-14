@@ -1,15 +1,21 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class BillReceiptShare {
   const BillReceiptShare._();
+
+  static const _whatsAppChannel = MethodChannel('hairsaloon/whatsapp_share');
 
   static const _months = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -22,6 +28,17 @@ class BillReceiptShare {
     final period = d.hour < 12 ? 'AM' : 'PM';
     return '${d.day.toString().padLeft(2, '0')} ${_months[d.month - 1]} '
         '${d.year}, $hour:$minute $period';
+  }
+
+  /// Digits-only international number for WhatsApp (`923001234567`).
+  static String? whatsAppPhoneDigits(String? raw) {
+    final normalized = PkPhone.normalize(raw);
+    if (PkPhone.isValid(normalized)) {
+      return normalized.substring(1);
+    }
+    final digits = (raw ?? '').replaceAll(RegExp(r'\D'), '');
+    if (digits.length >= 10 && digits.length <= 15) return digits;
+    return null;
   }
 
   static String buildTextReceipt({
@@ -101,8 +118,50 @@ class BillReceiptShare {
 
   static const thankYouMessage = 'Thank you for your visit!';
 
+  static Future<bool> _shareToWhatsAppAndroid({
+    required String phoneDigits,
+    required String text,
+    String? filePath,
+  }) async {
+    if (kIsWeb || !Platform.isAndroid) return false;
+    try {
+      final ok = await _whatsAppChannel.invokeMethod<bool>(
+        'shareToWhatsApp',
+        <String, dynamic>{
+          'phone': phoneDigits,
+          'text': text,
+          'filePath': filePath,
+        },
+      );
+      return ok == true;
+    } on PlatformException catch (e) {
+      debugPrint('WhatsApp share failed: ${e.code} ${e.message}');
+      return false;
+    } catch (e) {
+      debugPrint('WhatsApp share failed: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> _openWhatsAppChat({
+    required String phoneDigits,
+    required String text,
+  }) async {
+    final uri = Uri.parse(
+      'https://wa.me/$phoneDigits?text=${Uri.encodeComponent(text)}',
+    );
+    try {
+      if (await canLaunchUrl(uri)) {
+        return launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('wa.me launch failed: $e');
+    }
+    return false;
+  }
+
   /// Shares the receipt image with a short thank-you caption.
-  /// Falls back to the full text receipt if the image can't be captured.
+  /// When [Bill.customerPhone] is set, opens WhatsApp on that chat directly.
   static Future<void> shareReceipt({
     required BuildContext context,
     required GlobalKey receiptKey,
@@ -114,23 +173,40 @@ class BillReceiptShare {
   }) async {
     final origin = _shareOrigin(context);
     final file = await captureReceiptImage(receiptKey);
-    final text = file != null
-        ? thankYouMessage
-        : buildTextReceipt(
-            bill: bill,
-            businessName: businessName,
-            currencyCode: currencyCode,
-            businessPhone: businessPhone,
-            businessAddress: businessAddress,
-          );
+    final textReceipt = buildTextReceipt(
+      bill: bill,
+      businessName: businessName,
+      currencyCode: currencyCode,
+      businessPhone: businessPhone,
+      businessAddress: businessAddress,
+    );
+    final caption = file != null ? thankYouMessage : textReceipt;
+    final phoneDigits = whatsAppPhoneDigits(bill.customerPhone);
 
     try {
+      if (phoneDigits != null) {
+        // Android: open that customer's WhatsApp chat with receipt image.
+        final sent = await _shareToWhatsAppAndroid(
+          phoneDigits: phoneDigits,
+          text: caption,
+          filePath: file?.path,
+        );
+        if (sent) return;
+
+        // Cross-platform fallback: open chat with text receipt prefilled.
+        final opened = await _openWhatsAppChat(
+          phoneDigits: phoneDigits,
+          text: textReceipt,
+        );
+        if (opened) return;
+      }
+
       await SharePlus.instance.share(
         ShareParams(
           files: file == null
               ? null
               : [XFile(file.path, mimeType: 'image/png')],
-          text: text,
+          text: caption,
           subject: 'Receipt - $businessName',
           title: 'Share Receipt',
           sharePositionOrigin: origin,

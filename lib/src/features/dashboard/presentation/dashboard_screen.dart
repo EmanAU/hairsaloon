@@ -258,13 +258,16 @@ class _DashboardScreenState extends State<DashboardScreen>
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 2),
                         Center(
-                          child: MadeWithLoveCredit(
-                            fontSize: 9.5,
-                            onTap: () async => launchUrl(
-                              Uri.parse('http://www.intelligement.com/'),
-                              mode: LaunchMode.externalApplication,
+                          child: Transform.translate(
+                            offset: const Offset(0, -6),
+                            child: MadeWithLoveCredit(
+                              fontSize: 9.5,
+                              onTap: () async => launchUrl(
+                                Uri.parse('http://www.intelligement.com/'),
+                                mode: LaunchMode.externalApplication,
+                              ),
                             ),
                           ),
                         ),
