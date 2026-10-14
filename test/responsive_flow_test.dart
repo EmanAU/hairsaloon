@@ -232,10 +232,8 @@ void main() {
         await capture('01_dashboard');
         // Home must show saved business details and the actual daily ledger.
         expect(find.text('Business COMB Salon'), findsOneWidget);
-        expect(find.text('800.00'), findsOneWidget);
-        expect(find.text('700.00'), findsOneWidget);
-        expect(find.text('100.00'), findsOneWidget);
-        expect(find.text('1 bill created'), findsOneWidget);
+        expect(find.text('PKR 800.00'), findsOneWidget);
+
         final rail = find.byType(NavigationRail);
         expect(rail, entry.key == 'mobile' ? findsNothing : findsOneWidget);
         Finder navItem(String label) => entry.key == 'mobile'

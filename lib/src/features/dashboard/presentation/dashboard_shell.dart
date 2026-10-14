@@ -36,7 +36,7 @@ class _DashboardShellState extends State<DashboardShell> {
 
     final tablet = AdaptivePage.isTablet(context);
     final canvas = _currentIndex == 0
-        ? const Color(0xFFFFFDF0)
+        ? const Color(0xFFF6F7F9)
         : AppColors.background;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -121,13 +121,13 @@ const _navItems = [
     label: 'Home',
   ),
   _NavItem(
-    icon: Icons.receipt_long_outlined,
-    activeIcon: Icons.receipt_long,
+    icon: CupertinoIcons.doc_plaintext,
+    activeIcon: CupertinoIcons.doc_text_fill,
     label: 'Billing',
   ),
   _NavItem(
-    icon: Icons.account_balance_wallet_outlined,
-    activeIcon: Icons.account_balance_wallet,
+    icon: CupertinoIcons.money_dollar_circle,
+    activeIcon: CupertinoIcons.money_dollar_circle_fill,
     label: 'Expense',
   ),
 ];
@@ -155,11 +155,11 @@ class _SideRail extends StatelessWidget {
         groupAlignment: -0.85,
         selectedIconTheme: const IconThemeData(
           color: AppColors.surface,
-          size: 21,
+          size: 25,
         ),
         unselectedIconTheme: const IconThemeData(
           color: AppColors.iconMuted,
-          size: 21,
+          size: 25,
         ),
         selectedLabelTextStyle: const TextStyle(
           color: AppColors.textPrimary,
@@ -223,17 +223,17 @@ class _BottomNav extends StatelessWidget {
         bottomInset > 0 ? bottomInset + 4 : 10,
       ),
       child: Container(
-        height: 70,
+        height: 60,
         padding: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: AppColors.border),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x0D000000),
-              blurRadius: 22,
-              offset: Offset(0, 4),
+              color: Color(0x14000000),
+              blurRadius: 16,
+              offset: Offset(0, 6),
             ),
           ],
         ),
@@ -269,40 +269,50 @@ class _NavTile extends StatelessWidget {
   const _NavTile({required this.item, required this.isActive});
   final _NavItem item;
   final bool isActive;
-
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 70,
-      width: double.infinity,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            width: 58,
-            height: 32,
-            decoration: BoxDecoration(
-              color: isActive ? AppColors.primary : Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
+    final color = isActive ? AppColors.primary : AppColors.textSecondary;
+    return Center(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.textPrimary : Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: isActive
+              ? const [
+                  BoxShadow(
+                    color: Color(0x26000000),
+                    blurRadius: 9,
+                    offset: Offset(0, 3),
+                  ),
+                ]
+              : const [],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
               isActive ? item.activeIcon : item.icon,
-              size: 23,
-              color: isActive ? AppColors.textPrimary : AppColors.textSecondary,
+              size: 24,
+              color: color,
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            item.label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-              color: isActive ? AppColors.textPrimary : AppColors.textSecondary,
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 11,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
