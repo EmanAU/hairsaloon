@@ -1,4 +1,5 @@
 """Package only screenshots listed in each completed portrait QA manifest."""
+import lib.session
 from pathlib import Path
 import json
 import shutil
