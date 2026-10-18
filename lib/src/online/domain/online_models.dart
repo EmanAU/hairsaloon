@@ -90,11 +90,36 @@ class PersonalProfile {
     required this.phone,
     this.cnic,
     this.dateOfBirth,
+    this.workStartedOn,
+    this.photoPath,
   });
   final String code;
   final String phone;
   final String? cnic;
   final DateTime? dateOfBirth;
+  final DateTime? workStartedOn;
+  final String? photoPath;
+
+  bool get isComplete =>
+      phone.isNotEmpty &&
+      (cnic?.length == 13) &&
+      dateOfBirth != null &&
+      workStartedOn != null &&
+      (photoPath?.isNotEmpty ?? false);
+
+  String experienceAt(DateTime today) {
+    final start = workStartedOn;
+    if (start == null || start.isAfter(today)) return 'Not set';
+    var months = (today.year - start.year) * 12 + today.month - start.month;
+    if (today.day < start.day) months--;
+    if (months <= 0) return 'Less than a month';
+    final years = months ~/ 12;
+    final remaining = months % 12;
+    return [
+      if (years > 0) '$years ${years == 1 ? 'year' : 'years'}',
+      if (remaining > 0) '$remaining ${remaining == 1 ? 'month' : 'months'}',
+    ].join(' ');
+  }
 
   factory PersonalProfile.fromJson(Map<String, dynamic> json) =>
       PersonalProfile(
@@ -102,6 +127,10 @@ class PersonalProfile {
         phone: json['phone'] as String,
         cnic: json['cnic'] as String?,
         dateOfBirth: DateTime.tryParse(json['date_of_birth'] as String? ?? ''),
+        workStartedOn: DateTime.tryParse(
+          json['work_started_on'] as String? ?? '',
+        ),
+        photoPath: json['photo_path'] as String?,
       );
 }
 
@@ -115,6 +144,7 @@ class SalonBusiness {
     required this.area,
     required this.address,
     required this.isActive,
+    this.logoPath,
   });
   final String id;
   final String name;
@@ -124,6 +154,7 @@ class SalonBusiness {
   final String area;
   final String address;
   final bool isActive;
+  final String? logoPath;
 
   factory SalonBusiness.fromJson(Map<String, dynamic> json) => SalonBusiness(
     id: json['id'] as String,
@@ -134,6 +165,7 @@ class SalonBusiness {
     area: json['area'] as String,
     address: json['address'] as String,
     isActive: json['is_active'] as bool,
+    logoPath: json['logo_path'] as String?,
   );
 }
 

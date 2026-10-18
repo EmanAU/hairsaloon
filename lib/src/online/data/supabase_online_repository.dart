@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'native_google_auth.dart';
 import 'dart:typed_data';
 import 'dart:async';
 import 'dart:convert';
@@ -10,9 +11,8 @@ import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
 
 class SupabaseOnlineRepository implements OnlineRepository {
-  SupabaseOnlineRepository(this._client, {required this.redirectUri});
+  SupabaseOnlineRepository(this._client);
   final SupabaseClient _client;
-  final String redirectUri;
 
   @override
   Future<Map<String, dynamic>?> businessSnapshot(String businessId) => _client
@@ -203,8 +203,10 @@ class SupabaseOnlineRepository implements OnlineRepository {
   @override
   Future<void> uploadProfilePhoto(Uint8List bytes, String extension) async {
     final mime = _mime(extension);
-    if (!mime.startsWith('image/') || bytes.length > 5 * 1024 * 1024) {
-      throw const OnlineFailure('Choose a photo under 5 MB.');
+    if (!mime.startsWith('image/') ||
+        bytes.isEmpty ||
+        bytes.length > 2 * 1024 * 1024) {
+      throw const OnlineFailure('Choose a JPG, PNG or WebP photo up to 2 MB.');
     }
     final old = await _client
         .from('profiles')
@@ -344,15 +346,22 @@ class SupabaseOnlineRepository implements OnlineRepository {
 
   @override
   Future<void> signInWithGoogle() async {
-    final launched = await _client.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: redirectUri,
+    final idToken = await NativeGoogleAuth.idToken();
+    if (idToken == null) return;
+    await _client.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
     );
-    if (!launched) throw StateError('Could not open Google sign-in.');
   }
 
   @override
-  Future<void> signOut() => _client.auth.signOut();
+  Future<void> signOut() async {
+    try {
+      await NativeGoogleAuth.signOut();
+    } finally {
+      await _client.auth.signOut();
+    }
+  }
 
   String get _requiredUserId => userId ?? (throw StateError('Sign in first.'));
 
@@ -458,15 +467,32 @@ class SupabaseOnlineRepository implements OnlineRepository {
 
   @override
   Future<void> saveProfile({
+    required String name,
     required String phone,
     required String cnic,
     required DateTime dateOfBirth,
+    required DateTime workStartedOn,
   }) async {
     final id = _requiredUserId;
+    if (name.trim().isEmpty || name.trim().length > 120) {
+      throw const OnlineFailure('Enter your name (up to 120 characters).');
+    }
+    final phoneError = PkPhone.localValidationError(PkPhone.localNumber(phone));
+    if (phoneError != null) throw OnlineFailure(phoneError);
+    final today = DateTime.now();
+    final endOfToday = DateTime(today.year, today.month, today.day + 1);
+    if (dateOfBirth.isAfter(today) ||
+        workStartedOn.isBefore(dateOfBirth) ||
+        !workStartedOn.isBefore(endOfToday)) {
+      throw const OnlineFailure(
+        'Check your date of birth and work start date.',
+      );
+    }
     final values = {
       'phone': PkPhone.normalize(phone),
       'cnic': cnic.replaceAll('-', '').trim(),
       'date_of_birth': dateOfBirth.toIso8601String().substring(0, 10),
+      'work_started_on': workStartedOn.toIso8601String().substring(0, 10),
     };
     final existing = await _client
         .from('profiles')
@@ -478,10 +504,14 @@ class SupabaseOnlineRepository implements OnlineRepository {
     } else {
       await _client.from('profiles').update(values).eq('user_id', id);
     }
+    await _client
+        .from('users')
+        .update({'display_name': name.trim()})
+        .eq('id', id);
   }
 
   @override
-  Future<void> saveBusiness({
+  Future<String> saveBusiness({
     String? id,
     required String name,
     required String phone,
@@ -499,16 +529,69 @@ class SupabaseOnlineRepository implements OnlineRepository {
       'address': address.trim(),
     };
     if (id == null) {
-      await _client.from('businesses').insert({
-        'owner_id': _requiredUserId,
-        ...values,
-      });
+      final created = await _client
+          .from('businesses')
+          .insert({'owner_id': _requiredUserId, ...values})
+          .select('id')
+          .single();
+      return created['id'] as String;
     } else {
       await _client
           .from('businesses')
           .update(values)
           .eq('id', id)
           .eq('owner_id', _requiredUserId);
+      return id;
+    }
+  }
+
+  @override
+  Future<String?> businessPhoto(SalonBusiness business) async =>
+      business.logoPath == null
+      ? null
+      : _client.storage
+            .from('business-photos')
+            .createSignedUrl(business.logoPath!, 3600);
+
+  @override
+  Future<void> uploadBusinessPhoto(
+    String businessId,
+    Uint8List bytes,
+    String extension,
+  ) async {
+    final mime = _mime(extension);
+    if (!mime.startsWith('image/') ||
+        bytes.isEmpty ||
+        bytes.length > 2 * 1024 * 1024) {
+      throw const OnlineFailure('Choose a JPG, PNG or WebP photo up to 2 MB.');
+    }
+    final old = await _client
+        .from('businesses')
+        .select('logo_path')
+        .eq('id', businessId)
+        .eq('owner_id', _requiredUserId)
+        .single();
+    final bucket = _client.storage.from('business-photos');
+    final path = '$businessId/${const Uuid().v4()}.$extension';
+    await bucket.uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(contentType: mime),
+    );
+    try {
+      await _client
+          .from('businesses')
+          .update({'logo_path': path})
+          .eq('id', businessId)
+          .eq('owner_id', _requiredUserId)
+          .select('id')
+          .single();
+    } catch (_) {
+      await bucket.remove([path]);
+      rethrow;
+    }
+    if (old['logo_path'] != null) {
+      await bucket.remove([old['logo_path'] as String]);
     }
   }
 

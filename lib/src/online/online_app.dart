@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import 'domain/online_models.dart';
 import 'domain/online_repository.dart';
 import 'presentation/business_home.dart';
+import 'presentation/profile_form.dart';
 import 'presentation/customer_screens.dart';
 import 'presentation/online_session.dart';
 import 'presentation/widgets/online_widgets.dart';
@@ -83,6 +84,10 @@ class _OnlineAppState extends State<OnlineApp> {
         target == null ||
         session?.workspace == null ||
         !session!.signedIn) {
+      return;
+    }
+    if (widget.audience == AppAudience.business &&
+        session.workspace!.profile?.isComplete != true) {
       return;
     }
     _openingLink = true;
@@ -248,6 +253,15 @@ class _OnlineAppState extends State<OnlineApp> {
           return CustomerDirectory(
             repository: session.repository,
             onSignOut: session.repository.signOut,
+          );
+        }
+        if (session.workspace!.profile?.isComplete != true) {
+          return ProfileForm(
+            repository: session.repository,
+            profile: session.workspace!.profile,
+            name: session.workspace!.account.name,
+            onboarding: true,
+            onSaved: session.reload,
           );
         }
         return BusinessHome(

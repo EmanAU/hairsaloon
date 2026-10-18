@@ -32,10 +32,12 @@ class ActionButton extends StatefulWidget {
     required this.label,
     required this.onPressed,
     this.icon,
+    this.style,
   });
   final String label;
   final Future<void> Function() onPressed;
   final IconData? icon;
+  final ButtonStyle? style;
 
   @override
   State<ActionButton> createState() => _ActionButtonState();
@@ -66,6 +68,7 @@ class _ActionButtonState extends State<ActionButton> {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 6),
     child: FilledButton.icon(
+      style: widget.style,
       onPressed: _busy ? null : _run,
       icon: _busy
           ? const SizedBox(

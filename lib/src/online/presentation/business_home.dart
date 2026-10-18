@@ -8,6 +8,8 @@ import 'rate_list_screen.dart';
 import 'contracts_screen.dart';
 import 'staff_screen.dart';
 import 'widgets/online_widgets.dart';
+import 'widgets/workspace_card.dart';
+import 'widgets/business_photo.dart';
 import 'qr_screen.dart';
 import 'workspace_screen.dart';
 import '../domain/qr_destination.dart';
@@ -32,134 +34,150 @@ class BusinessHome extends StatelessWidget {
   }
 
   Future<void> _startBusiness(BuildContext context) async {
-    if (session.workspace!.profile == null) {
-      final saved = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ProfileForm(repository: session.repository),
-        ),
-      );
-      if (saved != true || !context.mounted) return;
-    }
-    await Navigator.push<bool>(
+    final navigator = Navigator.of(context);
+    final existing = session.workspace!.businesses.map((b) => b.id).toSet();
+    final saved = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => BusinessForm(repository: session.repository),
       ),
     );
     await session.reload();
+    if (saved != true) return;
+    if (!navigator.mounted) return;
+    final created = session.workspace?.businesses.where(
+      (b) => !existing.contains(b.id),
+    );
+    if (created != null && created.isNotEmpty) {
+      await navigator.push<void>(
+        MaterialPageRoute(
+          builder: (_) => OwnerBusiness(
+            repository: session.repository,
+            businessId: created.first.id,
+          ),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final workspace = session.workspace!;
-    return OnlinePage(
-      title: 'Welcome, ${workspace.account.name}',
-      actions: [
-        IconButton(
-          tooltip: 'Refresh account',
-          onPressed: session.reload,
-          icon: const Icon(Icons.refresh),
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F8FA),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF7F8FA),
+        title: const Text(
+          'Your workspace',
+          style: TextStyle(fontFamily: 'Roboto'),
         ),
-      ],
-      children: [
-        if (workspace.isCached)
-          const Text(
-            'Offline: showing saved account details. Approval and contract changes require a connection.',
-          ),
-        Text(
-          'Business or personal profile',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Register your salon, or create your barber profile to join a salon.',
-        ),
-        const SizedBox(height: 20),
-        ActionButton(
-          label: workspace.profile == null
-              ? 'Create personal profile'
-              : 'Edit personal profile',
-          icon: Icons.person_outline,
-          onPressed: () => _edit(
-            context,
-            ProfileForm(
-              repository: session.repository,
-              profile: workspace.profile,
+        actions: [
+          IconButton(
+            tooltip: 'Edit personal profile',
+            icon: const Icon(Icons.person_outline),
+            onPressed: () => _edit(
+              context,
+              ProfileForm(
+                repository: session.repository,
+                profile: workspace.profile,
+                name: workspace.account.name,
+              ),
             ),
           ),
-        ),
-        if (workspace.profile != null) ...[
-          CopyCode(
-            code: workspace.profile!.code,
-            label: 'Your permanent profile code',
+          IconButton(
+            tooltip: 'Refresh account',
+            onPressed: session.reload,
+            icon: const Icon(Icons.refresh),
           ),
-          ActionButton(
-            label: 'My contracts',
-            icon: Icons.description_outlined,
-            onPressed: () async {
-              await Navigator.push<void>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      ContractsScreen(repository: session.repository),
-                ),
-              );
+          PopupMenuButton<String>(
+            tooltip: 'More options',
+            onSelected: (value) async {
+              if (value == 'offline') {
+                onOpenOffline();
+              } else {
+                await onSignOut();
+              }
             },
-          ),
-          ActionButton(
-            label: 'Join a salon by code',
-            icon: Icons.group_add_outlined,
-            onPressed: () async {
-              await Navigator.push<void>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => JoinSalon(repository: session.repository),
-                ),
-              );
-            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'offline',
+                child: Text('Open offline business app'),
+              ),
+              PopupMenuItem(value: 'signout', child: Text('Sign out')),
+            ],
           ),
         ],
-        const SizedBox(height: 20),
-        Text('Your businesses', style: Theme.of(context).textTheme.titleLarge),
-        for (final business in workspace.businesses)
-          Card(
-            child: ListTile(
-              title: Text(business.name),
-              subtitle: Text(
-                business.isActive
-                    ? 'Active · ${business.city}'
-                    : 'Inactive · awaiting admin approval',
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push<void>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => OwnerBusiness(
-                    repository: session.repository,
-                    businessId: business.id,
-                  ),
+      ),
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 960),
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              if (workspace.isCached)
+                const Text(
+                  'Offline: showing saved account details. Approval and contract changes require a connection.',
                 ),
+              if (workspace.businesses.isNotEmpty) ...[
+                const Text(
+                  'Your businesses',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 16),
+                WorkspaceCards(
+                  children: [
+                    for (final business in workspace.businesses)
+                      WorkspaceCard(
+                        title: business.name,
+                        leading: BusinessPhoto(
+                          repository: session.repository,
+                          business: business,
+                        ),
+                        subtitle: business.isActive
+                            ? 'Active · ${business.city}'
+                            : 'Awaiting approval · ${business.city}',
+                        icon: Icons.storefront_outlined,
+                        onTap: () => Navigator.push<void>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => OwnerBusiness(
+                              repository: session.repository,
+                              businessId: business.id,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+              ],
+              WorkspaceCards(
+                children: [
+                  WorkspaceCard(
+                    title: 'Start a business',
+                    subtitle: 'Set up your salon and manage your team.',
+                    icon: Icons.storefront_outlined,
+                    onTap: () => _startBusiness(context),
+                  ),
+                  WorkspaceCard(
+                    title: 'Join a salon',
+                    subtitle: 'Join as an employee with a salon code or QR.',
+                    icon: Icons.group_add_outlined,
+                    onTap: () => Navigator.push<void>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            JoinSalon(repository: session.repository),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
+            ],
           ),
-        ActionButton(
-          label: 'Start a business',
-          icon: Icons.storefront_outlined,
-          onPressed: () => _startBusiness(context),
         ),
-        const SizedBox(height: 24),
-        OutlinedButton.icon(
-          onPressed: onOpenOffline,
-          icon: const Icon(Icons.offline_bolt_outlined),
-          label: const Text('Open offline business app'),
-        ),
-        ActionButton(
-          label: 'Sign out',
-          icon: Icons.logout,
-          onPressed: onSignOut,
-        ),
-      ],
+      ),
     );
   }
 }
@@ -213,6 +231,16 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (business.logoPath != null) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: BusinessPhoto(
+                    repository: widget.repository,
+                    business: business,
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               Text(
                 business.name,
                 style: Theme.of(context).textTheme.headlineSmall,
@@ -227,67 +255,75 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
                     ? 'Approved and visible to customers.'
                     : 'This business is inactive. Admin approval is required before customers can find it or employees can join.',
               ),
-              ActionButton(
-                label: 'Edit business details',
-                icon: Icons.edit_outlined,
-                onPressed: () async {
-                  final saved = await Navigator.push<bool>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => BusinessForm(
-                        repository: widget.repository,
-                        business: business,
+              const SizedBox(height: 20),
+              WorkspaceCards(
+                children: [
+                  WorkspaceCard(
+                    title: 'Employees & contracts',
+                    subtitle: 'Invite your team and manage agreements.',
+                    icon: Icons.people_outline,
+                    onTap: () => Navigator.push<void>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => StaffScreen(
+                          repository: widget.repository,
+                          businessId: business.id,
+                        ),
                       ),
                     ),
-                  );
-                  if (saved == true && mounted) _refresh();
-                },
+                  ),
+                  WorkspaceCard(
+                    title: 'Business details',
+                    subtitle: 'Update your salon information.',
+                    icon: Icons.edit_outlined,
+                    onTap: () async {
+                      final saved = await Navigator.push<bool>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BusinessForm(
+                            repository: widget.repository,
+                            business: business,
+                          ),
+                        ),
+                      );
+                      if (saved == true && mounted) _refresh();
+                    },
+                  ),
+                  WorkspaceCard(
+                    title: 'Services & prices',
+                    subtitle: 'Manage your rate list and service photos.',
+                    icon: Icons.list_alt,
+                    onTap: () async {
+                      await Navigator.push<void>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => OnlineRateList(
+                            repository: widget.repository,
+                            businessId: business.id,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  WorkspaceCard(
+                    title: 'Billing workspace',
+                    subtitle: 'Open your salon’s online and offline workspace.',
+                    icon: Icons.sync,
+                    onTap: () async {
+                      await Navigator.push<void>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => WorkspaceScreen(
+                            repository: widget.repository,
+                            business: business,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
-              ActionButton(
-                label: 'Manage online rate list',
-                icon: Icons.list_alt,
-                onPressed: () async {
-                  await Navigator.push<void>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => OnlineRateList(
-                        repository: widget.repository,
-                        businessId: business.id,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              ActionButton(
-                label: 'Offline / online business workspace',
-                icon: Icons.sync,
-                onPressed: () async {
-                  await Navigator.push<void>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => WorkspaceScreen(
-                        repository: widget.repository,
-                        business: business,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              ActionButton(
-                label: 'Employees & contracts',
-                icon: Icons.people_outline,
-                onPressed: () async {
-                  await Navigator.push<void>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => StaffScreen(
-                        repository: widget.repository,
-                        businessId: business.id,
-                      ),
-                    ),
-                  );
-                },
-              ),
+              const SizedBox(height: 24),
               if (business.isActive) ...[
                 PublicQr(
                   destination: QrDestination('salon', business.id),
@@ -354,6 +390,18 @@ class _JoinSalonState extends State<JoinSalon> {
   @override
   Widget build(BuildContext context) => OnlinePage(
     title: 'Join a salon',
+    actions: [
+      IconButton(
+        tooltip: 'My contracts',
+        icon: const Icon(Icons.description_outlined),
+        onPressed: () => Navigator.push<void>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ContractsScreen(repository: widget.repository),
+          ),
+        ),
+      ),
+    ],
     children: [
       const Text(
         'Ask the salon owner for their joining code. Joining creates a request; employment starts only after you accept a contract.',

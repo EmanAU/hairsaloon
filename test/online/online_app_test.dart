@@ -9,6 +9,170 @@ import 'package:hairsaloon/src/online/presentation/contracts_screen.dart';
 import 'fake_online_repository.dart';
 
 void main() {
+  final completeProfile = PersonalProfile(
+    code: 'permanent-code',
+    phone: '+923001234567',
+    cnic: '1234512345671',
+    dateOfBirth: DateTime(1995, 1, 1),
+    workStartedOn: DateTime(2015, 1, 1),
+    photoPath: 'user/photo.jpg',
+  );
+
+  testWidgets('completed profiles proceed to business setup', (tester) async {
+    final repository = FakeOnlineRepository()..userId = 'user';
+    repository.workspace = OnlineWorkspace(
+      account: repository.workspace.account,
+      profile: completeProfile,
+    );
+    addTearDown(repository.events.close);
+    await tester.pumpWidget(
+      OnlineApp(audience: AppAudience.business, repository: repository),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Start a business'), findsOneWidget);
+    expect(find.text('Join a salon'), findsOneWidget);
+    expect(find.text('Employees & contracts'), findsNothing);
+    await tester.tap(find.text('Join a salon'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('My contracts'), findsOneWidget);
+    await tester.tap(find.byTooltip('My contracts'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ContractsScreen), findsOneWidget);
+    expect(find.byType(ProfileForm), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('new businesses open their own employee management', (
+    tester,
+  ) async {
+    final repository = FakeOnlineRepository()..userId = 'user';
+    repository.workspace = OnlineWorkspace(
+      account: repository.workspace.account,
+      profile: completeProfile,
+    );
+    addTearDown(repository.events.close);
+    await tester.pumpWidget(
+      OnlineApp(audience: AppAudience.business, repository: repository),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start a business'));
+    await tester.pumpAndSettle();
+    for (final entry in {
+      'Business name': 'Ali Salon',
+      'Business phone': '03127712502',
+      'City': 'Lahore',
+      'Area': 'Gulberg',
+      'Address': 'Main Road',
+    }.entries) {
+      final field = find.widgetWithText(TextFormField, entry.key);
+      await tester.ensureVisible(field);
+      await tester.enterText(field, entry.value);
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    final save = find
+        .ancestor(
+          of: find.text('Save business'),
+          matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+        )
+        .first;
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(repository.businessSaves, 1);
+    expect(find.text('Ali Salon'), findsOneWidget);
+    expect(find.text('Employees & contracts'), findsOneWidget);
+    await tester.ensureVisible(find.text('Employees & contracts'));
+    await tester.tap(find.text('Employees & contracts'));
+    await tester.pumpAndSettle();
+    expect(find.text('Invite employee'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('legacy incomplete profiles return to onboarding on sign-in', (
+    tester,
+  ) async {
+    final repository = FakeOnlineRepository()..userId = 'user';
+    repository.workspace = OnlineWorkspace(
+      account: repository.workspace.account,
+      profile: const PersonalProfile(code: 'old-code', phone: '+923001234567'),
+    );
+    addTearDown(repository.events.close);
+    await tester.pumpWidget(
+      OnlineApp(audience: AppAudience.business, repository: repository),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(ProfileForm), findsOneWidget);
+    expect(find.text('Start a business'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('saving profile keeps its code and reloads completed details', (
+    tester,
+  ) async {
+    final repository = FakeOnlineRepository()..userId = 'user';
+    repository.workspace = OnlineWorkspace(
+      account: repository.workspace.account,
+      profile: PersonalProfile(
+        code: completeProfile.code,
+        phone: completeProfile.phone,
+        cnic: completeProfile.cnic,
+        dateOfBirth: completeProfile.dateOfBirth,
+        photoPath: completeProfile.photoPath,
+      ),
+    );
+    addTearDown(repository.events.close);
+    await tester.pumpWidget(
+      OnlineApp(audience: AppAudience.business, repository: repository),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Full name'),
+      'Ali Khan',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Mobile number'),
+      '03127712502',
+    );
+    final startDate = find
+        .ancestor(
+          of: find.text('Working since'),
+          matching: find.byType(InkWell),
+        )
+        .first;
+    await tester.ensureVisible(startDate);
+    await tester.tap(startDate);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Save & continue'));
+    await tester.tap(find.text('Save & continue'));
+    await tester.pumpAndSettle();
+    expect(repository.profileSaves, 1);
+    expect(find.text('Start a business'), findsOneWidget);
+    expect(find.byType(ProfileForm), findsNothing);
+    expect(repository.workspace.account.name, 'Ali Khan');
+    expect(repository.workspace.profile!.phone, '03127712502');
+    expect(repository.workspace.profile!.code, 'permanent-code');
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  test('experience is derived from start date using full calendar months', () {
+    expect(
+      completeProfile.experienceAt(DateTime(2026, 10, 18)),
+      '11 years 9 months',
+    );
+    expect(
+      completeProfile.experienceAt(DateTime(2015, 1, 20)),
+      'Less than a month',
+    );
+    expect(completeProfile.isComplete, isTrue);
+    expect(
+      const PersonalProfile(code: 'code', phone: 'phone').isComplete,
+      isFalse,
+    );
+  });
   testWidgets('contract conflict stays visible without claiming acceptance', (
     tester,
   ) async {
@@ -69,24 +233,24 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('new business users choose a personal profile or a business', (
-    tester,
-  ) async {
-    final repository = FakeOnlineRepository()..userId = 'user';
-    addTearDown(repository.events.close);
-    await tester.pumpWidget(
-      OnlineApp(audience: AppAudience.business, repository: repository),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Create personal profile'), findsOneWidget);
-    expect(find.text('Start a business'), findsOneWidget);
-    expect(find.text('Join a salon by code'), findsNothing);
-    await tester.tap(find.text('Start a business'));
-    await tester.pumpAndSettle();
-    expect(find.text('Personal profile'), findsOneWidget);
-    expect(find.text('CNIC'), findsOneWidget);
-    await tester.pumpWidget(const SizedBox());
-  });
+  testWidgets(
+    'new business users must complete their profile before business',
+    (tester) async {
+      final repository = FakeOnlineRepository()..userId = 'user';
+      addTearDown(repository.events.close);
+      await tester.pumpWidget(
+        OnlineApp(audience: AppAudience.business, repository: repository),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(ProfileForm), findsOneWidget);
+      expect(find.text('Full name'), findsOneWidget);
+      expect(find.text('Start a business'), findsNothing);
+      expect(find.text('Join a salon by code'), findsNothing);
+      expect(find.byType(ProfileForm), findsOneWidget);
+      expect(find.text('CNIC'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   testWidgets('customer logout clears protected detail navigation', (
     tester,
@@ -113,6 +277,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: ProfileForm(repository: repository)),
     );
+    await tester.ensureVisible(find.text('Save profile'));
     await tester.tap(find.text('Save profile'));
     await tester.pumpAndSettle();
     expect(repository.profileSaves, 0);

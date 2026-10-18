@@ -57,6 +57,21 @@ before(async () => {
 });
 after(async () => db.close());
 
+test('business photo bucket is private with a 2 MB image limit', async () => {
+  await db.exec('reset role');
+  const { rows: [bucket] } = await db.query("select public,file_size_limit,allowed_mime_types from storage.buckets where id='business-photos'");
+  assert.equal(bucket.public, false);
+  assert.equal(Number(bucket.file_size_limit), 2097152);
+  assert.deepEqual(bucket.allowed_mime_types, ['image/jpeg','image/png','image/webp']);
+});
+
+test('profile bucket is private with a 2 MB upload limit', async () => {
+  await db.exec('reset role');
+  const { rows: [bucket] } = await db.query("select public, file_size_limit from storage.buckets where id='profile-photos'");
+  assert.equal(bucket.public, false);
+  assert.equal(Number(bucket.file_size_limit), 2097152);
+});
+
 test('users cannot self-promote or create another identity', async () => {
   await as('owner');
   await rejects("update public.users set role = 'superadmin' where id = $1", [ids.owner], '42501');
@@ -85,6 +100,11 @@ test('businesses start inactive and only superadmin can approve', async () => {
 test('profiles and permanent codes are private and immutable', async () => {
   await as('employee');
   await db.query("insert into public.profiles(user_id,cnic,date_of_birth,phone) values ($1,'0000000000000','2000-01-01','03000000000')", [ids.employee]);
+  const code = await scalar('select code from public.profiles where user_id=$1', [ids.employee]);
+  await db.query("update public.profiles set work_started_on='2016-05-01' where user_id=$1", [ids.employee]);
+  assert.equal(await scalar('select code from public.profiles where user_id=$1', [ids.employee]), code);
+  await rejects("update public.profiles set work_started_on='1999-01-01' where user_id=$1", [ids.employee], '23514');
+  await rejects("update public.profiles set work_started_on=current_date+1 where user_id=$1", [ids.employee], '23514');
   await rejects('update public.profiles set code=gen_random_uuid()', [], '42501');
   await as('customer');
   assert.equal(await scalar('select count(*)::int from public.profiles'), 0);
@@ -271,6 +291,27 @@ test('sync is owner scoped, atomic, retry safe and detects competing device chan
   assert.deepEqual(await scalar('select public.sync_business($1,1,$2,$3)',[business,second,{bills:{}}]),{conflict:false,revision:2});
   await as('anon');
   await rejects('select * from public.business_snapshots',[],'42501');
+});
+
+test('business photos follow ownership and approval', async () => {
+  const path = `${business}/business.png`;
+  await as('owner');
+  await db.query("insert into storage.objects(bucket_id,name) values ('business-photos',$1)", [path]);
+  await db.query('update public.businesses set logo_path=$1 where id=$2', [path,business]);
+  await rejects('update public.businesses set logo_path=$1 where id=$2', [`${secondBusiness}/wrong.png`,business], '23514');
+  await as('owner2');
+  await rejects("insert into storage.objects(bucket_id,name) values ('business-photos',$1)", [path], '42501');
+  assert.equal((await db.query('delete from storage.objects where name=$1 returning id', [path])).rows.length, 0);
+  await as('customer');
+  assert.equal(await scalar('select count(*)::int from storage.objects where name=$1', [path]), 1);
+  await as('admin');
+  await db.query('select public.review_business($1,false)', [business]);
+  await as('customer');
+  assert.equal(await scalar('select count(*)::int from storage.objects where name=$1', [path]), 0);
+  await as('owner');
+  assert.equal(await scalar('select count(*)::int from storage.objects where name=$1', [path]), 1);
+  await as('admin');
+  await db.query('select public.review_business($1,true)', [business]);
 });
 
 test('public barber photos reveal only linked active photos, never private profile fields', async () => {

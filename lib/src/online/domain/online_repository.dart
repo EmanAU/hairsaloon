@@ -54,11 +54,13 @@ abstract interface class OnlineRepository {
   Future<void> signOut();
   Future<OnlineWorkspace> loadWorkspace();
   Future<void> saveProfile({
+    required String name,
     required String phone,
     required String cnic,
     required DateTime dateOfBirth,
+    required DateTime workStartedOn,
   });
-  Future<void> saveBusiness({
+  Future<String> saveBusiness({
     String? id,
     required String name,
     required String phone,
@@ -67,6 +69,12 @@ abstract interface class OnlineRepository {
     required String area,
     required String address,
   });
+  Future<void> uploadBusinessPhoto(
+    String businessId,
+    Uint8List bytes,
+    String extension,
+  );
+  Future<String?> businessPhoto(SalonBusiness business);
   Future<String> businessInvite(String businessId);
   Future<void> requestJoin(String code);
   Future<List<SalonBusiness>> discoverBusinesses({

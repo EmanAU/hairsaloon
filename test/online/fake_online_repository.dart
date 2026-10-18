@@ -114,15 +114,29 @@ class FakeOnlineRepository implements OnlineRepository {
       pendingWorkspace ?? Future.value(workspace);
   @override
   Future<void> saveProfile({
+    required String name,
     required String phone,
     required String cnic,
     required DateTime dateOfBirth,
+    required DateTime workStartedOn,
   }) async {
     profileSaves++;
+    workspace = OnlineWorkspace(
+      account: OnlineAccount(id: workspace.account.id, name: name),
+      businesses: workspace.businesses,
+      profile: PersonalProfile(
+        code: workspace.profile?.code ?? 'generated-code',
+        phone: phone,
+        cnic: cnic,
+        dateOfBirth: dateOfBirth,
+        workStartedOn: workStartedOn,
+        photoPath: workspace.profile?.photoPath,
+      ),
+    );
   }
 
   @override
-  Future<void> saveBusiness({
+  Future<String> saveBusiness({
     String? id,
     required String name,
     required String phone,
@@ -132,7 +146,47 @@ class FakeOnlineRepository implements OnlineRepository {
     required String address,
   }) async {
     businessSaves++;
+    final saved = SalonBusiness(
+      id: id ?? 'new-business',
+      name: name,
+      phone: phone,
+      type: type,
+      city: city,
+      area: area,
+      address: address,
+      isActive: false,
+      logoPath: workspace.businesses
+          .where((b) => b.id == id)
+          .firstOrNull
+          ?.logoPath,
+    );
+    workspace = OnlineWorkspace(
+      account: workspace.account,
+      profile: workspace.profile,
+      businesses: [
+        ...workspace.businesses.where((b) => b.id != saved.id),
+        saved,
+      ],
+    );
+    return saved.id;
   }
+
+  int businessPhotoUploads = 0;
+  bool failBusinessPhoto = false;
+  @override
+  Future<void> uploadBusinessPhoto(
+    String businessId,
+    Uint8List bytes,
+    String extension,
+  ) async {
+    businessPhotoUploads++;
+    if (failBusinessPhoto) {
+      throw const OnlineFailure('Could not upload photo. Please retry.');
+    }
+  }
+
+  @override
+  Future<String?> businessPhoto(SalonBusiness business) async => null;
 
   @override
   Future<String> businessInvite(String businessId) async =>

@@ -8,20 +8,21 @@ import 'online_app.dart';
 Future<void> runOnlineApp(AppAudience audience) async {
   WidgetsFlutterBinding.ensureInitialized();
   await configureAppOrientation(business: audience == AppAudience.business);
-  const url = String.fromEnvironment('SUPABASE_URL');
-  const key = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
+  // Public client configuration; dart-defines can override it per environment.
+  const url = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://djmncqhiugyanfkcxsqs.supabase.co',
+  );
+  const key = String.fromEnvironment(
+    'SUPABASE_PUBLISHABLE_KEY',
+    defaultValue: 'sb_publishable_ms2uGfWc5X_KOq5yR94irA_cs0m1WNu',
+  );
   SupabaseOnlineRepository? repository;
   String? error;
   if (url.isNotEmpty && key.isNotEmpty) {
     try {
       await Supabase.initialize(url: url, publishableKey: key);
-      final scheme = audience == AppAudience.business
-          ? 'com.barbershop.app'
-          : 'com.barbershop.app.customer';
-      repository = SupabaseOnlineRepository(
-        Supabase.instance.client,
-        redirectUri: '$scheme://login-callback',
-      );
+      repository = SupabaseOnlineRepository(Supabase.instance.client);
     } catch (_) {
       error =
           'Online setup could not start. Check the app configuration and restart.';

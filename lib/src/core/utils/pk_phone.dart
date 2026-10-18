@@ -21,6 +21,19 @@ class PkPhone {
 
   static bool isValid(String? raw) => validPattern.hasMatch(normalize(raw));
 
+  /// Local display for a previously stored Pakistani mobile number.
+  static String localNumber(String? raw) {
+    final value = normalize(raw);
+    return RegExp(r'^\+923\d{9}$').hasMatch(value)
+        ? '0${value.substring(3)}'
+        : (raw ?? '').trim();
+  }
+
+  static String? localValidationError(String? raw) =>
+      RegExp(r'^03\d{9}$').hasMatch((raw ?? '').trim())
+      ? null
+      : 'Enter an 11-digit number starting with 03';
+
   /// Null when valid; otherwise a short user-facing message.
   static String? validationError(String? raw, {bool required = true}) {
     final trimmed = (raw ?? '').trim();

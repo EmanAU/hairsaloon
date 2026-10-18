@@ -1,7 +1,18 @@
-import Link from 'next/link';
-import { signOut } from '@/app/login/actions';
+import { AdminShell } from './admin-shell';
 
-export function Header({ name }: { name: string }) {
-  return <header><Link href="/"><strong>TrimMatrix</strong></Link><span>Superadmin · {name}</span>
-    <form action={signOut}><button>Sign out</button></form></header>;
+/** Thin wrapper for pages that only need the shell chrome. */
+export function Header({
+  name,
+  activeView = 'businesses',
+  children,
+}: {
+  name: string;
+  activeView?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <AdminShell name={name} activeView={activeView}>
+      {children}
+    </AdminShell>
+  );
 }
