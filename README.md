@@ -1,5 +1,15 @@
 # Business COMB
 
+## Online business and customer flavors
+
+Flutter and the Next.js admin portal are separate projects in this repository.
+Run `flutter run --flavor business` or `flutter run --flavor customer` from the
+root. The business flavor includes an entry to the existing offline app.
+See [Flutter setup](docs/flutter-online.md), [admin setup](web/README.md), and
+[backend setup](supabase/README.md). Online credentials can be added later.
+
+## Existing offline workspace
+
 Android-only Flutter salon management app with local storage. Registration and phone/password login use accounts saved on this device; no SMS verification or cloud services are required.
 
 Bills, customers, employees, services, categories, expenses and settings persist in Hive. Business profile and local accounts/session persist in SharedPreferences. Logout preserves business data and profile. Accounts share the single salon workspace on this device.

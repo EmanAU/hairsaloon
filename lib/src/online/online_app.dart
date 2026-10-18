@@ -1,0 +1,261 @@
+import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:app_links/app_links.dart';
+import 'domain/qr_destination.dart';
+import '../app.dart';
+import '../theme/app_theme.dart';
+import 'domain/online_models.dart';
+import 'domain/online_repository.dart';
+import 'presentation/business_home.dart';
+import 'presentation/customer_screens.dart';
+import 'presentation/online_session.dart';
+import 'presentation/widgets/online_widgets.dart';
+
+class OnlineApp extends StatefulWidget {
+  const OnlineApp({
+    super.key,
+    required this.audience,
+    this.repository,
+    this.startupError,
+    this.enableDeepLinks = false,
+  });
+  final AppAudience audience;
+  final OnlineRepository? repository;
+  final String? startupError;
+  final bool enableDeepLinks;
+
+  @override
+  State<OnlineApp> createState() => _OnlineAppState();
+}
+
+class _OnlineAppState extends State<OnlineApp> {
+  OnlineSession? _session;
+  var _navigator = GlobalKey<NavigatorState>();
+  String? _navigationUser;
+  StreamSubscription<Uri>? _links;
+  QrDestination? _pendingLink;
+  bool _openingLink = false;
+  String? _activeLink;
+
+  @override
+  void initState() {
+    super.initState();
+    _navigationUser = widget.repository?.userId;
+    if (widget.repository != null) {
+      _session = OnlineSession(widget.repository!)..addListener(_changed);
+    }
+    if (widget.enableDeepLinks) {
+      final links = AppLinks();
+      _links = links.uriLinkStream.listen(_receiveLink, onError: (Object _) {});
+      unawaited(
+        links
+            .getInitialLink()
+            .then((uri) {
+              if (uri != null) _receiveLink(uri);
+            })
+            .catchError((Object _) {}),
+      );
+    }
+  }
+
+  void _receiveLink(Uri uri) {
+    final destination = QrDestination.parse(uri.toString());
+    if (destination?.value == _activeLink) return;
+    if (!mounted ||
+        destination == null ||
+        (destination.kind == 'join') !=
+            (widget.audience == AppAudience.business)) {
+      return;
+    }
+    _pendingLink = destination;
+    _scheduleLink();
+  }
+
+  void _scheduleLink() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openLink());
+  }
+
+  Future<void> _openLink() async {
+    final target = _pendingLink;
+    final session = _session;
+    if (!mounted ||
+        _openingLink ||
+        target == null ||
+        session?.workspace == null ||
+        !session!.signedIn) {
+      return;
+    }
+    _openingLink = true;
+    _activeLink = target.value;
+    _pendingLink = null;
+    final id = session.repository.userId;
+    try {
+      if (target.kind == 'join') {
+        await _navigator.currentState?.push<void>(
+          MaterialPageRoute(
+            builder: (_) => JoinSalon(
+              repository: session.repository,
+              initialCode: target.id,
+            ),
+          ),
+        );
+      } else {
+        final business = await session.repository.findBusiness(
+          target.id,
+          barber: target.kind == 'barber',
+        );
+        if (!mounted || session.repository.userId != id) return;
+        if (business == null) {
+          final context = _navigator.currentContext;
+          if (context != null && context.mounted) {
+            showMessage(context, 'This salon or barber is unavailable.');
+          }
+          return;
+        }
+        await _navigator.currentState?.push<void>(
+          MaterialPageRoute(
+            builder: (_) => SalonDetails(
+              repository: session.repository,
+              business: business,
+              barberId: target.kind == 'barber' ? target.id : null,
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      final context = _navigator.currentContext;
+      if (context != null && context.mounted) {
+        showMessage(
+          context,
+          'Could not open the QR link. Try scanning again when connected.',
+        );
+      }
+    } finally {
+      _openingLink = false;
+      _activeLink = null;
+      if (_pendingLink != null) _scheduleLink();
+    }
+  }
+
+  void _changed() {
+    if (_navigationUser != widget.repository?.userId) {
+      _navigationUser = widget.repository?.userId;
+      _navigator = GlobalKey<NavigatorState>();
+    }
+    if (mounted) setState(() {});
+    _scheduleLink();
+  }
+
+  void _openOffline(BuildContext context) {
+    Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => const BusinessCombApp()),
+    );
+  }
+
+  @override
+  void dispose() {
+    _links?.cancel();
+    _session?.removeListener(_changed);
+    _session?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    // Reset all private routes when the signed-in account changes.
+    key: ValueKey(widget.repository?.userId),
+    navigatorKey: _navigator,
+    title: widget.audience == AppAudience.business
+        ? 'TrimMatrix Business'
+        : 'TrimMatrix Customer',
+    debugShowCheckedModeBanner: false,
+    theme: AppTheme.light(),
+    home: Builder(
+      builder: (context) {
+        final session = _session;
+        if (session == null || !session.signedIn) {
+          return OnlinePage(
+            title: 'TrimMatrix',
+            children: [
+              const SizedBox(height: 32),
+              Text(
+                widget.audience == AppAudience.business
+                    ? 'Your salon. Your team.'
+                    : 'Find your next haircut.',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                widget.audience == AppAudience.business
+                    ? 'Sign in to register a business or create your barber profile.'
+                    : 'Sign in to explore salons and their services.',
+              ),
+              const SizedBox(height: 24),
+              if (widget.repository != null)
+                ActionButton(
+                  label: 'Continue with Google',
+                  onPressed: widget.repository!.signInWithGoogle,
+                  icon: Icons.login,
+                )
+              else
+                Text(
+                  widget.startupError ?? 'Online setup is not connected yet.',
+                ),
+              if (session?.error != null) Text(session!.error!),
+              if (widget.audience == AppAudience.business)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.push<void>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const BusinessCombApp(),
+                      ),
+                    ),
+                    icon: const Icon(Icons.offline_bolt_outlined),
+                    label: const Text('Open offline business app'),
+                  ),
+                ),
+            ],
+          );
+        }
+        if (session.loading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (session.workspace == null) {
+          return OnlinePage(
+            title: 'Your account',
+            children: [
+              Text(session.error ?? 'Your account could not be loaded.'),
+              ActionButton(label: 'Retry', onPressed: session.reload),
+              ActionButton(
+                label: 'Sign out',
+                onPressed: session.repository.signOut,
+                icon: Icons.logout,
+              ),
+              if (widget.audience == AppAudience.business)
+                OutlinedButton(
+                  onPressed: () => _openOffline(context),
+                  child: const Text('Open offline business app'),
+                ),
+            ],
+          );
+        }
+        if (widget.audience == AppAudience.customer) {
+          return CustomerDirectory(
+            repository: session.repository,
+            onSignOut: session.repository.signOut,
+          );
+        }
+        return BusinessHome(
+          session: session,
+          onSignOut: session.repository.signOut,
+          onOpenOffline: () => _openOffline(context),
+        );
+      },
+    ),
+  );
+}

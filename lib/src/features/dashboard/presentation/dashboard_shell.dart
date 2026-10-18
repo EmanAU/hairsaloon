@@ -43,9 +43,9 @@ class _DashboardShellState extends State<DashboardShell> {
         statusBarColor: const Color(0x00000000),
         statusBarIconBrightness: Brightness.dark,
         statusBarBrightness: Brightness.light,
-        systemNavigationBarColor: canvas,
+        systemNavigationBarColor: AppColors.surface,
         systemNavigationBarIconBrightness: Brightness.dark,
-        systemNavigationBarDividerColor: canvas,
+        systemNavigationBarDividerColor: AppColors.surface,
       ),
       child: PopScope(
         canPop: false,
@@ -213,52 +213,38 @@ class _BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        12,
-        0,
-        12,
-        bottomInset > 0 ? bottomInset + 4 : 10,
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
       ),
-      child: Container(
-        height: 60,
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.border),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x14000000),
-              blurRadius: 16,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            for (var i = 0; i < _navItems.length; i++)
-              Expanded(
-                flex: 1,
-                child: Tooltip(
-                  message: _navItems[i].label,
-                  child: Semantics(
-                    button: true,
-                    selected: i == currentIndex,
-                    child: GestureDetector(
-                      onTap: () => onTap(i),
-                      behavior: HitTestBehavior.opaque,
-                      child: _NavTile(
-                        item: _navItems[i],
-                        isActive: i == currentIndex,
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 68,
+          width: double.infinity,
+          child: Row(
+            children: [
+              for (var i = 0; i < _navItems.length; i++)
+                Expanded(
+                  child: Tooltip(
+                    message: _navItems[i].label,
+                    child: Semantics(
+                      button: true,
+                      selected: i == currentIndex,
+                      child: GestureDetector(
+                        onTap: () => onTap(i),
+                        behavior: HitTestBehavior.opaque,
+                        child: _NavTile(
+                          item: _navItems[i],
+                          isActive: i == currentIndex,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -275,11 +261,11 @@ class _NavTile extends StatelessWidget {
     return Center(
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        height: 44,
+        height: 50,
         padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
           color: isActive ? AppColors.textPrimary : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(6),
           boxShadow: isActive
               ? const [
                   BoxShadow(
@@ -295,7 +281,7 @@ class _NavTile extends StatelessWidget {
           children: [
             Icon(
               isActive ? item.activeIcon : item.icon,
-              size: 24,
+              size: 23,
               color: color,
             ),
             const SizedBox(width: 5),
@@ -306,7 +292,7 @@ class _NavTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: color,
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),

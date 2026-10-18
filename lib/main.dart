@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/app.dart';
+import 'package:flutter/services.dart';
+import 'src/online/bootstrap.dart';
+import 'src/online/domain/online_models.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(const BusinessCombApp());
-}
+Future<void> main() => runOnlineApp(
+  appFlavor == 'customer' ? AppAudience.customer : AppAudience.business,
+);

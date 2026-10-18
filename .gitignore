@@ -55,3 +55,18 @@ app.*.map.json
 
 # Excluded platform backups
 /.platform-backup/
+
+# Node dependencies and admin portal generated files
+**/node_modules/
+/web/.next/
+/web/out/
+/web/coverage/
+/web/.vercel/
+*.tsbuildinfo
+
+# Local configuration and secrets (keep example templates tracked)
+.env
+.env.*
+!.env.example
+!.env.*.example
+/config/*.local.json

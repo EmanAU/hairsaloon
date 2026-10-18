@@ -148,7 +148,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 2,
-                                mainAxisExtent: tablet ? 198 : 158,
+                                mainAxisExtent: tablet ? 144 : 118,
                                 crossAxisSpacing: 12,
                                 mainAxisSpacing: 12,
                               ),
@@ -593,7 +593,7 @@ class _Shortcut extends StatelessWidget {
           children: [
             Positioned.fill(child: CustomPaint(painter: _CardWash(tint))),
             Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -606,8 +606,8 @@ class _Shortcut extends StatelessWidget {
                             alignment: Alignment.topLeft,
                             child: Image.asset(
                               'assets/home_$asset.png',
-                              width: 76,
-                              height: 76,
+                              width: 36,
+                              height: 36,
                               cacheWidth: 240,
                             ),
                           ),

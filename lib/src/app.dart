@@ -1,3 +1,7 @@
+import 'online/data/business_workspace.dart';
+import 'online/data/workspace_adapters.dart';
+import 'features/auth/domain/repositories/auth_repository.dart';
+import 'features/business_profile/domain/repositories/business_profile_repository.dart';
 import 'package:hairsaloon/src/core/layout/adaptive_page.dart';
 import 'package:hairsaloon/src/features/auth/data/repositories/local_auth_repository.dart';
 import 'package:flutter/material.dart';
@@ -63,7 +67,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BusinessCombApp extends StatefulWidget {
-  const BusinessCombApp({super.key});
+  const BusinessCombApp({super.key, this.workspace});
+  final BusinessWorkspace? workspace;
 
   @override
   State<BusinessCombApp> createState() => _BusinessCombAppState();
@@ -117,28 +122,48 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                 ),
                 // Created on first use (lazy) so splash stays light.
                 ChangeNotifierProvider<BillingStore>(
-                  create: (_) =>
-                      BillingStore(repository: HiveBillingRepository()),
+                  create: (_) => BillingStore(
+                    repository: HiveBillingRepository(
+                      billsBox: widget.workspace?.maps['bills'],
+                      phonesBox: widget.workspace?.phones,
+                      contactsBox: widget.workspace?.maps['contacts'],
+                    ),
+                  ),
                 ),
                 ChangeNotifierProvider<EmployeesStore>(
-                  create: (_) =>
-                      EmployeesStore(repository: HiveEmployeesRepository()),
+                  create: (_) => EmployeesStore(
+                    repository: HiveEmployeesRepository(
+                      box: widget.workspace?.maps['employees'],
+                      metaBox: widget.workspace?.settings,
+                    ),
+                  ),
                 ),
                 ChangeNotifierProvider<ExpensesStore>(
-                  create: (_) =>
-                      ExpensesStore(repository: HiveExpensesRepository()),
+                  create: (_) => ExpensesStore(
+                    repository: HiveExpensesRepository(
+                      box: widget.workspace?.maps['expenses'],
+                    ),
+                  ),
                 ),
                 ChangeNotifierProvider<PayoutsStore>(
-                  create: (_) =>
-                      PayoutsStore(repository: HivePayoutsRepository()),
+                  create: (_) => PayoutsStore(
+                    repository: HivePayoutsRepository(
+                      box: widget.workspace?.maps['payouts'],
+                    ),
+                  ),
                 ),
                 ChangeNotifierProvider<ServicesStore>(
-                  create: (_) =>
-                      ServicesStore(repository: HiveServicesRepository()),
+                  create: (_) => ServicesStore(
+                    repository: HiveServicesRepository(
+                      servicesBox: widget.workspace?.maps['services'],
+                      categoriesBox: widget.workspace?.maps['categories'],
+                    ),
+                  ),
                 ),
                 ChangeNotifierProvider<SettingsStore>(
                   create: (_) => SettingsStore(
                     repository: HiveSettingsRepository(
+                      box: widget.workspace?.settings,
                       accountId: () => bootstrap.authStore.currentUser?.id,
                     ),
                   ),
@@ -311,9 +336,13 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
   /// Billing / employees / services / settings are created lazily by Provider.
   Future<_AppBootstrap> _bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
-    await HiveBootstrap.init(prefs);
+    if (widget.workspace == null) {
+      await HiveBootstrap.init(prefs);
+    }
 
-    final repository = SharedPrefsBusinessProfileRepository(prefs: prefs);
+    final BusinessProfileRepository repository = widget.workspace == null
+        ? SharedPrefsBusinessProfileRepository(prefs: prefs)
+        : WorkspaceProfile(widget.workspace!);
     final profileNotifier = BusinessProfileNotifier(
       getBusinessProfile: GetBusinessProfile(repository),
       saveBusinessProfile: SaveBusinessProfile(repository),
@@ -322,7 +351,9 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
 
     // Auth session first — profile keys are scoped to the signed-in user id.
     final session = LocalAuthSessionDataSource(prefs: prefs);
-    final authRepository = LocalAuthRepository(prefs: prefs, session: session);
+    final AuthRepository authRepository = widget.workspace == null
+        ? LocalAuthRepository(prefs: prefs, session: session)
+        : WorkspaceAuth(widget.workspace!);
     final authStore = AuthStore(
       hasSession: HasSession(authRepository),
       getCurrentUser: GetCurrentUser(authRepository),
@@ -338,7 +369,9 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
     } else {
       await profileNotifier.load();
     }
-    await repository.migrateLegacyProfile();
+    if (repository is SharedPrefsBusinessProfileRepository) {
+      await repository.migrateLegacyProfile();
+    }
     // Reload after migrate so a recovered legacy profile is in memory.
     if (hasAuthSession && profileNotifier.profile == null) {
       await profileNotifier.load();

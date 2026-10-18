@@ -1,0 +1,259 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:uuid/uuid.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
+import '../domain/online_models.dart';
+import '../domain/online_repository.dart';
+
+/// Every connected salon uses separate boxes, including on shared devices.
+/// The journal survives process termination and ambiguous network responses.
+class BusinessWorkspace extends ChangeNotifier {
+  BusinessWorkspace._(
+    this.repository,
+    this.business,
+    this.account,
+    this.maps,
+    this.phones,
+    this.settings,
+    this.journal,
+  );
+  final OnlineRepository repository;
+  final SalonBusiness business;
+  final OnlineAccount account;
+  final Map<String, Box<Map>> maps;
+  final Box<String> phones;
+  final Box<dynamic> settings;
+  final Box<dynamic> journal;
+  bool busy = false, conflict = false, inPos = false;
+  String status = 'Stored on this device';
+  Timer? _timer;
+  bool _disposed = false;
+  static const collections = [
+    'bills',
+    'contacts',
+    'employees',
+    'expenses',
+    'payouts',
+    'services',
+    'categories',
+  ];
+
+  static Future<BusinessWorkspace> open(
+    OnlineRepository repository,
+    SalonBusiness business,
+    OnlineAccount account, {
+    bool initializeHive = true,
+  }) async {
+    if (initializeHive) {
+      await Hive.initFlutter();
+    }
+    final prefix = 'online_${account.id}_${business.id}';
+    final maps = <String, Box<Map>>{};
+    for (final name in collections) {
+      maps[name] = await Hive.openBox<Map>('${prefix}_$name');
+    }
+    final workspace = BusinessWorkspace._(
+      repository,
+      business,
+      account,
+      maps,
+      await Hive.openBox<String>('${prefix}_phones'),
+      await Hive.openBox<dynamic>('${prefix}_settings'),
+      await Hive.openBox<dynamic>('${prefix}_sync'),
+    );
+    final recovery = workspace.journal.get('applying');
+    if (recovery != null) {
+      await workspace._apply(Map<String, dynamic>.from(recovery as Map));
+    }
+    workspace._timer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => workspace.synchronize(),
+    );
+    return workspace;
+  }
+
+  Map<String, dynamic> snapshot() => {
+    for (final entry in maps.entries) entry.key: _boxData(entry.value),
+    'phones': _boxData(phones),
+    'settings': _boxData(settings),
+  };
+  Map<String, dynamic> _boxData(Box box) {
+    final keys = box.keys.map((key) => key.toString()).toList()..sort();
+    return {for (final key in keys) key: box.get(key)};
+  }
+
+  Map<String, dynamic> get _base => Map<String, dynamic>.from(
+    journal.get(
+          'base',
+          defaultValue: {
+            for (final name in [...collections, 'phones', 'settings'])
+              name: <String, dynamic>{},
+          },
+        )
+        as Map,
+  );
+  int get _revision => journal.get('revision', defaultValue: 0) as int;
+  bool _same(Object? a, Object? b) =>
+      jsonEncode(_canonical(a)) == jsonEncode(_canonical(b));
+  Object? _canonical(Object? value) {
+    if (value is Map) {
+      final keys = value.keys.map((key) => key.toString()).toList()..sort();
+      return {for (final key in keys) key: _canonical(value[key])};
+    }
+    if (value is List) return value.map(_canonical).toList();
+    return value;
+  }
+
+  Future<void> _apply(Map<String, dynamic> remote) async {
+    // Persist the intended replacement first so a crash midway can be recovered.
+    await journal.put('applying', remote);
+    final payload = Map<String, dynamic>.from(remote['payload'] as Map);
+    for (final name in collections) {
+      final rows = Map<String, dynamic>.from(payload[name] as Map? ?? {});
+      final box = maps[name]!;
+      await box.deleteAll(
+        box.keys.where((key) => !rows.containsKey(key)).toList(),
+      );
+      await box.putAll(
+        rows.map((key, value) => MapEntry(key, Map.from(value as Map))),
+      );
+    }
+    final phoneRows = Map<String, String>.from(payload['phones'] as Map? ?? {});
+    await phones.deleteAll(
+      phones.keys.where((key) => !phoneRows.containsKey(key)).toList(),
+    );
+    await phones.putAll(phoneRows);
+    final settingRows = Map<String, dynamic>.from(
+      payload['settings'] as Map? ?? {},
+    );
+    await settings.deleteAll(
+      settings.keys.where((key) => !settingRows.containsKey(key)).toList(),
+    );
+    await settings.putAll(settingRows);
+    await journal.putAll({'base': snapshot(), 'revision': remote['revision']});
+    await journal.delete('applying');
+  }
+
+  Future<bool> _send(Map<String, dynamic> pending) async {
+    if (utf8.encode(jsonEncode(pending['payload'])).length > 19 * 1024 * 1024) {
+      throw const OnlineFailure(
+        'This workspace is too large to sync (19 MB limit). Local records are safe.',
+      );
+    }
+    final result = await repository.syncBusiness(
+      business.id,
+      pending['revision'] as int,
+      pending['operation'] as String,
+      Map<String, dynamic>.from(pending['payload'] as Map),
+    );
+    if (result['conflict'] == true) {
+      conflict = true;
+      status =
+          'Another device changed this salon. Resolve the conflict before syncing.';
+      return false;
+    }
+    await journal.putAll({
+      'base': pending['payload'],
+      'revision': result['revision'],
+    });
+    await journal.delete('pending');
+    return true;
+  }
+
+  Future<void> synchronize() async {
+    if (busy || conflict || _disposed || repository.userId != account.id) {
+      return;
+    }
+    busy = true;
+    _notify();
+    try {
+      final pending = journal.get('pending');
+      if (pending != null &&
+          !await _send(Map<String, dynamic>.from(pending as Map))) {
+        return;
+      }
+      final remote = await repository.businessSnapshot(business.id);
+      if (_disposed || repository.userId != account.id) return;
+      final local = snapshot();
+      final changed = !_same(local, _base);
+      if ((remote?['revision'] ?? 0) != _revision) {
+        if (changed) {
+          conflict = true;
+          status =
+              'Another device changed this salon. Choose which version to keep.';
+          return;
+        }
+        if (inPos) {
+          status = 'Cloud changes available. Close the workspace to load them.';
+          return;
+        }
+        if (remote != null) await _apply(remote);
+      } else if (changed) {
+        final operation = {
+          'revision': _revision,
+          'operation': const Uuid().v4(),
+          'payload': local,
+        };
+        await journal.put('pending', operation);
+        if (!await _send(operation)) return;
+      }
+      status =
+          'Synced · ${DateTime.now().toLocal().toString().substring(0, 19)}';
+    } on OnlineFailure catch (error) {
+      status = error.message;
+    } on PostgrestException {
+      status =
+          'Cloud rejected this update. Local records are safe. Check your account access and database setup.';
+    } catch (_) {
+      status =
+          'Saved on this device. Cloud sync unavailable; retry when connected.';
+    } finally {
+      busy = false;
+      _notify();
+    }
+  }
+
+  Future<void> resolve({required bool keepLocal}) async {
+    if (busy || inPos) return;
+    busy = true;
+    _notify();
+    try {
+      final remote = await repository.businessSnapshot(business.id);
+      if (remote == null) {
+        throw const OnlineFailure('Cloud version is unavailable. Retry later.');
+      }
+      // Retain both versions locally before resolving; never discard the only copy.
+      await journal.put(
+        'conflict_backup_${DateTime.now().microsecondsSinceEpoch}',
+        {'local': snapshot(), 'cloud': remote},
+      );
+      if (keepLocal) {
+        await journal.putAll({
+          'base': remote['payload'],
+          'revision': remote['revision'],
+        });
+      } else {
+        await _apply(remote);
+      }
+      await journal.delete('pending');
+      conflict = false;
+    } finally {
+      busy = false;
+      _notify();
+    }
+    await synchronize();
+  }
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _timer?.cancel();
+    super.dispose();
+  }
+}

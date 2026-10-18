@@ -28,6 +28,19 @@ android {
         // ❌ IMPORTANT: NO abiFilters here (avoid conflict with split-per-abi)
     }
 
+    flavorDimensions += "audience"
+    productFlavors {
+        create("business") {
+            dimension = "audience"
+            resValue("string", "app_name", "TrimMatrix Business")
+        }
+        create("customer") {
+            dimension = "audience"
+            applicationIdSuffix = ".customer"
+            resValue("string", "app_name", "TrimMatrix Customer")
+        }
+    }
+
     buildTypes {
         release {
             // Temporary (testing only)

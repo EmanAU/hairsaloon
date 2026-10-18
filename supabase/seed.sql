@@ -1,0 +1,2 @@
+-- Intentionally empty. Superadmin access must be granted to a real authenticated
+-- user explicitly; never ship default admin accounts or personal identity data.
