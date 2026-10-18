@@ -129,10 +129,17 @@ test('code joining is idempotent and owners cannot accept for employees', async 
   await as('employee');
   membership = await scalar('select public.request_join($1)', [invite]);
   assert.equal(await scalar('select public.request_join($1)', [invite]), membership);
+  assert.equal(await scalar('select join_status from public.business_employees where id=$1', [membership]), 'pending');
+  await rejects('select public.review_join($1,true)', [membership], '42501');
+  await rejects('select public.business_team($1)', [business], '42501');
   const profileCode = await scalar('select code from public.profiles');
   await as('owner2');
   secondMembership = await scalar('select public.invite_employee($1,$2)', [secondBusiness, profileCode]);
   await as('owner');
+  await rejects("select public.propose_contract($1,'permanent',now(),null,10000,10,'Pending')", [membership], '42501');
+  assert.equal((await db.query('select * from public.business_team($1)', [business])).rows[0].join_status, 'pending');
+  await db.query('select public.review_join($1,true)', [membership]);
+  await rejects('select public.review_join($1,false)', [membership], 'P0001');
   permanent = await scalar(`select public.propose_contract($1,'permanent',now(),null,10000,10,'Monthly salary')`, [membership]);
   await rejects('select public.respond_to_contract($1,true)', [permanent], '42501');
   await as('employee');
@@ -192,7 +199,7 @@ test('ended contracts permit a new contract without a scheduled expiry job', asy
   await db.exec('reset role');
   const customer = ids.customer;
   await db.query("insert into public.profiles(user_id, phone) values ($1,'03000000001')", [customer]);
-  const employee = await scalar('insert into public.business_employees(business_id,profile_id,requested_by) values ($1,$2,$2) returning id', [secondBusiness, customer]);
+  const employee = await scalar("insert into public.business_employees(business_id,profile_id,requested_by,join_status) values ($1,$2,$2,'accepted') returning id", [secondBusiness, customer]);
   await db.query(`insert into public.employee_contracts(employee_id,profile_id,kind,starts_at,ends_at,status,accepted_at)
     values ($1,$2,'daily',now()-interval '2 days',now()-interval '1 day','accepted',now()-interval '2 days')`, [employee, customer]);
   await as('owner2');
@@ -341,4 +348,27 @@ test('public barber photos reveal only linked active photos, never private profi
   await as('owner');
   assert.equal(await scalar('select public.barber_photo($1)',[secondMembership]),null);
   assert.equal(await scalar('select count(*)::int from storage.objects where name=$1',[path]),0);
+});
+
+test('owners can decline requests; another owner cannot review or read the team', async () => {
+  await as('owner');
+  const salon = await scalar("insert into public.businesses(owner_id,name,phone,business_type,city,area,address) values ($1,'Request salon','03000000000','Hair Salon','Lahore','Test','Road') returning id", [ids.owner]);
+  const code = await scalar('select code from public.business_invites where business_id=$1', [salon]);
+  await as('admin');
+  await db.query('select public.review_business($1,true)', [salon]);
+  await as('employee');
+  const request = await scalar('select public.request_join($1)', [code]);
+  await rejects("update public.business_employees set join_status='accepted' where id=$1", [request], '42501');
+  await as('owner2');
+  await rejects('select public.review_join($1,false)', [request], '42501');
+  await rejects('select public.business_team($1)', [salon], '42501');
+  await as('owner');
+  await db.query('select public.review_join($1,false)', [request]);
+  await as('employee');
+  assert.equal(await scalar('select join_status from public.business_employees where id=$1', [request]), 'declined');
+  assert.equal(await scalar('select public.request_join($1)', [code]), request);
+  assert.equal(await scalar('select join_status from public.business_employees where id=$1', [request]), 'pending');
+  await as('anon');
+  await rejects('select public.review_join($1,true)', [request], '42501');
+  await rejects('select public.business_team($1)', [salon], '42501');
 });

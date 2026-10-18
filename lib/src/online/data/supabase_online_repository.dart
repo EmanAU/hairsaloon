@@ -276,6 +276,26 @@ class SupabaseOnlineRepository implements OnlineRepository {
   }
 
   @override
+  Future<List<SalonStaff>> team(String businessId) async {
+    final rows =
+        await _client.rpc('business_team', params: {'business': businessId})
+            as List;
+    return rows
+        .map(
+          (row) => SalonStaff.fromJson(Map<String, dynamic>.from(row as Map)),
+        )
+        .toList();
+  }
+
+  @override
+  Future<void> reviewJoin(String employeeId, bool accept) async {
+    await _client.rpc(
+      'review_join',
+      params: {'employee': employeeId, 'accept': accept},
+    );
+  }
+
+  @override
   Future<List<WorkContract>> contracts({String? employeeId}) async {
     var query = _client
         .from('employee_contracts')
@@ -621,6 +641,16 @@ class SupabaseOnlineRepository implements OnlineRepository {
   @override
   Future<void> requestJoin(String code) async {
     await _client.rpc('request_join', params: {'invite_code': code.trim()});
+  }
+
+  @override
+  Future<List<SalonJoinRequest>> joinRequests() async {
+    final rows = await _client
+        .from('business_employees')
+        .select('id,join_status,businesses(name)')
+        .eq('profile_id', _requiredUserId)
+        .order('created_at', ascending: false);
+    return rows.map(SalonJoinRequest.fromJson).toList();
   }
 
   @override

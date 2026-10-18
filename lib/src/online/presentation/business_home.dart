@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter/services.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
@@ -200,10 +201,31 @@ class OwnerBusiness extends StatefulWidget {
 class _OwnerBusinessState extends State<OwnerBusiness> {
   late Future<OnlineWorkspace> _workspace = widget.repository.loadWorkspace();
   Future<String>? _invite;
+  Future<List<SalonStaff>>? _team;
+  late final Timer _poll;
+
+  @override
+  void initState() {
+    super.initState();
+    _poll = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted &&
+          _team != null &&
+          ModalRoute.of(context)?.isCurrent == true) {
+        setState(() => _team = widget.repository.team(widget.businessId));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _poll.cancel();
+    super.dispose();
+  }
 
   void _refresh() => setState(() {
     _workspace = widget.repository.loadWorkspace();
     _invite = null;
+    _team = null;
   });
 
   @override
@@ -249,6 +271,7 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
               },
             );
           }
+          _team ??= widget.repository.team(business.id);
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -281,7 +304,26 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
                 children: [
                   WorkspaceCard(
                     title: 'Employees & contracts',
-                    subtitle: 'Invite your team and manage agreements.',
+                    subtitle: 'Join requests, employees and agreements.',
+                    leading: FutureBuilder<List<SalonStaff>>(
+                      future: _team,
+                      builder: (context, snapshot) {
+                        final count =
+                            snapshot.data
+                                ?.where((e) => e.joinStatus == 'pending')
+                                .length ??
+                            0;
+                        return Badge(
+                          label: Text('$count'),
+                          isLabelVisible: count > 0,
+                          child: const Icon(
+                            Icons.people_outline,
+                            size: 30,
+                            color: Color(0xFF34441D),
+                          ),
+                        );
+                      },
+                    ),
                     icon: Icons.people_outline,
                     onTap: () => Navigator.push<void>(
                       context,
@@ -402,13 +444,32 @@ class _JoinSalonState extends State<JoinSalon> {
   final _form = GlobalKey<FormState>();
   bool _requested = false;
   bool _requesting = false;
+  late Future<List<SalonJoinRequest>> _joinRequests = widget.repository
+      .joinRequests();
+  late final Timer _poll;
+  @override
+  void initState() {
+    super.initState();
+    _poll = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted &&
+          !_requesting &&
+          ModalRoute.of(context)?.isCurrent == true) {
+        setState(() => _joinRequests = widget.repository.joinRequests());
+      }
+    });
+  }
 
   Future<void> _request() async {
     if (_requesting || !_form.currentState!.validate()) return;
     setState(() => _requesting = true);
     try {
       await widget.repository.requestJoin(_code.text.trim());
-      if (mounted) setState(() => _requested = true);
+      if (mounted) {
+        setState(() {
+          _requested = true;
+          _joinRequests = widget.repository.joinRequests();
+        });
+      }
     } finally {
       if (mounted) setState(() => _requesting = false);
     }
@@ -431,6 +492,7 @@ class _JoinSalonState extends State<JoinSalon> {
 
   @override
   void dispose() {
+    _poll.cancel();
     _code.dispose();
     super.dispose();
   }
@@ -480,7 +542,7 @@ class _JoinSalonState extends State<JoinSalon> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Waiting for the salon owner’s contract.',
+                      'Waiting for the salon owner’s approval.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Color(0xFF718094)),
                     ),
@@ -599,10 +661,56 @@ class _JoinSalonState extends State<JoinSalon> {
                     ],
                   ),
                 ),
+              const SizedBox(height: 24),
+              _requestHistory(),
             ],
           ),
         ),
       ),
     ),
+  );
+
+  Widget _requestHistory() => FutureBuilder<List<SalonJoinRequest>>(
+    future: _joinRequests,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return TextButton(
+          onPressed: () =>
+              setState(() => _joinRequests = widget.repository.joinRequests()),
+          child: const Text('Retry join request status'),
+        );
+      }
+      final rows = snapshot.data ?? [];
+      if (rows.isEmpty) return const SizedBox.shrink();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'My join requests',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          for (final request in rows)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(request.businessName),
+              subtitle: Text(switch (request.status) {
+                'accepted' => 'Joined · view your contracts',
+                'declined' => 'Request declined',
+                _ => 'Waiting for owner approval',
+              }),
+              trailing: Icon(
+                request.status == 'accepted'
+                    ? Icons.check_circle_outline
+                    : request.status == 'declined'
+                    ? Icons.close
+                    : Icons.schedule,
+                size: 22,
+              ),
+              onTap: request.status == 'accepted' ? _contracts : null,
+            ),
+        ],
+      );
+    },
   );
 }

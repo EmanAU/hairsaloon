@@ -8,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hairsaloon/src/online/presentation/profile_form.dart';
 import 'package:hairsaloon/src/online/presentation/business_home.dart';
 import 'package:hairsaloon/src/online/presentation/business_form.dart';
+import 'package:hairsaloon/src/online/presentation/staff_screen.dart';
+import 'package:hairsaloon/src/online/domain/online_models.dart';
 import 'package:hairsaloon/src/online/presentation/online_session.dart';
 import 'package:hairsaloon/src/theme/app_theme.dart';
 import 'fake_online_repository.dart';
@@ -178,6 +180,30 @@ void main() {
       expect(find.text('Employees & contracts'), findsNothing);
       await capture('approval');
       expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      repository.teamRows = const [
+        SalonStaff(
+          id: 'employee',
+          name: 'Ali Khan',
+          isWorking: false,
+          joinStatus: 'pending',
+        ),
+      ];
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: boundaryKey,
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light(),
+            home: StaffScreen(repository: repository, businessId: id),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Accept'), findsOneWidget);
+      expect(find.text('Decline'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await capture('join_requests');
       await tester.pumpWidget(const SizedBox());
     });
   }

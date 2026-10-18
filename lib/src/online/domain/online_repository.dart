@@ -35,6 +35,8 @@ abstract interface class OnlineRepository {
   Future<void> uploadProfilePhoto(Uint8List bytes, String extension);
   Future<String?> profilePhoto({String? barberId});
   Future<List<SalonStaff>> staff(String businessId);
+  Future<List<SalonStaff>> team(String businessId);
+  Future<void> reviewJoin(String employeeId, bool accept);
   Future<void> inviteEmployee(String businessId, String profileCode);
   Future<List<WorkContract>> contracts({String? employeeId});
   Future<void> proposeContract({
@@ -77,6 +79,7 @@ abstract interface class OnlineRepository {
   Future<String?> businessPhoto(SalonBusiness business);
   Future<String> businessInvite(String businessId);
   Future<void> requestJoin(String code);
+  Future<List<SalonJoinRequest>> joinRequests();
   Future<List<SalonBusiness>> discoverBusinesses({
     String search = '',
     int page = 0,

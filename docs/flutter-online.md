@@ -104,6 +104,15 @@ the screen checks every 15 seconds and also supports manual refresh. Business
 management and invitations open after approval. Employee code/QR joining creates
 a request; employment still requires an accepted contract.
 
+Apply `20261018125823_employee_join_approval.sql` next for owner Accept/Decline.
+The business Employees card shows a pending-request badge; its Requests tab lists
+the people asking to join. Accepted requests move to Employees, where the owner
+sets a contract. Declined requests stay out of the team. The database blocks
+contract proposals until owner approval. Owner invitations by profile code
+already carry owner approval; the employee must still accept the contract.
+Employees see their saved join decisions on Join a salon. Visible request pages
+refresh every 15 seconds. These are in-app updates, without OS push or SMS.
+
 Customers can review a salon or barber and edit/delete their own review. One review
 per customer/target is enforced. Owners and members cannot review their own salon;
 visits are not represented as verified. Superadmin can remove reviews in `web/`.

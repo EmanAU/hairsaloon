@@ -61,6 +61,29 @@ class FakeOnlineRepository implements OnlineRepository {
   bool rejectAcceptance = false;
   @override
   Future<List<SalonStaff>> staff(String businessId) async => [];
+  List<SalonStaff> teamRows = [];
+  bool rejectJoinReview = false;
+  @override
+  Future<List<SalonStaff>> team(String businessId) async => teamRows;
+  @override
+  Future<void> reviewJoin(String employeeId, bool accept) async {
+    if (rejectJoinReview) {
+      throw const OnlineFailure('Could not review request. Please retry.');
+    }
+    teamRows = teamRows
+        .map(
+          (e) => e.id != employeeId
+              ? e
+              : SalonStaff(
+                  id: e.id,
+                  name: e.name,
+                  isWorking: e.isWorking,
+                  joinStatus: accept ? 'accepted' : 'declined',
+                ),
+        )
+        .toList();
+  }
+
   @override
   Future<void> inviteEmployee(String businessId, String profileCode) async {}
   @override
@@ -199,6 +222,9 @@ class FakeOnlineRepository implements OnlineRepository {
 
   bool rejectJoin = false;
   String? requestedJoinCode;
+  List<SalonJoinRequest> joinRequestRows = [];
+  @override
+  Future<List<SalonJoinRequest>> joinRequests() async => joinRequestRows;
   @override
   Future<List<SalonBusiness>> discoverBusinesses({
     String search = '',

@@ -10,15 +10,35 @@ class SalonStaff {
     required this.id,
     required this.name,
     required this.isWorking,
+    this.joinStatus = 'accepted',
   });
   final String id;
   final String name;
   final bool isWorking;
+  final String joinStatus;
   factory SalonStaff.fromJson(Map<String, dynamic> json) => SalonStaff(
     id: json['membership_id'] as String,
     name: json['display_name'] as String,
     isWorking: json['is_working'] as bool,
+    joinStatus: json['join_status'] as String? ?? 'accepted',
   );
+}
+
+class SalonJoinRequest {
+  const SalonJoinRequest({
+    required this.id,
+    required this.businessName,
+    required this.status,
+  });
+  final String id, businessName, status;
+  factory SalonJoinRequest.fromJson(Map<String, dynamic> json) =>
+      SalonJoinRequest(
+        id: json['id'] as String,
+        businessName:
+            (json['businesses'] as Map?)?['name'] as String? ??
+            'Salon unavailable',
+        status: json['join_status'] as String,
+      );
 }
 
 class WorkContract {
