@@ -6,9 +6,38 @@ import 'package:hairsaloon/src/online/online_app.dart';
 import 'package:hairsaloon/src/online/presentation/online_session.dart';
 import 'package:hairsaloon/src/online/presentation/profile_form.dart';
 import 'package:hairsaloon/src/online/presentation/contracts_screen.dart';
+import 'package:hairsaloon/src/online/presentation/business_home.dart';
 import 'fake_online_repository.dart';
 
 void main() {
+  testWidgets(
+    'join validates codes and shows request status only after success',
+    (tester) async {
+      final repository = FakeOnlineRepository();
+      addTearDown(repository.events.close);
+      await tester.pumpWidget(
+        MaterialApp(home: JoinSalon(repository: repository)),
+      );
+      await tester.tap(find.text('Request to join'));
+      await tester.pumpAndSettle();
+      expect(find.text('Paste a valid salon code'), findsOneWidget);
+      expect(repository.requestedJoinCode, isNull);
+      const code = '00000000-0000-4000-8000-000000000001';
+      await tester.enterText(find.byType(TextFormField), code);
+      repository.rejectJoin = true;
+      await tester.tap(find.text('Request to join'));
+      await tester.pumpAndSettle();
+      expect(find.text('Invite unavailable'), findsOneWidget);
+      expect(find.text('Request sent'), findsNothing);
+      repository.rejectJoin = false;
+      await tester.tap(find.text('Request to join'));
+      await tester.pumpAndSettle();
+      expect(repository.requestedJoinCode, code);
+      expect(find.text('Request sent'), findsOneWidget);
+      expect(find.text('View my contracts'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
   final completeProfile = PersonalProfile(
     code: 'permanent-code',
     phone: '+923001234567',
@@ -42,7 +71,7 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('new businesses open their own employee management', (
+  testWidgets('new businesses wait for approval before employee management', (
     tester,
   ) async {
     final repository = FakeOnlineRepository()..userId = 'user';
@@ -82,6 +111,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(repository.businessSaves, 1);
     expect(find.text('Ali Salon'), findsOneWidget);
+    expect(find.text('Waiting for approval'), findsOneWidget);
+    expect(find.text('Employees & contracts'), findsNothing);
+    expect(find.text('Billing workspace'), findsNothing);
+    expect(find.byTooltip('Copy business code'), findsOneWidget);
+    final business = repository.workspace.businesses.single;
+    repository.workspace = OnlineWorkspace(
+      account: repository.workspace.account,
+      profile: repository.workspace.profile,
+      businesses: [
+        SalonBusiness(
+          id: business.id,
+          name: business.name,
+          phone: business.phone,
+          type: business.type,
+          city: business.city,
+          area: business.area,
+          address: business.address,
+          isActive: true,
+        ),
+      ],
+    );
+    await tester.pump(const Duration(seconds: 16));
+    await tester.pumpAndSettle();
     expect(find.text('Employees & contracts'), findsOneWidget);
     await tester.ensureVisible(find.text('Employees & contracts'));
     await tester.tap(find.text('Employees & contracts'));

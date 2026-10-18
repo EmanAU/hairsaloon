@@ -15,7 +15,10 @@ class OnlinePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(title), actions: actions),
+    appBar: AppBar(
+      title: Text(title, style: const TextStyle(fontFamily: 'Roboto')),
+      actions: actions,
+    ),
     body: Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(

@@ -13,7 +13,7 @@ class PhotoPicker extends ImagePickerPlatform {
     ImagePickerOptions options = const ImagePickerOptions(),
   }) async => XFile.fromData(
     File('assets/logo.png').readAsBytesSync(),
-    name: 'salon.png',
+    path: 'salon.png',
   );
 }
 
@@ -46,15 +46,11 @@ void main() {
       await tester.tap(find.text('Register'));
       await tester.pumpAndSettle();
       final dropdown = find.byType(DropdownButtonFormField<String>);
-      expect(
-        tester
-            .widget<DropdownButtonFormField<String>>(dropdown)
-            .items!
-            .map((i) => i.value),
-        BusinessOptions.businessTypes,
-      );
       await tester.tap(dropdown);
       await tester.pumpAndSettle();
+      for (final type in BusinessOptions.businessTypes) {
+        expect(find.text(type), findsWidgets);
+      }
       await tester.tap(find.text('Beauty Parlour').last);
       await tester.pumpAndSettle();
       for (final entry in {

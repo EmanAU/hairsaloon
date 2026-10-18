@@ -192,7 +192,13 @@ class FakeOnlineRepository implements OnlineRepository {
   Future<String> businessInvite(String businessId) async =>
       '00000000-0000-4000-8000-000000000001';
   @override
-  Future<void> requestJoin(String code) async {}
+  Future<void> requestJoin(String code) async {
+    if (rejectJoin) throw const OnlineFailure('Invite unavailable');
+    requestedJoinCode = code;
+  }
+
+  bool rejectJoin = false;
+  String? requestedJoinCode;
   @override
   Future<List<SalonBusiness>> discoverBusinesses({
     String search = '',

@@ -97,6 +97,13 @@ Owners can add/change a business photo (JPG/PNG/WebP, up to 2 MB). Apply
 private `business-photos` bucket and its ownership/approval policies. Business
 photo paths are stored in the existing `businesses.logo_path` column.
 
+Apply `20261018125222_business_registration_code.sql` next. Registration generates
+the employee joining code in the same database transaction and preserves older
+codes. Owners see an approval waiting screen until an admin activates the business;
+the screen checks every 15 seconds and also supports manual refresh. Business
+management and invitations open after approval. Employee code/QR joining creates
+a request; employment still requires an accepted contract.
+
 Customers can review a salon or barber and edit/delete their own review. One review
 per customer/target is enforced. Owners and members cannot review their own salon;
 visits are not represented as verified. Superadmin can remove reviews in `web/`.

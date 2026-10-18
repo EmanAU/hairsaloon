@@ -86,7 +86,7 @@ test('businesses start inactive and only superadmin can approve', async () => {
       values ($1,'Test salon','03000000000','salon','Lahore','Test','Test address') returning id`, [ids[name]]);
     if (name === 'owner') business = id; else secondBusiness = id;
     assert.equal(await scalar('select is_active from public.businesses where id=$1', [id]), false);
-    await db.query('insert into public.business_invites(business_id) values ($1)', [id]);
+    assert.equal(await scalar('select count(*)::int from public.business_invites where business_id=$1', [id]), 1);
     await rejects('update public.businesses set is_active=true where id=$1', [id], '42501');
     await rejects('select public.review_business($1,true)', [id], '42501');
     await as('admin');
@@ -95,6 +95,17 @@ test('businesses start inactive and only superadmin can approve', async () => {
   await as('owner2');
   assert.equal(await scalar('select count(*)::int from public.business_invites where business_id=$1', [business]), 0);
   assert.equal((await db.query("update public.businesses set name='stolen' where id=$1 returning id", [business])).rows.length, 0);
+});
+
+test('new business codes exist before approval and stay fixed after review', async () => {
+  await as('owner');
+  const code = await scalar('select code from public.business_invites where business_id=$1', [business]);
+  assert.match(code, /^[0-9a-f-]{36}$/);
+  await as('admin');
+  await db.query('select public.review_business($1,false)', [business]);
+  await db.query('select public.review_business($1,true)', [business]);
+  await as('owner');
+  assert.equal(await scalar('select code from public.business_invites where business_id=$1', [business]), code);
 });
 
 test('profiles and permanent codes are private and immutable', async () => {

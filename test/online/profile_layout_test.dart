@@ -145,6 +145,39 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(BusinessForm), findsOneWidget);
       expect(tester.takeException(), isNull);
+      tester.view.resetViewInsets();
+      tester.testTextInput.hide();
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Join a salon'));
+      await tester.pumpAndSettle();
+      await capture('join');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      final id = await repository.saveBusiness(
+        name: 'Abdullah Salon',
+        phone: '03127712502',
+        type: 'Hair Salon',
+        city: 'Lahore',
+        area: 'Gulberg',
+        address: 'Main Road',
+      );
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: boundaryKey,
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light(),
+            home: OwnerBusiness(repository: repository, businessId: id),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Waiting for approval'), findsOneWidget);
+      expect(find.text('Employees & contracts'), findsNothing);
+      await capture('approval');
+      expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     });
   }

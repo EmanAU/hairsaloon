@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
 import 'business_form.dart';
+import 'business_approval.dart';
 import 'profile_form.dart';
 import 'online_session.dart';
 import 'rate_list_screen.dart';
@@ -228,6 +230,25 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
             );
           }
           final business = matches.first;
+          if (!business.isActive) {
+            return BusinessApproval(
+              business: business,
+              repository: widget.repository,
+              onRefresh: _refresh,
+              onEdit: () async {
+                final saved = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BusinessForm(
+                      repository: widget.repository,
+                      business: business,
+                    ),
+                  ),
+                );
+                if (saved == true && mounted) _refresh();
+              },
+            );
+          }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -380,6 +401,33 @@ class _JoinSalonState extends State<JoinSalon> {
   late final _code = TextEditingController(text: widget.initialCode);
   final _form = GlobalKey<FormState>();
   bool _requested = false;
+  bool _requesting = false;
+
+  Future<void> _request() async {
+    if (_requesting || !_form.currentState!.validate()) return;
+    setState(() => _requesting = true);
+    try {
+      await widget.repository.requestJoin(_code.text.trim());
+      if (mounted) setState(() => _requested = true);
+    } finally {
+      if (mounted) setState(() => _requesting = false);
+    }
+  }
+
+  void _contracts() => Navigator.push<void>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => ContractsScreen(repository: widget.repository),
+    ),
+  );
+
+  Future<void> _scan() async {
+    final target = await Navigator.push<QrDestination>(
+      context,
+      MaterialPageRoute(builder: (_) => const ScanQr(joining: true)),
+    );
+    if (target != null && mounted) _code.text = target.id;
+  }
 
   @override
   void dispose() {
@@ -388,76 +436,173 @@ class _JoinSalonState extends State<JoinSalon> {
   }
 
   @override
-  Widget build(BuildContext context) => OnlinePage(
-    title: 'Join a salon',
-    actions: [
-      IconButton(
-        tooltip: 'My contracts',
-        icon: const Icon(Icons.description_outlined),
-        onPressed: () => Navigator.push<void>(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ContractsScreen(repository: widget.repository),
-          ),
+  Widget build(BuildContext context) => PopScope(
+    canPop: !_requesting,
+    child: Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        title: const Text(
+          'Join a salon',
+          style: TextStyle(fontFamily: 'Roboto'),
         ),
-      ),
-    ],
-    children: [
-      const Text(
-        'Ask the salon owner for their joining code. Joining creates a request; employment starts only after you accept a contract.',
-      ),
-      const SizedBox(height: 20),
-      if (_requested)
-        const Card(
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: Text(
-              'Request sent. The salon owner can now propose your contract.',
-            ),
+        actions: [
+          IconButton(
+            tooltip: 'My contracts',
+            icon: const Icon(Icons.description_outlined),
+            onPressed: _requesting ? null : _contracts,
           ),
-        )
-      else
-        Form(
-          key: _form,
-          child: Column(
+        ],
+      ),
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: ListView(
+            padding: const EdgeInsets.all(24),
             children: [
-              ActionButton(
-                label: 'Scan employee invitation QR',
-                icon: Icons.qr_code_scanner,
-                onPressed: () async {
-                  final target = await Navigator.push<QrDestination>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ScanQr(joining: true),
+              const SizedBox(height: 20),
+              if (_requested)
+                Column(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_outline,
+                      size: 56,
+                      color: Color(0xFF668400),
                     ),
-                  );
-                  if (target != null && mounted) _code.text = target.id;
-                },
-              ),
-              TextFormField(
-                controller: _code,
-                decoration: const InputDecoration(
-                  labelText: 'Salon joining code',
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Request sent',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Waiting for the salon owner’s contract.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xFF718094)),
+                    ),
+                    const SizedBox(height: 24),
+                    ActionButton(
+                      label: 'View my contracts',
+                      onPressed: () async => _contracts(),
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Form(
+                  key: _form,
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.group_add_outlined,
+                        size: 48,
+                        color: Color(0xFF34441D),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Enter your salon’s code or scan its QR.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Color(0xFF718094)),
+                      ),
+                      const SizedBox(height: 28),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _requesting ? null : _scan,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.all(16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          icon: const Icon(Icons.qr_code_scanner),
+                          label: const Text('Scan salon QR'),
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 22),
+                        child: Row(
+                          children: [
+                            Expanded(child: Divider()),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: Text(
+                                'or',
+                                style: TextStyle(color: Color(0xFF718094)),
+                              ),
+                            ),
+                            Expanded(child: Divider()),
+                          ],
+                        ),
+                      ),
+                      TextFormField(
+                        controller: _code,
+                        enabled: !_requesting,
+                        decoration: InputDecoration(
+                          labelText: 'Salon joining code',
+                          hintText: 'Paste salon code',
+                          filled: true,
+                          fillColor: const Color(0xFFF7F8FA),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFE1E5EA),
+                            ),
+                          ),
+                          suffixIcon: IconButton(
+                            tooltip: 'Paste code',
+                            icon: const Icon(Icons.content_paste, size: 20),
+                            onPressed: _requesting
+                                ? null
+                                : () async {
+                                    final data = await Clipboard.getData(
+                                      Clipboard.kTextPlain,
+                                    );
+                                    if (mounted && data?.text != null) {
+                                      _code.text = data!.text!.trim();
+                                    }
+                                  },
+                          ),
+                        ),
+                        autocorrect: false,
+                        validator: (value) =>
+                            RegExp(
+                              r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+                            ).hasMatch(value?.trim() ?? '')
+                            ? null
+                            : 'Paste a valid salon code',
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ActionButton(
+                          label: 'Request to join',
+                          style: FilledButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: _request,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                autocorrect: false,
-                validator: (value) =>
-                    RegExp(
-                      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
-                    ).hasMatch(value?.trim() ?? '')
-                    ? null
-                    : 'Paste a valid salon code',
-              ),
-              ActionButton(
-                label: 'Request to join',
-                onPressed: () async {
-                  if (!_form.currentState!.validate()) return;
-                  await widget.repository.requestJoin(_code.text);
-                  if (mounted) setState(() => _requested = true);
-                },
-              ),
             ],
           ),
         ),
-    ],
+      ),
+    ),
   );
 }
