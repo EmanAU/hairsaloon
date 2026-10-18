@@ -28,7 +28,7 @@ class AdaptivePage extends StatelessWidget {
       color: Theme.of(context).colorScheme.surfaceContainerLow,
       child: Center(
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: form ? 560 : 1200),
+          constraints: BoxConstraints(maxWidth: form ? 640 : double.infinity),
           child: SizedBox.expand(child: safeChild),
         ),
       ),

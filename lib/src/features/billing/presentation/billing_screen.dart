@@ -1,3 +1,8 @@
+import 'billing_customer_picker.dart';
+import 'checkout_dialog.dart';
+import 'receipt_dialog.dart';
+import 'receipt_share_mixin.dart';
+import '../../business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:hairsaloon/src/core/widgets/app_sheet.dart';
@@ -6,7 +11,6 @@ import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/customer_contact.dart';
 import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
-import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/features/services/presentation/state/services_store.dart';
@@ -14,31 +18,37 @@ import 'package:hairsaloon/src/features/services/domain/entities/service_item.da
 import 'package:hairsaloon/src/features/settings/presentation/state/settings_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
+import 'tablet_billing_view.dart';
+import 'mobile_billing_screen.dart';
 
-class BillingScreen extends StatefulWidget {
+class BillingScreen extends StatelessWidget {
   const BillingScreen({super.key});
 
   @override
-  State<BillingScreen> createState() => _BillingScreenState();
+  Widget build(BuildContext context) =>
+      MediaQuery.sizeOf(context).shortestSide >= 600
+      ? const _TabletBillingScreen()
+      : const MobileBillingScreen();
 }
 
-class _BillingScreenState extends State<BillingScreen> {
-  final _headerFormKey = GlobalKey<FormState>();
+class _TabletBillingScreen extends StatefulWidget {
+  const _TabletBillingScreen();
+
+  @override
+  State<_TabletBillingScreen> createState() => _BillingScreenState();
+}
+
+class _BillingScreenState extends State<_TabletBillingScreen> {
   final _phoneCtrl = TextEditingController();
-  final _scrollCtrl = ScrollController();
-  final _servicesSectionKey = GlobalKey();
-  bool _hidePhoneSuggestions = false;
   String _selectedCategory = 'All';
   final Set<String> _selectedServiceIds = <String>{};
   final Map<String, double> _servicePricesById = <String, double>{};
-  String? _employee;
-  String? _paymentType;
-  bool _didAttemptSave = false;
   CustomerContact? _selectedCustomer;
-  String? _lastExistingPromptPhone;
-  bool _existingPromptOpen = false;
   BillDiscountType _discountType = BillDiscountType.none;
   double _discountValue = 0;
+  String _search = '';
+  bool _searchingCustomer = false;
+  bool _saving = false;
 
   List<String> get _categories {
     final values =
@@ -72,8 +82,6 @@ class _BillingScreenState extends State<BillingScreen> {
   @override
   void initState() {
     super.initState();
-    _employee = null;
-    _paymentType = null;
     for (final service in context.read<ServicesStore>().services) {
       _servicePricesById[service.id] = service.price;
     }
@@ -81,36 +89,13 @@ class _BillingScreenState extends State<BillingScreen> {
 
   @override
   void dispose() {
-    _scrollCtrl.dispose();
     _phoneCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-    // Keep content above the bottom navigation bar (DashboardShell has extendBody: true).
-    final tablet = MediaQuery.sizeOf(context).shortestSide >= 600;
-    final bottomSafeSpace = bottomInset + (tablet ? 24 : 120);
     final services = context.watch<ServicesStore>().services;
-    final activeEmployees = context
-        .watch<EmployeesStore>()
-        .employees
-        .where((e) => e.isActive)
-        .where((e) => e.fullName.trim().isNotEmpty)
-        .toList(growable: false);
-    final employeeOptions = activeEmployees.isEmpty
-        ? <String>['Unassigned']
-        : activeEmployees.map((e) => e.fullName).toList(growable: false);
-    if (_employee != null && !employeeOptions.contains(_employee)) {
-      _employee = null;
-    }
-    final customerPhone = _phoneCtrl.text.trim();
-    final phoneMatches = _customerMatches(customerPhone);
-    final showPhoneMatches =
-        !_hidePhoneSuggestions &&
-        customerPhone.isNotEmpty &&
-        phoneMatches.isNotEmpty;
     final selectedLines = _selectedLines(services);
     final subTotal = selectedLines.fold<double>(
       0,
@@ -123,659 +108,129 @@ class _BillingScreenState extends State<BillingScreen> {
       discountType: _discountType,
       discountValue: _discountValue,
     );
-    final hasCustomerInfo = customerPhone.isNotEmpty;
-    final customerInfoText = _selectedCustomer == null
-        ? 'Customer Phone: $customerPhone'
-        : 'Customer: ${_selectedCustomer!.displayLabel}';
+    return TabletBillingView(
+      services: services
+          .where(
+            (service) =>
+                (_selectedCategory == 'All' ||
+                    service.category == _selectedCategory) &&
+                '${service.subcategory} ${service.category}'
+                    .toLowerCase()
+                    .contains(_search.toLowerCase()),
+          )
+          .toList(),
+      selectedServices: services
+          .where((service) => _selectedServiceIds.contains(service.id))
+          .toList(),
+      categories: _categories,
+      category: _selectedCategory,
+      onCategory: (value) => setState(() => _selectedCategory = value),
+      onSearch: (value) => setState(() => _search = value),
+      priceOf: (service) => _servicePricesById[service.id] ?? service.price,
+      onToggle: (service) => setState(() {
+        if (!_selectedServiceIds.add(service.id)) {
+          _selectedServiceIds.remove(service.id);
+        }
+      }),
+      onEditPrice: _editPrice,
+      subTotal: subTotal,
+      tax: totals.taxAmount,
+      taxPercent: taxPercent,
+      discount: totals.discountAmount,
+      total: totals.grandTotal,
+      onDiscount: () => _openDiscountSheet(subTotal),
+      onClear: _resetForNewBill,
+      onCheckout: _saving ? null : _checkout,
+      onSavedBills: () => Navigator.pushNamed(context, AppRoutes.savedBills),
+      onAddService: () => Navigator.pushNamed(context, AppRoutes.newService),
+      customer: BillingCustomerPicker(
+        searching: _searchingCustomer,
+        controller: _phoneCtrl,
+        selected: _selectedCustomer,
+        matches: _customerMatches(_phoneCtrl.text.trim()),
+        onMode: (searching) => setState(() {
+          _searchingCustomer = searching;
+          _selectedCustomer = null;
+          _phoneCtrl.clear();
+        }),
+        onChanged: (value) => setState(
+          () => _selectedCustomer = context
+              .read<BillingStore>()
+              .getCustomerContactByPhone(value.trim()),
+        ),
+        onSelect: _applyCustomer,
+        onAdd: _promptAddCustomer,
+      ),
+    );
+  }
 
-    final sections = <Widget>[
-      Container(
-        color: AppColors.primary,
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                const Icon(CupertinoIcons.cart, size: 22, color: Colors.black),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    '${_selectedServiceIds.length.toString().padLeft(2, '0')} services used',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black,
-                    ),
-                  ),
-                ),
-                _DiscountChip(
-                  type: _discountType,
-                  value: _discountValue,
-                  onTap: () => _openDiscountSheet(subTotal),
-                ),
-                const SizedBox(width: 6),
-                SizedBox(
-                  height: 30,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: () =>
-                        Navigator.of(context).pushNamed(AppRoutes.savedBills),
-                    child: const Text(
-                      'Saved Bills',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 2,
-                    children: [
-                      Text(
-                        'Sub Total : ${subTotal.toStringAsFixed(0)}',
-                        style: _headerMetaStyle,
-                      ),
-                      if (totals.discountAmount > 0)
-                        Text(
-                          'Discount : -${totals.discountAmount.toStringAsFixed(0)}',
-                          style: _headerMetaStyle,
-                        ),
-                      Text(
-                        'Tax : ${taxPercent.toStringAsFixed(0)}%',
-                        style: _headerMetaStyle,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Total : Rs.${totals.grandTotal.toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 44,
-                    child: TextField(
-                      controller: _phoneCtrl,
-                      style: const TextStyle(fontSize: 12),
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [PkPhoneInputFormatter()],
-                      onChanged: _onPhoneChanged,
-                      onSubmitted: (value) {
-                        final phone = PkPhone.normalize(value);
-                        if (!PkPhone.isValid(phone)) return;
-                        final existing = context
-                            .read<BillingStore>()
-                            .getCustomerContactByPhone(phone);
-                        if (existing != null) {
-                          _promptExistingCustomer(existing);
-                          return;
-                        }
-                        if (_hasKnownPhone(phone)) return;
-                        _promptAddCustomer(initialPhone: phone);
-                      },
-                      decoration:
-                          _smallDecoration(
-                            'Customer phone (+923462254477)',
-                          ).copyWith(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 12,
-                            ),
-                          ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  height: 44,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: _promptAddCustomer,
-                    child: const Text(
-                      'Add New',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (showPhoneMatches) ...[
-              const SizedBox(height: 6),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.black12),
-                ),
-                child: Column(
-                  children: phoneMatches
-                      .take(4)
-                      .map(
-                        (customer) => InkWell(
-                          onTap: () => _applyCustomer(customer),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  CupertinoIcons.search,
-                                  size: 14,
-                                  color: Colors.black54,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    customer.displayLabel,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 11.5),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(growable: false),
-                ),
-              ),
-            ],
-            if (hasCustomerInfo) ...[
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  customerInfoText,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: Form(
-                    key: _headerFormKey,
-                    autovalidateMode: _didAttemptSave
-                        ? AutovalidateMode.always
-                        : AutovalidateMode.disabled,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            initialValue: _employee,
-                            isExpanded: true,
-                            style: const TextStyle(
-                              fontFamily: 'Roboto',
-                              fontSize: 12,
-                              color: Colors.black,
-                            ),
-                            iconSize: 16,
-                            decoration: _smallDecoration('Employee (required)'),
-                            hint: const Text(
-                              'Select Employee',
-                              style: TextStyle(fontSize: 11),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Select employee';
-                              }
-                              return null;
-                            },
-                            selectedItemBuilder: (context) => employeeOptions
-                                .map(
-                                  (name) => Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      _formatEmployeeLabel(
-                                        name,
-                                        activeEmployees: activeEmployees,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 11),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            items: employeeOptions
-                                .map(
-                                  (name) => DropdownMenuItem(
-                                    value: name,
-                                    child: Text(
-                                      _formatEmployeeLabel(
-                                        name,
-                                        activeEmployees: activeEmployees,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) {
-                              setState(() => _employee = value);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            key: ValueKey(
-                              context
-                                  .watch<SettingsStore>()
-                                  .paymentMethods
-                                  .join('|'),
-                            ),
-                            initialValue:
-                                context
-                                    .read<SettingsStore>()
-                                    .paymentMethods
-                                    .contains(_paymentType)
-                                ? _paymentType
-                                : null,
-                            isExpanded: true,
-                            style: const TextStyle(
-                              fontFamily: 'Roboto',
-                              fontSize: 12,
-                              color: Colors.black,
-                            ),
-                            iconSize: 16,
-                            decoration: _smallDecoration('Payment (required)'),
-                            hint: const Text(
-                              'Select Payment',
-                              style: TextStyle(fontSize: 11),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Select payment';
-                              }
-                              return null;
-                            },
-                            selectedItemBuilder: (context) => context
-                                .read<SettingsStore>()
-                                .paymentMethods
-                                .map(
-                                  (type) => Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      type,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(fontSize: 11),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            items: context
-                                .watch<SettingsStore>()
-                                .paymentMethods
-                                .map(
-                                  (type) => DropdownMenuItem(
-                                    value: type,
-                                    child: Text(
-                                      type,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) {
-                              setState(() => _paymentType = value);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        SizedBox(
-                          width: 96,
-                          height: 44,
-                          child: FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: Colors.black,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            onPressed: _saveBill,
-                            child: const FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                'Save Bill',
-                                maxLines: 1,
-                                softWrap: false,
-                                style: TextStyle(fontSize: 11),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+  Future<void> _editPrice(ServiceItem service) async {
+    final controller = TextEditingController(
+      text: (_servicePricesById[service.id] ?? service.price).toStringAsFixed(
+        2,
       ),
-      const SizedBox(height: 8),
-      SizedBox(
-        height: 32,
-        child: ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          scrollDirection: Axis.horizontal,
-          itemCount: _categories.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 6),
-          itemBuilder: (context, i) {
-            final category = _categories[i];
-            final selected = _selectedCategory == category;
-            return _TagChip(
-              text: category,
-              selected: selected,
-              onTap: () => setState(() => _selectedCategory = category),
-            );
-          },
-        ),
-      ),
-      const SizedBox(height: 6),
-      Padding(
-        key: _servicesSectionKey,
-        padding: EdgeInsets.symmetric(horizontal: 12),
-        child: const Text(
-          'Available Services',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-        ),
-      ),
-      const SizedBox(height: 8),
-      GridView.builder(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: _selectedCategory == 'All'
-            ? services.length
-            : services.where((s) => s.category == _selectedCategory).length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: tablet ? 4 : 3,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: tablet ? 1.05 : 0.9,
-        ),
-        itemBuilder: (context, index) {
-          final filteredServices = _selectedCategory == 'All'
-              ? services
-              : services
-                    .where((s) => s.category == _selectedCategory)
-                    .toList(growable: false);
-          final service = filteredServices[index];
-          final selected = _selectedServiceIds.contains(service.id);
-          final price = _servicePricesById[service.id] ?? service.price;
-          return InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () {
-              setState(() {
-                if (selected) {
-                  _selectedServiceIds.remove(service.id);
-                } else {
-                  _selectedServiceIds.add(service.id);
-                }
-              });
+    );
+    final form = GlobalKey<FormState>();
+    final price = await showDialog<double>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Price · ${service.subcategory}'),
+        content: Form(
+          key: form,
+          child: TextFormField(
+            controller: controller,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(labelText: 'Price for this bill'),
+            validator: (value) {
+              final parsed = double.tryParse(value ?? '');
+              return parsed == null || !parsed.isFinite || parsed < 0
+                  ? 'Enter a valid price'
+                  : null;
             },
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: selected
-                      ? Colors.black
-                      : Colors.grey.withValues(alpha: 0.2),
-                  width: selected ? 1.8 : 1,
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Align(
-                      alignment: const Alignment(0, 0.3),
-                      child: Text(
-                        service.subcategory,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Transform.translate(
-                    offset: const Offset(0, -2),
-                    child: Text(
-                      'Rs.${price.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                  if (selected) ...[
-                    const SizedBox(height: 6),
-                    const Icon(
-                      CupertinoIcons.checkmark_circle_fill,
-                      size: 15,
-                      color: Colors.black,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    ];
-    return Scaffold(
-      backgroundColor: const Color(0xFFF3F3F3),
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        surfaceTintColor: Colors.transparent,
-        automaticallyImplyLeading: false,
-        centerTitle: true,
-        title: const Text(
-          'Billing',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
-        ),
-      ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: tablet ? 920 : double.infinity),
-          child: ListView(
-            controller: _scrollCtrl,
-            padding: EdgeInsets.only(bottom: bottomSafeSpace.toDouble()),
-            children: sections,
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (form.currentState!.validate()) {
+                Navigator.pop(context, double.parse(controller.text));
+              }
+            },
+            child: const Text('Apply'),
+          ),
+        ],
       ),
     );
-  }
-
-  static const _headerMetaStyle = TextStyle(
-    fontSize: 12,
-    fontWeight: FontWeight.w700,
-    color: AppColors.textPrimary,
-  );
-
-  InputDecoration _smallDecoration(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(fontSize: 11),
-      filled: true,
-      fillColor: Colors.white,
-      isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide.none,
-      ),
-    );
-  }
-
-  void _onPhoneChanged(String value) {
-    final phone = value.trim();
-    final store = context.read<BillingStore>();
-    final exact = store.getCustomerContactByPhone(phone);
-    setState(() {
-      _hidePhoneSuggestions = false;
-      _selectedCustomer = exact;
-      if (exact == null || phone != _lastExistingPromptPhone) {
-        _lastExistingPromptPhone = null;
-      }
-    });
-    if (exact != null && exact.name.trim().isNotEmpty) {
-      _promptExistingCustomer(exact);
+    // Wait until the dialog's closing animation releases its text field.
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    controller.dispose();
+    if (price != null && mounted) {
+      setState(() => _servicePricesById[service.id] = price);
     }
   }
 
   void _applyCustomer(CustomerContact customer) {
-    final store = context.read<BillingStore>();
-    final full = store.getCustomerContactByPhone(customer.phone) ?? customer;
     setState(() {
-      _phoneCtrl.text = full.phone;
-      _hidePhoneSuggestions = true;
-      _selectedCustomer = full;
-      _lastExistingPromptPhone = full.phone.trim();
+      _selectedCustomer = customer;
+      _phoneCtrl.text = customer.phone;
     });
     FocusScope.of(context).unfocus();
   }
 
-  Future<void> _promptExistingCustomer(CustomerContact customer) async {
-    final phone = customer.phone.trim();
-    if (phone.isEmpty || _existingPromptOpen) return;
-    if (_lastExistingPromptPhone == phone) return;
-
-    final store = context.read<BillingStore>();
-    final full = store.getCustomerContactByPhone(phone) ?? customer;
-    if (full.name.trim().isEmpty) return;
-
-    _existingPromptOpen = true;
-    _lastExistingPromptPhone = phone;
-    try {
-      final use = await showAppSheet<bool>(
-        context: context,
-        builder: (sheetContext) => AppSheetBody(
-          title: 'Customer Found',
-          subtitle: 'This number is already saved.',
-          icon: CupertinoIcons.person_crop_circle_badge_checkmark,
-          onCancel: () => Navigator.of(sheetContext).pop(false),
-          confirmLabel: 'Use Customer',
-          onConfirm: () => Navigator.of(sheetContext).pop(true),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  full.name.trim(),
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  full.phone.trim(),
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-
-      if (!mounted || use != true) return;
-      _applyCustomer(full);
-    } finally {
-      _existingPromptOpen = false;
-    }
-  }
-
   Future<void> _promptAddCustomer({String? initialPhone}) async {
     final prefillPhone = (initialPhone ?? _phoneCtrl.text).trim();
-    if (prefillPhone.isNotEmpty) {
-      final existing = context.read<BillingStore>().getCustomerContactByPhone(
-        prefillPhone,
-      );
-      if (existing != null && existing.name.trim().isNotEmpty) {
-        await _promptExistingCustomer(existing);
-        return;
-      }
+    final existing = context.read<BillingStore>().getCustomerContactByPhone(
+      prefillPhone,
+    );
+    if (existing != null) {
+      _applyCustomer(existing);
+      return;
     }
-
     final result = await showAppSheet<CustomerContact>(
       context: context,
       builder: (_) => _AddCustomerSheet(initialPhone: prefillPhone),
@@ -790,36 +245,17 @@ class _BillingScreenState extends State<BillingScreen> {
 
     setState(() {
       _phoneCtrl.text = result.phone;
-      _hidePhoneSuggestions = true;
       _selectedCustomer = result;
     });
 
     FocusScope.of(context).unfocus();
-    _scrollToServices();
   }
 
-  Future<void> _saveBill() async {
-    setState(() => _didAttemptSave = true);
-    final headerState = _headerFormKey.currentState;
-    if (headerState == null || !headerState.validate()) {
-      _showMessage('Please select employee and payment method.');
-      return;
-    }
-    final services = context.read<ServicesStore>().services;
-    final selectedLines = _selectedLines(services);
-    if (selectedLines.isEmpty) {
-      _showMessage('Select at least one service.');
-      return;
-    }
-    final phone = _phoneCtrl.text.trim();
-    if (phone.isNotEmpty && !_hasKnownPhone(phone)) {
-      await _promptAddCustomer(initialPhone: phone);
-      if (!mounted) return;
-      final updatedPhone = _phoneCtrl.text.trim();
-      if (updatedPhone.isNotEmpty && !_hasKnownPhone(updatedPhone)) {
-        return;
-      }
-    }
+  Future<Bill> _saveBill(String employee, String payment) async {
+    final selectedLines = _selectedLines(
+      context.read<ServicesStore>().services,
+    );
+    final phone = _searchingCustomer ? (_selectedCustomer?.phone ?? '') : '';
     final settingsStore = context.read<SettingsStore>();
     final subTotal = selectedLines.fold<double>(
       0,
@@ -842,8 +278,8 @@ class _BillingScreenState extends State<BillingScreen> {
       createdAt: DateTime.now(),
       customerName: contact?.name.trim() ?? '',
       customerPhone: phone,
-      employeeName: _employee ?? '',
-      paymentType: _paymentType ?? '',
+      employeeName: employee,
+      paymentType: payment,
       lines: selectedLines,
       subTotal: subTotal,
       taxPercent: taxPercent,
@@ -854,14 +290,73 @@ class _BillingScreenState extends State<BillingScreen> {
       discountAmount: totals.discountAmount,
     );
     await context.read<BillingStore>().addBill(bill);
-    if (!mounted) return;
-    ToastService.success('Bill saved successfully');
-    Navigator.of(
-      context,
-    ).pushNamed(AppRoutes.billDetails, arguments: bill.id).then((_) {
-      if (!mounted) return;
+    return bill;
+  }
+
+  Future<void> _checkout() async {
+    if (_saving) return;
+    final lines = _selectedLines(context.read<ServicesStore>().services);
+    if (lines.isEmpty) {
+      _showMessage('Select at least one service.');
+      return;
+    }
+    if (_searchingCustomer && _selectedCustomer == null) {
+      _showMessage(
+        'Select a saved customer, add a new customer, or choose Walk-in.',
+      );
+      return;
+    }
+    final employees = context
+        .read<EmployeesStore>()
+        .employees
+        .where(
+          (employee) =>
+              employee.isActive && employee.fullName.trim().isNotEmpty,
+        )
+        .map((employee) => employee.fullName)
+        .toList();
+    final settings = context.read<SettingsStore>();
+    final business = ReceiptBusinessInfo.from(
+      context.read<BusinessProfileNotifier>().profile,
+    );
+    final currency = settings.currencyCode;
+    final totals = BillTotals.compute(
+      subTotal: lines.fold<double>(0, (sum, line) => sum + line.total),
+      taxPercent: settings.taxRate,
+      discountType: _discountType,
+      discountValue: _discountValue,
+    );
+    setState(() => _saving = true);
+    try {
+      final bill = await showDialog<Bill>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => CheckoutDialog(
+          employees: employees.isEmpty ? ['Unassigned'] : employees,
+          paymentMethods: settings.paymentMethods,
+          lines: lines,
+          total: totals.grandTotal,
+          customer: _selectedCustomer?.displayLabel ?? 'Walk-in Customer',
+          onSave: _saveBill,
+        ),
+      );
+      if (bill == null || !mounted) return;
       _resetForNewBill();
-    });
+      final details = await showDialog<bool>(
+        context: context,
+        builder: (_) =>
+            ReceiptDialog(bill: bill, business: business, currency: currency),
+      );
+      if (details == true && mounted) {
+        await Navigator.pushNamed(
+          context,
+          AppRoutes.billDetails,
+          arguments: bill.id,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   List<CustomerContact> _customerMatches(String query) {
@@ -883,22 +378,14 @@ class _BillingScreenState extends State<BillingScreen> {
         .toList(growable: false);
   }
 
-  bool _hasKnownPhone(String value) {
-    return context.read<BillingStore>().hasKnownCustomerPhone(value);
-  }
-
   void _resetForNewBill() {
     setState(() {
       _phoneCtrl.clear();
+      _searchingCustomer = false;
       _selectedCategory = 'All';
       _selectedServiceIds.clear();
-      _employee = null;
-      _paymentType = null;
-      _didAttemptSave = false;
+      _servicePricesById.clear();
       _selectedCustomer = null;
-      _lastExistingPromptPhone = null;
-      _existingPromptOpen = false;
-      _hidePhoneSuggestions = false;
       _discountType = BillDiscountType.none;
       _discountValue = 0;
     });
@@ -920,78 +407,14 @@ class _BillingScreenState extends State<BillingScreen> {
     });
   }
 
-  void _scrollToServices() {
-    final targetContext = _servicesSectionKey.currentContext;
-    if (targetContext == null) return;
-    Scrollable.ensureVisible(
-      targetContext,
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOut,
-      alignment: 0.05,
-    );
-  }
-
   void _showMessage(String message) {
     ToastService.info(message);
-  }
-
-  String _formatEmployeeLabel(
-    String fullName, {
-    required List<EmployeeItem> activeEmployees,
-  }) {
-    final match = activeEmployees.where((e) => e.fullName == fullName).toList();
-    if (match.isEmpty) return fullName;
-    final type = (match.first.employeeType ?? '').trim();
-    if (type.isEmpty) return fullName;
-    return '$fullName • $type';
   }
 }
 
 String _formatDiscountValue(double value) => value == value.roundToDouble()
     ? value.toStringAsFixed(0)
     : value.toStringAsFixed(1);
-
-class _DiscountChip extends StatelessWidget {
-  const _DiscountChip({
-    required this.type,
-    required this.value,
-    required this.onTap,
-  });
-
-  final BillDiscountType type;
-  final double value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final active = type != BillDiscountType.none && value > 0;
-    final label = !active
-        ? 'Discount'
-        : type == BillDiscountType.percent
-        ? '-${_formatDiscountValue(value)}%'
-        : '-Rs.${_formatDiscountValue(value)}';
-    return SizedBox(
-      height: 30,
-      child: OutlinedButton.icon(
-        onPressed: onTap,
-        icon: Icon(
-          active ? CupertinoIcons.tag_fill : CupertinoIcons.tag,
-          size: 13,
-        ),
-        label: Text(label),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.textPrimary,
-          backgroundColor: active ? AppColors.surface : const Color(0x00000000),
-          side: const BorderSide(color: AppColors.textPrimary),
-          padding: const EdgeInsets.symmetric(horizontal: 9),
-          visualDensity: VisualDensity.compact,
-          textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      ),
-    );
-  }
-}
 
 class _DiscountSheet extends StatefulWidget {
   const _DiscountSheet({
@@ -1222,46 +645,6 @@ class _AddCustomerSheetState extends State<_AddCustomerSheet> {
             ).copyWith(errorText: _phoneError),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _TagChip extends StatelessWidget {
-  const _TagChip({
-    required this.text,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String text;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? Colors.white : const Color(0xFFF2F2F2),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected
-                ? AppColors.primary
-                : Colors.grey.withValues(alpha: 0.25),
-          ),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color: Colors.black87,
-          ),
-        ),
       ),
     );
   }

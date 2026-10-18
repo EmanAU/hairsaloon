@@ -1,11 +1,11 @@
 import 'online/data/business_workspace.dart';
+import 'core/layout/app_orientation.dart';
 import 'online/data/workspace_adapters.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/business_profile/domain/repositories/business_profile_repository.dart';
 import 'package:hairsaloon/src/core/layout/adaptive_page.dart';
 import 'package:hairsaloon/src/features/auth/data/repositories/local_auth_repository.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hairsaloon/src/features/auth/data/datasources/local_auth_session_datasource.dart';
 import 'package:hairsaloon/src/features/auth/domain/usecases/get_current_user.dart';
@@ -80,7 +80,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
+    configureAppOrientation();
     _bootstrapFuture = _bootstrap();
   }
 

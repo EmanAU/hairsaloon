@@ -162,11 +162,13 @@ class _SideRail extends StatelessWidget {
           size: 25,
         ),
         selectedLabelTextStyle: const TextStyle(
+          fontFamily: 'Roboto',
           color: AppColors.textPrimary,
           fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
         unselectedLabelTextStyle: const TextStyle(
+          fontFamily: 'Roboto',
           color: AppColors.iconMuted,
           fontSize: 11,
           fontWeight: FontWeight.w500,

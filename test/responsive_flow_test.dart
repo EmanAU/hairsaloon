@@ -241,6 +241,97 @@ void main() {
             : find.text(label).last;
         await tester.tap(navItem('Billing'));
         await capture('02_billing');
+        expect(
+          find.text('New Ticket'),
+          entry.key == 'mobile' ? findsNothing : findsOneWidget,
+        );
+        expect(find.byKey(const ValueKey('checkout-employee')), findsNothing);
+        if (entry.key == 'tablet_landscape') {
+          await tester.tap(find.text('Simple Cutting').first);
+          await tester.tap(find.text('Kids Hair Cut').first);
+          await tester.pumpAndSettle();
+          expect(find.text('2 Items'), findsOneWidget);
+          await tester.tap(find.text('Discount').first);
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Percentage (%)'));
+          await tester.enterText(
+            find.widgetWithText(TextField, 'Discount percentage'),
+            '10',
+          );
+          await tester.tap(find.text('Apply'));
+          await tester.pumpAndSettle();
+          expect(find.text('-Rs 90'), findsOneWidget);
+          await capture('02_billing_order');
+          tester.view.physicalSize = const Size(1024, 600);
+          await capture('02_billing_small_tablet');
+          await tester.tap(find.text('Search').first);
+          await tester.pumpAndSettle();
+          await tester.showKeyboard(
+            find.byKey(const ValueKey('customer-search')),
+          );
+          tester.view.viewInsets = const FakeViewPadding(bottom: 250);
+          await capture('02_billing_keyboard');
+          tester.view.resetViewInsets();
+          tester.testTextInput.hide();
+          tester.view.physicalSize = entry.value;
+          await tester.pumpAndSettle();
+          await tester.enterText(
+            find.byKey(const ValueKey('customer-search')),
+            '+923009876543',
+          );
+          await tester.pumpAndSettle();
+          expect(find.text('Ahmed'), findsOneWidget);
+          await capture('02_customer_found');
+          await tester.enterText(
+            find.byKey(const ValueKey('customer-search')),
+            '03412541658',
+          );
+          await tester.pumpAndSettle();
+          expect(find.text('Add New Customer'), findsOneWidget);
+          await capture('02_customer_new');
+          await tester.tap(find.text('Walk-in').first);
+          await tester.tap(find.text('Checkout'));
+          await tester.pumpAndSettle();
+          await capture('02_checkout_modal');
+          await tester.tap(find.text('Save & show receipt'));
+          await tester.pumpAndSettle();
+          expect(find.text('Select employee'), findsOneWidget);
+          expect(find.text('Select payment method'), findsOneWidget);
+          await tester.tap(find.byKey(const ValueKey('checkout-employee')));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Ali').last);
+          await tester.pumpAndSettle();
+          await tester.tap(find.byKey(const ValueKey('checkout-payment')));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Cash').last);
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Save & show receipt'));
+          for (
+            var attempt = 0;
+            attempt < 30 && find.text('Receipt saved').evaluate().isEmpty;
+            attempt++
+          ) {
+            await tester.runAsync(
+              () => Future<void>.delayed(const Duration(milliseconds: 40)),
+            );
+            await tester.pump(const Duration(milliseconds: 100));
+          }
+          await tester.pumpAndSettle();
+          expect(find.text('Receipt saved'), findsOneWidget);
+          final saved = ToastService.navigatorKey.currentContext!
+              .read<BillingStore>()
+              .bills
+              .firstWhere((bill) => bill.id != 'preview-bill');
+          expect(saved.grandTotal, closeTo(947.7, .001));
+          expect(saved.customerPhone, isEmpty);
+          await capture('02_receipt_modal');
+          await tester.tap(find.text('Detailed receipt'));
+          await tester.pumpAndSettle();
+          expect(find.text('Bill Details'), findsOneWidget);
+          ToastService.navigatorKey.currentState!.pop();
+          await tester.pumpAndSettle();
+          expect(find.text('0 Items'), findsOneWidget);
+        }
         await tester.tap(navItem('Expense'));
         await capture('03_expenses');
         await tester.tap(navItem('Home'));

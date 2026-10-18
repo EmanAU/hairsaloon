@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/layout/app_orientation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'data/supabase_online_repository.dart';
 import 'domain/online_models.dart';
@@ -6,6 +7,7 @@ import 'online_app.dart';
 
 Future<void> runOnlineApp(AppAudience audience) async {
   WidgetsFlutterBinding.ensureInitialized();
+  await configureAppOrientation(business: audience == AppAudience.business);
   const url = String.fromEnvironment('SUPABASE_URL');
   const key = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
   SupabaseOnlineRepository? repository;
