@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import 'domain/online_models.dart';
 import 'domain/online_repository.dart';
 import 'presentation/business_home.dart';
+import 'presentation/employee_home.dart';
 import 'presentation/profile_form.dart';
 import 'presentation/customer_screens.dart';
 import 'presentation/online_session.dart';
@@ -264,10 +265,17 @@ class _OnlineAppState extends State<OnlineApp> {
             onSaved: session.reload,
           );
         }
-        return BusinessHome(
+        // Owners manage salons; joined staff get their own daily work home.
+        if (session.workspace!.businesses.isNotEmpty) {
+          return BusinessHome(
+            session: session,
+            onSignOut: session.repository.signOut,
+            onOpenOffline: () => _openOffline(context),
+          );
+        }
+        return EmployeeHome(
           session: session,
           onSignOut: session.repository.signOut,
-          onOpenOffline: () => _openOffline(context),
         );
       },
     ),

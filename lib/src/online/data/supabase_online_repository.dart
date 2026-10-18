@@ -269,42 +269,155 @@ class SupabaseOnlineRepository implements OnlineRepository {
 
   @override
   Future<void> inviteEmployee(String businessId, String profileCode) async {
-    await _client.rpc(
-      'invite_employee',
-      params: {'business': businessId, 'profile_code': profileCode.trim()},
-    );
+    try {
+      await _client.rpc(
+        'invite_employee',
+        params: {'business': businessId, 'profile_code': profileCode.trim()},
+      );
+    } on PostgrestException catch (error) {
+      final text = error.message.toLowerCase();
+      if (text.contains('profile not found')) {
+        throw const OnlineFailure('No profile found for that code.');
+      }
+      if (text.contains('approval') || text.contains('owner')) {
+        throw OnlineFailure(
+          error.message.trim().isEmpty
+              ? 'Could not add this employee.'
+              : error.message,
+        );
+      }
+      throw OnlineFailure(
+        error.message.trim().isEmpty
+            ? 'Could not add this employee. Try again.'
+            : error.message,
+      );
+    } on ClientException {
+      throw const OnlineFailure(
+        'Could not add employee. Check your connection and try again.',
+      );
+    }
   }
 
   @override
   Future<List<SalonStaff>> team(String businessId) async {
-    final rows =
-        await _client.rpc('business_team', params: {'business': businessId})
-            as List;
-    return rows
-        .map(
-          (row) => SalonStaff.fromJson(Map<String, dynamic>.from(row as Map)),
-        )
-        .toList();
+    try {
+      final rows =
+          await _client.rpc('business_team', params: {'business': businessId})
+              as List;
+      return rows
+          .map(
+            (row) => SalonStaff.fromJson(Map<String, dynamic>.from(row as Map)),
+          )
+          .toList();
+    } on PostgrestException catch (error) {
+      final text = error.message.toLowerCase();
+      if (text.contains('owner') || error.code == '42501') {
+        throw const OnlineFailure('Only the salon owner can view the team.');
+      }
+      throw OnlineFailure(
+        error.message.trim().isEmpty
+            ? 'Could not load employees. Try again.'
+            : error.message,
+      );
+    } on ClientException {
+      throw const OnlineFailure(
+        'Could not load employees. Check your connection and try again.',
+      );
+    }
   }
 
   @override
   Future<void> reviewJoin(String employeeId, bool accept) async {
-    await _client.rpc(
-      'review_join',
-      params: {'employee': employeeId, 'accept': accept},
-    );
+    try {
+      await _client.rpc(
+        'review_join',
+        params: {'employee': employeeId, 'accept': accept},
+      );
+    } on PostgrestException catch (error) {
+      throw OnlineFailure(
+        error.message.trim().isEmpty
+            ? 'Could not update this request. Try again.'
+            : error.message,
+      );
+    }
   }
 
   @override
   Future<List<WorkContract>> contracts({String? employeeId}) async {
     var query = _client
         .from('employee_contracts')
-        .select('*,business_employees(businesses(name))');
+        .select('*,business_employees(business_id,businesses(name))');
     query = employeeId == null
         ? query.eq('profile_id', _requiredUserId)
         : query.eq('employee_id', employeeId);
     final rows = await query.order('created_at', ascending: false);
     return rows.map(WorkContract.fromJson).toList();
+  }
+
+  @override
+  Future<EmployeeDashboardData> employeeDashboard() async {
+    final contracts = await this.contracts();
+    final joinRequests = await this.joinRequests();
+    final account = (await loadWorkspace()).account;
+    final name = account.name.trim().toLowerCase();
+    final jobs = <EmployeeWorkJob>[];
+
+    for (final contract in contracts.where((c) => c.isLive)) {
+      if (contract.businessId.isEmpty) continue;
+      final snapshot = await businessSnapshot(contract.businessId);
+      final payload = snapshot?['payload'];
+      if (payload is! Map) continue;
+      final bills = Map<String, dynamic>.from(
+        (payload['bills'] as Map?) ?? const {},
+      );
+      for (final raw in bills.values) {
+        if (raw is! Map) continue;
+        final bill = Map<String, dynamic>.from(raw);
+        final employeeName = (bill['employeeName'] ?? '').toString().trim();
+        if (employeeName.toLowerCase() != name) continue;
+        final lines = (bill['lines'] as List?) ?? const [];
+        final services = lines
+            .whereType<Map>()
+            .map((line) => (line['serviceName'] ?? line['name'] ?? '').toString())
+            .where((label) => label.isNotEmpty)
+            .toList();
+        jobs.add(
+          EmployeeWorkJob(
+            id: (bill['id'] ?? '').toString(),
+            createdAt:
+                DateTime.tryParse((bill['createdAt'] ?? '').toString()) ??
+                DateTime.now(),
+            customerName: (bill['customerName'] ?? 'Customer').toString(),
+            total: (bill['grandTotal'] as num?)?.toDouble() ?? 0,
+            services: services,
+            businessName: contract.businessName,
+            commissionPercent: contract.commission,
+          ),
+        );
+      }
+    }
+
+    jobs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final byDay = <DateTime, List<EmployeeWorkJob>>{};
+    for (final job in jobs) {
+      final day = DateTime(
+        job.createdAt.year,
+        job.createdAt.month,
+        job.createdAt.day,
+      );
+      byDay.putIfAbsent(day, () => []).add(job);
+    }
+    final days =
+        byDay.entries
+            .map((entry) => EmployeeDayWork(date: entry.key, jobs: entry.value))
+            .toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
+
+    return EmployeeDashboardData(
+      contracts: contracts,
+      joinRequests: joinRequests,
+      days: days,
+    );
   }
 
   @override
@@ -615,32 +728,98 @@ class SupabaseOnlineRepository implements OnlineRepository {
     }
   }
 
+  Never _throwJoinFailure(Object error) {
+    if (error is OnlineFailure) throw error;
+    if (error is ClientException) {
+      throw const OnlineFailure(
+        'Could not reach the server. Check your connection and try again.',
+      );
+    }
+    if (error is PostgrestException) {
+      final text =
+          '${error.message} ${error.details ?? ''} ${error.hint ?? ''}'
+              .toLowerCase();
+      if (text.contains('create your profile')) {
+        throw const OnlineFailure(
+          'Create your personal profile first, then try again.',
+        );
+      }
+      if (text.contains('salon not approved')) {
+        throw const OnlineFailure(
+          'This salon is waiting for admin approval. Try again after it is active.',
+        );
+      }
+      if (text.contains('invite unavailable')) {
+        throw const OnlineFailure(
+          'This salon code is invalid or no longer available.',
+        );
+      }
+      if (text.contains('owner access')) {
+        throw const OnlineFailure(
+          'Only the salon owner can view this joining code.',
+        );
+      }
+      if (error.code == '22P02') {
+        throw const OnlineFailure('Paste a valid salon joining code.');
+      }
+      final message = error.message.trim();
+      throw OnlineFailure(
+        message.isEmpty
+            ? 'Could not complete this action. Try again.'
+            : message,
+      );
+    }
+    throw const OnlineFailure(
+      'Could not complete this action. Check your connection and try again.',
+    );
+  }
+
   @override
   Future<String> businessInvite(String businessId) async {
-    final existing = await _client
-        .from('business_invites')
-        .select('code')
-        .eq('business_id', businessId)
-        .maybeSingle();
-    if (existing != null) return existing['code'] as String;
     try {
-      await _client.from('business_invites').insert({
-        'business_id': businessId,
-      });
-    } on PostgrestException catch (error) {
-      if (error.code != '23505') rethrow;
+      try {
+        final code = await _client.rpc(
+          'owner_invite_code',
+          params: {'business': businessId},
+        );
+        if (code is String && code.isNotEmpty) return code;
+      } on PostgrestException catch (error) {
+        final missing =
+            error.code == 'PGRST202' ||
+            error.message.toLowerCase().contains('could not find');
+        if (!missing) rethrow;
+      }
+      final existing = await _client
+          .from('business_invites')
+          .select('code')
+          .eq('business_id', businessId)
+          .maybeSingle();
+      if (existing != null) return existing['code'] as String;
+      try {
+        await _client.from('business_invites').insert({
+          'business_id': businessId,
+        });
+      } on PostgrestException catch (error) {
+        if (error.code != '23505') rethrow;
+      }
+      final row = await _client
+          .from('business_invites')
+          .select('code')
+          .eq('business_id', businessId)
+          .single();
+      return row['code'] as String;
+    } catch (error) {
+      _throwJoinFailure(error);
     }
-    final row = await _client
-        .from('business_invites')
-        .select('code')
-        .eq('business_id', businessId)
-        .single();
-    return row['code'] as String;
   }
 
   @override
   Future<void> requestJoin(String code) async {
-    await _client.rpc('request_join', params: {'invite_code': code.trim()});
+    try {
+      await _client.rpc('request_join', params: {'invite_code': code.trim()});
+    } catch (error) {
+      _throwJoinFailure(error);
+    }
   }
 
   @override

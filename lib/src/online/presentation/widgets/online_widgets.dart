@@ -140,9 +140,12 @@ class RemoteContent<T> extends StatelessWidget {
         );
       }
       if (snapshot.hasError || !snapshot.hasData) {
+        final detail = snapshot.error is OnlineFailure
+            ? (snapshot.error! as OnlineFailure).message
+            : 'Could not load data. Check your connection.';
         return Column(
           children: [
-            const Text('Could not load data. Check your connection.'),
+            Text(detail, textAlign: TextAlign.center),
             TextButton(onPressed: onRetry, child: const Text('Retry')),
           ],
         );

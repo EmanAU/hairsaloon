@@ -8,9 +8,15 @@ import '../domain/online_repository.dart';
 import 'widgets/online_widgets.dart';
 
 class BusinessForm extends StatefulWidget {
-  const BusinessForm({super.key, required this.repository, this.business});
+  const BusinessForm({
+    super.key,
+    required this.repository,
+    this.business,
+    this.onRegistered,
+  });
   final OnlineRepository repository;
   final SalonBusiness? business;
+  final ValueChanged<SalonBusiness>? onRegistered;
   @override
   State<BusinessForm> createState() => _BusinessFormState();
 }
@@ -21,7 +27,13 @@ class _BusinessFormState extends State<BusinessForm> {
   late final _phone = TextEditingController(
     text: PkPhone.localNumber(widget.business?.phone),
   );
-  late final _city = TextEditingController(text: widget.business?.city);
+  late String? _city = widget.business == null
+      ? null
+      : BusinessOptions.resolve(
+          widget.business?.city,
+          BusinessOptions.cities,
+          BusinessOptions.defaultCity,
+        );
   late final _area = TextEditingController(text: widget.business?.area);
   late final _address = TextEditingController(text: widget.business?.address);
   late String _type =
@@ -37,7 +49,7 @@ class _BusinessFormState extends State<BusinessForm> {
 
   @override
   void dispose() {
-    for (final field in [_name, _phone, _city, _area, _address]) {
+    for (final field in [_name, _phone, _area, _address]) {
       field.dispose();
     }
     super.dispose();
@@ -90,7 +102,7 @@ class _BusinessFormState extends State<BusinessForm> {
         name: _name.text,
         phone: _phone.text,
         type: _type,
-        city: _city.text,
+        city: _city!,
         area: _area.text,
         address: _address.text,
       );
@@ -101,7 +113,23 @@ class _BusinessFormState extends State<BusinessForm> {
           _extension!,
         );
       }
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) {
+        if (widget.business == null) {
+          widget.onRegistered?.call(
+            SalonBusiness(
+              id: _savedId!,
+              name: _name.text.trim(),
+              phone: PkPhone.normalize(_phone.text),
+              type: _type,
+              city: _city!,
+              area: _area.text.trim(),
+              address: _address.text.trim(),
+              isActive: false,
+            ),
+          );
+        }
+        Navigator.pop(context, true);
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -291,10 +319,25 @@ class _BusinessFormState extends State<BusinessForm> {
                             ),
                             SizedBox(
                               width: width,
-                              child: _field(
-                                _city,
-                                'City',
-                                Icons.location_city_outlined,
+                              child: DropdownButtonFormField<String>(
+                                initialValue: _city,
+                                isExpanded: true,
+                                decoration: _decoration(
+                                  'City',
+                                  Icons.location_city_outlined,
+                                ),
+                                items: BusinessOptions.cities
+                                    .map(
+                                      (city) => DropdownMenuItem(
+                                        value: city,
+                                        child: Text(city),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (value) =>
+                                    setState(() => _city = value),
+                                validator: (value) =>
+                                    value == null ? 'Select your city' : null,
                               ),
                             ),
                             SizedBox(

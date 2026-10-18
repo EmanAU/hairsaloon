@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hairsaloon/src/online/presentation/profile_form.dart';
+import 'package:hairsaloon/src/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:hairsaloon/src/online/presentation/business_home.dart';
 import 'package:hairsaloon/src/online/presentation/business_form.dart';
 import 'package:hairsaloon/src/online/presentation/staff_screen.dart';
@@ -13,12 +14,14 @@ import 'package:hairsaloon/src/online/domain/online_models.dart';
 import 'package:hairsaloon/src/online/presentation/online_session.dart';
 import 'package:hairsaloon/src/theme/app_theme.dart';
 import 'fake_online_repository.dart';
+import 'workspace_test_environment.dart';
 
 void main() {
   for (final size in [const Size(390, 844), const Size(1280, 800)]) {
     testWidgets('profile fits ${size.width.toInt()} including keyboard', (
       tester,
     ) async {
+      await prepareOnlineWorkspace(tester);
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -60,11 +63,21 @@ void main() {
                 ),
               ))
               .load();
+          await (FontLoader('packages/cupertino_icons/CupertinoIcons')..addFont(
+                rootBundle.load(
+                  'packages/cupertino_icons/assets/CupertinoIcons.ttf',
+                ),
+              ))
+              .load();
         });
       }
       final boundaryKey = GlobalKey();
       Future<void> capture(String name) async {
         if (!const bool.fromEnvironment('EXPORT_SCREENSHOTS')) return;
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 150)),
+        );
+        await tester.pumpAndSettle();
         await tester.runAsync(() async {
           final boundary =
               boundaryKey.currentContext!.findRenderObject()!
@@ -205,6 +218,90 @@ void main() {
       expect(tester.takeException(), isNull);
       await capture('join_requests');
       await tester.pumpWidget(const SizedBox());
+      final saved = repository.workspace.businesses.single;
+      repository.userId = repository.workspace.account.id;
+      repository.workspace = OnlineWorkspace(
+        account: repository.workspace.account,
+        profile: repository.workspace.profile,
+        businesses: [
+          SalonBusiness(
+            id: saved.id,
+            name: saved.name,
+            phone: saved.phone,
+            type: saved.type,
+            city: saved.city,
+            area: saved.area,
+            address: saved.address,
+            isActive: true,
+          ),
+        ],
+      );
+      await preopenOnlineWorkspace(tester, repository);
+      await session.reload();
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: boundaryKey,
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light(),
+            home: BusinessHome(
+              session: session,
+              onSignOut: repository.signOut,
+              onOpenOffline: () {},
+            ),
+          ),
+        ),
+      );
+      await waitForOnlineDashboard(tester);
+      expect(find.text('Rate List'), findsOneWidget);
+      expect(find.text('Finance'), findsOneWidget);
+      expect(find.text('Join requests'), findsOneWidget);
+      await capture('online_dashboard');
+      final contracts = find
+          .ancestor(
+            of: find.text('Contracts'),
+            matching: find.byType(DashboardShortcut),
+          )
+          .first;
+      await tester.ensureVisible(contracts);
+      await tester.pumpAndSettle();
+      await capture('online_dashboard_tools');
+      await tester.tap(contracts);
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+      expect(find.byType(StaffScreen), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.tap(
+        size.width >= 600
+            ? find.text('Billing').last
+            : find.byTooltip('Billing'),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text('New Ticket'),
+        size.width >= 600 ? findsOneWidget : findsNothing,
+      );
+      await capture('online_billing');
+      await tester.tap(
+        size.width >= 600 ? find.text('Home').last : find.byTooltip('Home'),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Sync status'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sync status'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sync now'), findsOneWidget);
+      await tester.tap(find.byTooltip('Back to dashboard'));
+      await waitForOnlineDashboard(tester);
+      await tester.ensureVisible(find.text('Switch business'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Switch business'));
+      await tester.pumpAndSettle();
+      expect(find.text('Your workspace'), findsOneWidget);
+      expect(find.text('Start a business'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await closeOnlineWorkspace(tester);
     });
   }
 }

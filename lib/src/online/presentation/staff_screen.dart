@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../features/employees/presentation/state/employees_store.dart';
+import '../data/business_workspace.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
 import 'contracts_screen.dart';
@@ -12,9 +15,13 @@ class StaffScreen extends StatefulWidget {
     super.key,
     required this.repository,
     required this.businessId,
+    this.showRequests,
+    this.workspace,
   });
   final OnlineRepository repository;
   final String businessId;
+  final bool? showRequests;
+  final BusinessWorkspace? workspace;
   @override
   State<StaffScreen> createState() => _StaffScreenState();
 }
@@ -24,7 +31,7 @@ class _StaffScreenState extends State<StaffScreen> {
     widget.businessId,
   );
   final _code = TextEditingController();
-  bool? _requests;
+  late bool? _requests = widget.showRequests;
   String? _reviewing;
   late final Timer _poll;
   final _shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(8));
@@ -41,8 +48,9 @@ class _StaffScreenState extends State<StaffScreen> {
     });
   }
 
-  void _refresh() =>
-      setState(() => _staff = widget.repository.team(widget.businessId));
+  void _refresh() => setState(() {
+    _staff = widget.repository.team(widget.businessId);
+  });
   @override
   void dispose() {
     _poll.cancel();
@@ -50,14 +58,34 @@ class _StaffScreenState extends State<StaffScreen> {
     super.dispose();
   }
 
+  Future<void> _syncLocalBillingStaff() async {
+    await widget.workspace?.syncOnlineTeam();
+    if (!mounted) return;
+    try {
+      context.read<EmployeesStore>().refresh();
+    } catch (_) {
+      // Billing store only exists inside the workspace dashboard.
+    }
+  }
+
   Future<void> _review(SalonStaff employee, bool accept) async {
     if (_reviewing != null) return;
     setState(() => _reviewing = employee.id);
     try {
       await widget.repository.reviewJoin(employee.id, accept);
+      await _syncLocalBillingStaff();
       if (mounted) {
         showMessage(context, accept ? 'Request accepted' : 'Request declined');
         _refresh();
+      }
+    } catch (error) {
+      if (mounted) {
+        showMessage(
+          context,
+          error is OnlineFailure
+              ? error.message
+              : 'Could not update this request. Try again.',
+        );
       }
     } finally {
       if (mounted) setState(() => _reviewing = null);
@@ -240,13 +268,26 @@ class _StaffScreenState extends State<StaffScreen> {
                         showMessage(context, 'Paste a valid profile code');
                         return;
                       }
-                      await widget.repository.inviteEmployee(
-                        widget.businessId,
-                        _code.text,
-                      );
-                      if (mounted) {
-                        _code.clear();
-                        _refresh();
+                      try {
+                        await widget.repository.inviteEmployee(
+                          widget.businessId,
+                          _code.text,
+                        );
+                        await _syncLocalBillingStaff();
+                        if (mounted) {
+                          _code.clear();
+                          showMessage(context, 'Employee added to your salon');
+                          _refresh();
+                        }
+                      } catch (error) {
+                        if (mounted) {
+                          showMessage(
+                            context,
+                            error is OnlineFailure
+                                ? error.message
+                                : 'Could not add this employee. Try again.',
+                          );
+                        }
                       }
                     },
                   ),

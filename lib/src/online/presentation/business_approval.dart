@@ -29,7 +29,10 @@ class _BusinessApprovalState extends State<BusinessApproval> {
   @override
   void initState() {
     super.initState();
-    _check = Timer(const Duration(seconds: 15), widget.onRefresh);
+    // Keep checking until the owner leaves this screen or approval lands.
+    _check = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) widget.onRefresh();
+    });
   }
 
   @override

@@ -130,6 +130,9 @@ class EmployeesStore extends ChangeNotifier {
     await addSpecialistCategory(trimmed);
   }
 
+  /// Reloads employees from local storage (e.g. after online team sync).
+  void refresh() => _reload();
+
   void _reload() {
     _all = _repository.getAll();
     _customCategories = _repository.getCustomSpecialistCategories();

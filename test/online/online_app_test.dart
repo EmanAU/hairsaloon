@@ -8,6 +8,7 @@ import 'package:hairsaloon/src/online/presentation/profile_form.dart';
 import 'package:hairsaloon/src/online/presentation/contracts_screen.dart';
 import 'package:hairsaloon/src/online/presentation/business_home.dart';
 import 'fake_online_repository.dart';
+import 'workspace_test_environment.dart';
 
 void main() {
   testWidgets(
@@ -71,76 +72,107 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('new businesses wait for approval before employee management', (
-    tester,
-  ) async {
-    final repository = FakeOnlineRepository()..userId = 'user';
-    repository.workspace = OnlineWorkspace(
-      account: repository.workspace.account,
-      profile: completeProfile,
+  for (final refreshFails in [false, true]) {
+    testWidgets(
+      'new businesses wait for approval before employee management (refresh fails: $refreshFails)',
+      (tester) async {
+        await prepareOnlineWorkspace(tester);
+        final repository = FakeOnlineRepository()
+          ..userId = 'user'
+          ..failRefreshAfterRegistration = refreshFails;
+        repository.workspace = OnlineWorkspace(
+          account: repository.workspace.account,
+          profile: completeProfile,
+        );
+        addTearDown(repository.events.close);
+        await tester.pumpWidget(
+          OnlineApp(audience: AppAudience.business, repository: repository),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Start a business'));
+        await tester.pumpAndSettle();
+        for (final entry in {
+          'Business name': 'Ali Salon',
+          'Business phone': '03127712502',
+          'Area': 'Gulberg',
+          'Address': 'Main Road',
+        }.entries) {
+          final field = find.widgetWithText(TextFormField, entry.key);
+          await tester.ensureVisible(field);
+          await tester.enterText(field, entry.value);
+        }
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pumpAndSettle();
+        final city = find.widgetWithText(
+          DropdownButtonFormField<String>,
+          'City',
+        );
+        await tester.ensureVisible(city);
+        await tester.tap(city);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Lahore'));
+        await tester.pumpAndSettle();
+        final save = find
+            .ancestor(
+              of: find.text('Save business'),
+              matching: find.byWidgetPredicate(
+                (widget) => widget is FilledButton,
+              ),
+            )
+            .first;
+        await tester.ensureVisible(save);
+        await tester.pumpAndSettle();
+        await tester.tap(save);
+        await tester.pumpAndSettle();
+        expect(repository.businessSaves, 1);
+        expect(find.text('Ali Salon'), findsOneWidget);
+        expect(find.text('Waiting for approval'), findsOneWidget);
+        expect(find.text('Employees & contracts'), findsNothing);
+        expect(find.text('Billing workspace'), findsNothing);
+        expect(find.text('Account refresh failed'), findsNothing);
+        if (refreshFails) {
+          await tester.pump(const Duration(seconds: 16));
+          await tester.pumpAndSettle();
+          expect(find.text('Waiting for approval'), findsOneWidget);
+          expect(repository.businessSaves, 1);
+        }
+        repository.failRefreshAfterRegistration = false;
+        // Single business lands on approval home — join/start stay in the menu.
+        final business = repository.workspace.businesses.single;
+        repository.workspace = OnlineWorkspace(
+          account: repository.workspace.account,
+          profile: repository.workspace.profile,
+          businesses: [
+            SalonBusiness(
+              id: business.id,
+              name: business.name,
+              phone: business.phone,
+              type: business.type,
+              city: business.city,
+              area: business.area,
+              address: business.address,
+              isActive: true,
+            ),
+          ],
+        );
+        // Home polls pending businesses and rebuilds into the approved dashboard.
+        await preopenOnlineWorkspace(tester, repository);
+        await tester.pump(const Duration(seconds: 16));
+        await waitForOnlineDashboard(tester);
+        expect(find.text('Rate List'), findsOneWidget);
+        expect(find.text('Join requests'), findsOneWidget);
+        expect(find.text('Employee joining code & QR'), findsOneWidget);
+        expect(find.text('Contracts'), findsOneWidget);
+        await tester.ensureVisible(find.text('Contracts'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Contracts'));
+        await tester.pumpAndSettle();
+        expect(find.text('Invite employee'), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+        await closeOnlineWorkspace(tester);
+      },
     );
-    addTearDown(repository.events.close);
-    await tester.pumpWidget(
-      OnlineApp(audience: AppAudience.business, repository: repository),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Start a business'));
-    await tester.pumpAndSettle();
-    for (final entry in {
-      'Business name': 'Ali Salon',
-      'Business phone': '03127712502',
-      'City': 'Lahore',
-      'Area': 'Gulberg',
-      'Address': 'Main Road',
-    }.entries) {
-      final field = find.widgetWithText(TextFormField, entry.key);
-      await tester.ensureVisible(field);
-      await tester.enterText(field, entry.value);
-    }
-    FocusManager.instance.primaryFocus?.unfocus();
-    await tester.pumpAndSettle();
-    final save = find
-        .ancestor(
-          of: find.text('Save business'),
-          matching: find.byWidgetPredicate((widget) => widget is FilledButton),
-        )
-        .first;
-    await tester.ensureVisible(save);
-    await tester.pumpAndSettle();
-    await tester.tap(save);
-    await tester.pumpAndSettle();
-    expect(repository.businessSaves, 1);
-    expect(find.text('Ali Salon'), findsOneWidget);
-    expect(find.text('Waiting for approval'), findsOneWidget);
-    expect(find.text('Employees & contracts'), findsNothing);
-    expect(find.text('Billing workspace'), findsNothing);
-    expect(find.byTooltip('Copy business code'), findsOneWidget);
-    final business = repository.workspace.businesses.single;
-    repository.workspace = OnlineWorkspace(
-      account: repository.workspace.account,
-      profile: repository.workspace.profile,
-      businesses: [
-        SalonBusiness(
-          id: business.id,
-          name: business.name,
-          phone: business.phone,
-          type: business.type,
-          city: business.city,
-          area: business.area,
-          address: business.address,
-          isActive: true,
-        ),
-      ],
-    );
-    await tester.pump(const Duration(seconds: 16));
-    await tester.pumpAndSettle();
-    expect(find.text('Employees & contracts'), findsOneWidget);
-    await tester.ensureVisible(find.text('Employees & contracts'));
-    await tester.tap(find.text('Employees & contracts'));
-    await tester.pumpAndSettle();
-    expect(find.text('Invite employee'), findsOneWidget);
-    await tester.pumpWidget(const SizedBox());
-  });
+  }
 
   testWidgets('legacy incomplete profiles return to onboarding on sign-in', (
     tester,
@@ -334,6 +366,34 @@ void main() {
     await tester.pumpAndSettle();
     expect(repository.profileSaves, 0);
     expect(find.text('Enter your 13-digit CNIC'), findsOneWidget);
+  });
+
+  test('an older offline cache cannot lose a confirmed registration', () async {
+    final repository = FakeOnlineRepository()..userId = 'user';
+    final session = OnlineSession(repository);
+    await Future<void>.delayed(Duration.zero);
+    session.rememberRegisteredBusiness(
+      const SalonBusiness(
+        id: 'confirmed-business',
+        name: 'Ali Salon',
+        phone: '+923127712502',
+        type: 'Barber Shop',
+        city: 'Lahore',
+        area: 'Gulberg',
+        address: 'Main Road',
+        isActive: false,
+      ),
+    );
+    repository.workspace = OnlineWorkspace(
+      account: repository.workspace.account,
+      profile: repository.workspace.profile,
+      isCached: true,
+    );
+    await session.reload();
+    expect(session.workspace!.businesses.single.id, 'confirmed-business');
+    expect(session.workspace!.businesses.single.isActive, false);
+    session.dispose();
+    await repository.events.close();
   });
 
   test(

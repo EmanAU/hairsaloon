@@ -10,7 +10,9 @@ import 'package:hairsaloon/src/features/settings/presentation/app_drawer.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class DashboardShell extends StatefulWidget {
-  const DashboardShell({super.key});
+  const DashboardShell({super.key, this.homeExtras, this.onExit});
+  final WidgetBuilder? homeExtras;
+  final VoidCallback? onExit;
 
   @override
   State<DashboardShell> createState() => _DashboardShellState();
@@ -28,10 +30,10 @@ class _DashboardShellState extends State<DashboardShell> {
   @override
   Widget build(BuildContext context) {
     final body = switch (_currentIndex) {
-      0 => const DashboardScreen(),
+      0 => DashboardScreen(extraShortcuts: widget.homeExtras?.call(context)),
       1 => const BillingScreen(),
       2 => const ExpensesScreen(),
-      _ => const DashboardScreen(),
+      _ => DashboardScreen(extraShortcuts: widget.homeExtras?.call(context)),
     };
 
     final tablet = AdaptivePage.isTablet(context);
@@ -81,6 +83,10 @@ class _DashboardShellState extends State<DashboardShell> {
   void _handleBackPressed() {
     if (_currentIndex != 0) {
       setState(() => _currentIndex = 0);
+      return;
+    }
+    if (widget.onExit != null) {
+      widget.onExit!();
       return;
     }
     _showExitDialog();

@@ -45,7 +45,10 @@ void main() {
       );
       await tester.tap(find.text('Register'));
       await tester.pumpAndSettle();
-      final dropdown = find.byType(DropdownButtonFormField<String>);
+      final dropdown = find.widgetWithText(
+        DropdownButtonFormField<String>,
+        'Business type',
+      );
       await tester.tap(dropdown);
       await tester.pumpAndSettle();
       for (final type in BusinessOptions.businessTypes) {
@@ -56,7 +59,6 @@ void main() {
       for (final entry in {
         'Business name': 'Ali Salon',
         'Business phone': '03127712502',
-        'City': 'Lahore',
         'Area': 'Gulberg',
         'Address': 'Main Road',
       }.entries) {
@@ -65,6 +67,15 @@ void main() {
         await tester.enterText(field, entry.value);
       }
       FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      final city = find.widgetWithText(DropdownButtonFormField<String>, 'City');
+      await tester.ensureVisible(city);
+      await tester.tap(city);
+      await tester.pumpAndSettle();
+      for (final name in ['Rawalpindi', 'Islamabad', 'Lahore']) {
+        expect(find.text(name), findsOneWidget);
+      }
+      await tester.tap(find.text('Lahore'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Add business photo'));
       await tester.tap(find.text('Add business photo'));
@@ -87,6 +98,7 @@ void main() {
         findsOneWidget,
       );
       expect(repository.workspace.businesses.single.type, 'Beauty Parlour');
+      expect(repository.workspace.businesses.single.city, 'Lahore');
       repository.failBusinessPhoto = false;
       await tester.tap(save);
       await tester.pumpAndSettle();

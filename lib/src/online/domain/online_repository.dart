@@ -39,6 +39,7 @@ abstract interface class OnlineRepository {
   Future<void> reviewJoin(String employeeId, bool accept);
   Future<void> inviteEmployee(String businessId, String profileCode);
   Future<List<WorkContract>> contracts({String? employeeId});
+  Future<EmployeeDashboardData> employeeDashboard();
   Future<void> proposeContract({
     required String employeeId,
     required String kind,

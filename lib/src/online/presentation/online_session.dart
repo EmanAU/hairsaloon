@@ -23,13 +23,32 @@ class OnlineSession extends ChangeNotifier {
   bool loading = false;
   bool _disposed = false;
   int _generation = 0;
+  String? _workspaceUser;
 
   bool get signedIn => repository.userId != null;
+
+  // Called only after the server confirms registration. A failed follow-up
+  // refresh must not lose this business or send its owner back to setup.
+  void rememberRegisteredBusiness(SalonBusiness business) {
+    final current = workspace;
+    if (_disposed || current == null || !signedIn) return;
+    workspace = OnlineWorkspace(
+      account: current.account,
+      profile: current.profile,
+      businesses: [
+        ...current.businesses.where((item) => item.id != business.id),
+        business,
+      ],
+    );
+    _workspaceUser = repository.userId;
+    notifyListeners();
+  }
 
   Future<void> reload() async {
     if (_disposed) return;
     final generation = ++_generation;
     final id = repository.userId;
+    final previous = _workspaceUser == id ? workspace : null;
     workspace = null;
     error = null;
     loading = id != null;
@@ -38,11 +57,35 @@ class OnlineSession extends ChangeNotifier {
     try {
       final result = await repository.loadWorkspace();
       if (!_disposed && generation == _generation && repository.userId == id) {
-        workspace = result;
+        // An offline repository response may predate a just-confirmed save.
+        workspace = result.isCached && previous != null
+            ? OnlineWorkspace(
+                account: result.account,
+                profile: result.profile ?? previous.profile,
+                businesses: {
+                  for (final business in result.businesses)
+                    business.id: business,
+                  for (final business in previous.businesses)
+                    business.id: business,
+                }.values.toList(),
+                isCached: true,
+              )
+            : result;
+        _workspaceUser = id;
       }
-    } catch (_) {
+    } catch (failure) {
       if (!_disposed && generation == _generation) {
-        error = 'Could not load your account. Check your connection and retry.';
+        if (previous != null && repository.userId == id) {
+          workspace = OnlineWorkspace(
+            account: previous.account,
+            profile: previous.profile,
+            businesses: previous.businesses,
+            isCached: true,
+          );
+        }
+        error = failure is OnlineFailure
+            ? failure.message
+            : 'Could not refresh your account. Please retry.';
       }
     } finally {
       if (!_disposed && generation == _generation) {

@@ -67,11 +67,67 @@ class BusinessWorkspace extends ChangeNotifier {
     if (recovery != null) {
       await workspace._apply(Map<String, dynamic>.from(recovery as Map));
     }
+    await workspace.syncOnlineTeam();
     workspace._timer = Timer.periodic(
       const Duration(seconds: 30),
       (_) => workspace.synchronize(),
     );
     return workspace;
+  }
+
+  /// Copies accepted online staff into the local employees box used by billing.
+  Future<void> syncOnlineTeam() async {
+    if (_disposed) return;
+    final List<SalonStaff> team;
+    try {
+      team = await repository.team(business.id);
+    } catch (_) {
+      return;
+    }
+    final box = maps['employees'];
+    if (box == null) return;
+    final accepted = team.where((e) => e.joinStatus == 'accepted').toList();
+    final acceptedIds = accepted.map((e) => e.id).toSet();
+    for (final member in accepted) {
+      final parts = member.name.trim().split(RegExp(r'\s+'));
+      final first = parts.isEmpty || parts.first.isEmpty ? 'Staff' : parts.first;
+      final last = parts.length <= 1 ? '' : parts.sublist(1).join(' ');
+      final existing = box.get(member.id);
+      if (existing == null) {
+        await box.put(member.id, <String, dynamic>{
+          'id': member.id,
+          'firstName': first,
+          'lastName': last,
+          'phoneNumber': '',
+          'cnicNumber': '',
+          'homeAddress': '',
+          'isActive': true,
+          'isManager': false,
+          'onlineSynced': true,
+          'commission': '',
+          'basicSalary': '',
+          'employeeType': 'General',
+        });
+      } else {
+        final map = Map<String, dynamic>.from(existing);
+        map['firstName'] = first;
+        map['lastName'] = last;
+        map['isActive'] = true;
+        map['onlineSynced'] = true;
+        await box.put(member.id, map);
+      }
+    }
+    for (final key in box.keys.toList()) {
+      final row = box.get(key);
+      if (row == null) continue;
+      final map = Map<String, dynamic>.from(row);
+      if (map['onlineSynced'] == true &&
+          !acceptedIds.contains(key.toString())) {
+        map['isActive'] = false;
+        await box.put(key, map);
+      }
+    }
+    if (!_disposed) notifyListeners();
   }
 
   Map<String, dynamic> snapshot() => {
@@ -190,6 +246,8 @@ class BusinessWorkspace extends ChangeNotifier {
           return;
         }
         if (remote != null) await _apply(remote);
+        // Cloud payload may not include online memberships — re-merge them.
+        await syncOnlineTeam();
       } else if (changed) {
         final operation = {
           'revision': _revision,
@@ -198,6 +256,8 @@ class BusinessWorkspace extends ChangeNotifier {
         };
         await journal.put('pending', operation);
         if (!await _send(operation)) return;
+      } else {
+        await syncOnlineTeam();
       }
       status =
           'Synced · ${DateTime.now().toLocal().toString().substring(0, 19)}';

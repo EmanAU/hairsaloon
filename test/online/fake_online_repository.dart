@@ -89,6 +89,15 @@ class FakeOnlineRepository implements OnlineRepository {
   @override
   Future<List<WorkContract>> contracts({String? employeeId}) async =>
       contractRows;
+  EmployeeDashboardData? employeeDashboardData;
+  @override
+  Future<EmployeeDashboardData> employeeDashboard() async =>
+      employeeDashboardData ??
+      EmployeeDashboardData(
+        contracts: contractRows,
+        joinRequests: joinRequestRows,
+        days: const [],
+      );
   @override
   Future<void> proposeContract({
     required String employeeId,
@@ -118,6 +127,7 @@ class FakeOnlineRepository implements OnlineRepository {
   int profileSaves = 0;
   int signInCalls = 0;
   int businessSaves = 0;
+  bool failRefreshAfterRegistration = false;
 
   @override
   Stream<String?> get authChanges => events.stream;
@@ -133,8 +143,13 @@ class FakeOnlineRepository implements OnlineRepository {
   }
 
   @override
-  Future<OnlineWorkspace> loadWorkspace() =>
-      pendingWorkspace ?? Future.value(workspace);
+  Future<OnlineWorkspace> loadWorkspace() {
+    if (failRefreshAfterRegistration && businessSaves > 0) {
+      return Future.error(const OnlineFailure('Account refresh failed'));
+    }
+    return pendingWorkspace ?? Future.value(workspace);
+  }
+
   @override
   Future<void> saveProfile({
     required String name,

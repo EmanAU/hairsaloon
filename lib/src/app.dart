@@ -67,8 +67,15 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BusinessCombApp extends StatefulWidget {
-  const BusinessCombApp({super.key, this.workspace});
+  const BusinessCombApp({
+    super.key,
+    this.workspace,
+    this.dashboardExtras,
+    this.onCloseWorkspace,
+  });
   final BusinessWorkspace? workspace;
+  final WidgetBuilder? dashboardExtras;
+  final VoidCallback? onCloseWorkspace;
 
   @override
   State<BusinessCombApp> createState() => _BusinessCombAppState();
@@ -190,17 +197,26 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                   initialRoute: AppRoutes.splash,
                   routes:
                       <String, WidgetBuilder>{
-                        AppRoutes.splash: (_) => SplashScreen(
-                          hasBusinessProfile: bootstrap.hasBusinessProfile,
-                          hasAuthSession: bootstrap.hasAuthSession,
-                        ),
+                        AppRoutes.splash: (_) => widget.workspace != null
+                            ? DashboardShell(
+                                homeExtras: widget.dashboardExtras,
+                                onExit: widget.onCloseWorkspace,
+                              )
+                            : SplashScreen(
+                                hasBusinessProfile:
+                                    bootstrap.hasBusinessProfile,
+                                hasAuthSession: bootstrap.hasAuthSession,
+                              ),
                         AppRoutes.login: (_) => const AuthEntryScreen(),
                         AppRoutes.phonePasswordLogin: (_) =>
                             const PhonePasswordLoginScreen(),
                         AppRoutes.register: (_) => const RegisterScreen(),
                         AppRoutes.businessRegistration: (_) =>
                             const BusinessRegistrationScreen(),
-                        AppRoutes.homeShell: (_) => const DashboardShell(),
+                        AppRoutes.homeShell: (_) => DashboardShell(
+                          homeExtras: widget.dashboardExtras,
+                          onExit: widget.onCloseWorkspace,
+                        ),
                         AppRoutes.appointments: (_) =>
                             const AppointmentsScreen(),
                         AppRoutes.employees: (_) => const EmployeesScreen(),

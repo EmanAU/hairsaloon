@@ -17,7 +17,8 @@ import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({super.key, this.extraShortcuts});
+  final Widget? extraShortcuts;
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
@@ -145,6 +146,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                         ),
                         const SizedBox(height: 12),
                         GridView(
+                          padding: widget.extraShortcuts == null
+                              ? null
+                              : EdgeInsets.zero,
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 2,
@@ -155,28 +159,28 @@ class _DashboardScreenState extends State<DashboardScreen>
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           children: [
-                            _Shortcut(
+                            DashboardShortcut(
                               title: 'Employees',
                               detail: 'Manage your team\nmembers and roles.',
                               asset: 'employees',
                               tint: const Color(0xFFF0FBDD),
                               onTap: () => open(AppRoutes.employees),
                             ),
-                            _Shortcut(
+                            DashboardShortcut(
                               title: 'Rate List',
                               detail: 'View services\nand pricing.',
                               asset: 'rates',
                               tint: const Color(0xFFFFF4DB),
                               onTap: () => open(AppRoutes.serviceList),
                             ),
-                            _Shortcut(
+                            DashboardShortcut(
                               title: 'Customers',
                               detail: 'Manage customer\ndetails and records.',
                               asset: 'customers',
                               tint: const Color(0xFFEAF0FF),
                               onTap: () => open(AppRoutes.customers),
                             ),
-                            _Shortcut(
+                            DashboardShortcut(
                               title: 'Finance',
                               detail:
                                   'Track income, expenses\nand financial reports.',
@@ -186,6 +190,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                             ),
                           ],
                         ),
+                        if (widget.extraShortcuts != null) ...[
+                          const SizedBox(height: 12),
+                          widget.extraShortcuts!,
+                        ],
                         const SizedBox(height: 14),
                         Row(
                           children: [
@@ -560,17 +568,26 @@ class _MiniStat extends StatelessWidget {
   );
 }
 
-class _Shortcut extends StatelessWidget {
-  const _Shortcut({
+class DashboardShortcut extends StatelessWidget {
+  const DashboardShortcut({
+    super.key,
     required this.title,
     required this.detail,
     required this.asset,
     required this.tint,
     required this.onTap,
+    this.badge,
   });
   final String title, detail, asset;
   final Color tint;
   final VoidCallback onTap;
+  final int? badge;
+  Widget _image() => Image.asset(
+    'assets/home_$asset.png',
+    width: 36,
+    height: 36,
+    cacheWidth: 240,
+  );
   @override
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
@@ -604,12 +621,13 @@ class _Shortcut extends StatelessWidget {
                         Expanded(
                           child: Align(
                             alignment: Alignment.topLeft,
-                            child: Image.asset(
-                              'assets/home_$asset.png',
-                              width: 36,
-                              height: 36,
-                              cacheWidth: 240,
-                            ),
+                            child: badge == null
+                                ? _image()
+                                : Badge(
+                                    label: Text('$badge'),
+                                    isLabelVisible: badge! > 0,
+                                    child: _image(),
+                                  ),
                           ),
                         ),
                         Container(
@@ -631,6 +649,8 @@ class _Shortcut extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
@@ -641,6 +661,8 @@ class _Shortcut extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     detail,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 10,
                       height: 1.25,

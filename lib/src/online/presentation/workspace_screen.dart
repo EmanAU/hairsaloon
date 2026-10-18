@@ -3,6 +3,7 @@ import '../../app.dart';
 import '../data/business_workspace.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
+import 'online_dashboard_tools.dart';
 import 'widgets/online_widgets.dart';
 
 class WorkspaceScreen extends StatefulWidget {
@@ -10,9 +11,11 @@ class WorkspaceScreen extends StatefulWidget {
     super.key,
     required this.repository,
     required this.business,
+    this.onClose,
   });
   final OnlineRepository repository;
   final SalonBusiness business;
+  final VoidCallback? onClose;
   @override
   State<WorkspaceScreen> createState() => _WorkspaceScreenState();
 }
@@ -20,12 +23,20 @@ class WorkspaceScreen extends StatefulWidget {
 class _WorkspaceScreenState extends State<WorkspaceScreen> {
   BusinessWorkspace? _workspace;
   late Future<BusinessWorkspace> _ready = _open();
+  bool _showSync = false;
+
   Future<BusinessWorkspace> _open() async {
-    final account = (await widget.repository.loadWorkspace()).account;
+    final account = await widget.repository.loadWorkspace();
+    final businesses = account.businesses.where(
+      (business) => business.id == widget.business.id,
+    );
+    if (businesses.isEmpty || !businesses.first.isActive) {
+      throw const OnlineFailure('Business approval is required.');
+    }
     final workspace = await BusinessWorkspace.open(
       widget.repository,
-      widget.business,
-      account,
+      businesses.first,
+      account.account,
     );
     if (!mounted) {
       workspace.dispose();
@@ -33,7 +44,36 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     }
     _workspace = workspace;
     await workspace.synchronize();
+    await workspace.syncOnlineTeam();
+    if (!mounted) {
+      workspace.dispose();
+      throw StateError('Workspace closed');
+    }
+    _showSync = workspace.conflict;
+    workspace.inPos = !_showSync;
     return workspace;
+  }
+
+  Future<void> _reload() async {
+    final current = _workspace;
+    if (current != null) {
+      current.inPos = false;
+      await current.synchronize();
+      current.dispose();
+    }
+    if (!mounted) return;
+    setState(() {
+      _workspace = null;
+      _ready = _open();
+    });
+  }
+
+  void _dashboard(BusinessWorkspace workspace) {
+    if (workspace.busy) return;
+    setState(() {
+      workspace.inPos = true;
+      _showSync = false;
+    });
   }
 
   @override
@@ -43,93 +83,92 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => OnlinePage(
-    title: '${widget.business.name} workspace',
-    children: [
-      RemoteContent(
-        future: _ready,
-        onRetry: () {
-          _workspace?.dispose();
-          _workspace = null;
-          setState(() => _ready = _open());
-        },
-        builder: (workspace) => ListenableBuilder(
-          listenable: workspace,
-          builder: (context, _) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Bills, customers, expenses, payouts, local staff, services and settings are stored separately for this salon. Changes sync every 30 seconds while this workspace is open.',
-              ),
-              const SizedBox(height: 16),
-              Text(workspace.status),
-              if (workspace.busy) const LinearProgressIndicator(),
-              ActionButton(
-                label: 'Sync now',
-                icon: Icons.sync,
-                onPressed: workspace.synchronize,
-              ),
-              if (workspace.conflict) ...[
-                const Text(
-                  'Both versions are backed up on this device before your choice is applied.',
-                ),
+  Widget build(BuildContext context) => FutureBuilder<BusinessWorkspace>(
+    future: _ready,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+      if (snapshot.hasError) {
+        return OnlinePage(
+          title: 'Business workspace',
+          children: [
+            Text(
+              snapshot.error is OnlineFailure
+                  ? (snapshot.error as OnlineFailure).message
+                  : 'Could not open your business. Please retry.',
+            ),
+            ActionButton(label: 'Retry', onPressed: _reload),
+          ],
+        );
+      }
+      final workspace = snapshot.data!;
+      if (_showSync) return _syncPage(workspace);
+      return BusinessCombApp(
+        workspace: workspace,
+        onCloseWorkspace:
+            widget.onClose ?? () => Navigator.of(context).maybePop(),
+        dashboardExtras: (_) => OnlineDashboardTools(
+          workspace: workspace,
+          onClose: widget.onClose ?? () => Navigator.of(context).maybePop(),
+          onBusinessChanged: _reload,
+          onSync: () => setState(() {
+            workspace.inPos = false;
+            _showSync = true;
+          }),
+        ),
+      );
+    },
+  );
+
+  Widget _syncPage(BusinessWorkspace workspace) => PopScope(
+    canPop: false,
+    onPopInvokedWithResult: (didPop, result) {
+      if (!didPop) _dashboard(workspace);
+    },
+    child: Scaffold(
+      appBar: AppBar(
+        title: const Text('Sync status'),
+        leading: IconButton(
+          tooltip: 'Back to dashboard',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => _dashboard(workspace),
+        ),
+      ),
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: ListenableBuilder(
+            listenable: workspace,
+            builder: (context, _) => ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                Text(workspace.status),
+                if (workspace.busy) const LinearProgressIndicator(),
                 ActionButton(
-                  label: 'Keep this device version',
-                  onPressed: () => workspace.resolve(keepLocal: true),
+                  label: 'Sync now',
+                  icon: Icons.sync,
+                  onPressed: workspace.synchronize,
                 ),
-                ActionButton(
-                  label: 'Use cloud version',
-                  onPressed: () => workspace.resolve(keepLocal: false),
-                ),
+                if (workspace.conflict) ...[
+                  const Text(
+                    'Choose which version to keep. Both versions are backed up on this device.',
+                  ),
+                  ActionButton(
+                    label: 'Keep this device version',
+                    onPressed: () => workspace.resolve(keepLocal: true),
+                  ),
+                  ActionButton(
+                    label: 'Use cloud version',
+                    onPressed: () => workspace.resolve(keepLocal: false),
+                  ),
+                ],
               ],
-              ActionButton(
-                label: 'Open business workspace',
-                icon: Icons.point_of_sale,
-                onPressed: () async {
-                  if (workspace.busy) return;
-                  workspace.inPos = true;
-                  try {
-                    await Navigator.push<void>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => Scaffold(
-                          body: SafeArea(
-                            child: Column(
-                              children: [
-                                Material(
-                                  child: ListTile(
-                                    title: Text(widget.business.name),
-                                    subtitle: ListenableBuilder(
-                                      listenable: workspace,
-                                      builder: (_, _) => Text(workspace.status),
-                                    ),
-                                    leading: IconButton(
-                                      tooltip: 'Close workspace',
-                                      icon: const Icon(Icons.arrow_back),
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(),
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: BusinessCombApp(workspace: workspace),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  } finally {
-                    workspace.inPos = false;
-                  }
-                  await workspace.synchronize();
-                },
-              ),
-            ],
+            ),
           ),
         ),
       ),
-    ],
+    ),
   );
 }

@@ -17,7 +17,7 @@ import 'qr_screen.dart';
 import 'workspace_screen.dart';
 import '../domain/qr_destination.dart';
 
-class BusinessHome extends StatelessWidget {
+class BusinessHome extends StatefulWidget {
   const BusinessHome({
     super.key,
     required this.session,
@@ -28,6 +28,52 @@ class BusinessHome extends StatelessWidget {
   final Future<void> Function() onSignOut;
   final VoidCallback onOpenOffline;
 
+  @override
+  State<BusinessHome> createState() => _BusinessHomeState();
+}
+
+class _BusinessHomeState extends State<BusinessHome> {
+  bool _choosingBusiness = false;
+  Future<String>? _invite;
+  Future<List<SalonStaff>>? _team;
+  final _inviteCode = TextEditingController();
+  String? _reviewing;
+  late final Timer _poll;
+
+  OnlineSession get session => widget.session;
+
+  @override
+  void initState() {
+    super.initState();
+    _poll = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
+      final workspace = session.workspace;
+      if (workspace == null) return;
+      final pending = workspace.businesses.any((b) => !b.isActive);
+      final active = _primaryActive(workspace);
+      if (pending && active == null && !_choosingBusiness) {
+        unawaited(session.reload());
+      }
+      if (active != null && _team != null && _reviewing == null) {
+        setState(() {
+          _team = session.repository.team(active.id);
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _poll.cancel();
+    _inviteCode.dispose();
+    super.dispose();
+  }
+
+  SalonBusiness? _primaryActive(OnlineWorkspace workspace) {
+    final active = workspace.businesses.where((b) => b.isActive).toList();
+    return active.isEmpty ? null : active.first;
+  }
+
   Future<void> _edit(BuildContext context, Widget page) async {
     final saved = await Navigator.push<bool>(
       context,
@@ -37,28 +83,112 @@ class BusinessHome extends StatelessWidget {
   }
 
   Future<void> _startBusiness(BuildContext context) async {
-    final navigator = Navigator.of(context);
-    final existing = session.workspace!.businesses.map((b) => b.id).toSet();
     final saved = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => BusinessForm(repository: session.repository),
+        builder: (_) => BusinessForm(
+          repository: session.repository,
+          onRegistered: session.rememberRegisteredBusiness,
+        ),
       ),
     );
-    await session.reload();
     if (saved != true) return;
-    if (!navigator.mounted) return;
-    final created = session.workspace?.businesses.where(
-      (b) => !existing.contains(b.id),
-    );
-    if (created != null && created.isNotEmpty) {
-      await navigator.push<void>(
-        MaterialPageRoute(
-          builder: (_) => OwnerBusiness(
-            repository: session.repository,
-            businessId: created.first.id,
-          ),
+    await session.reload();
+    if (!context.mounted) return;
+    setState(() {
+      _invite = null;
+      _team = null;
+    });
+    if (saved == true) {
+      showMessage(
+        context,
+        'Business saved. It will open on home after admin approval.',
+      );
+    }
+  }
+
+  Future<void> _openSalon(SalonBusiness business) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OwnerBusiness(
+          repository: session.repository,
+          businessId: business.id,
+          onApproved: () async {
+            await session.reload();
+            if (mounted) {
+              setState(() {
+                _invite = null;
+                _team = null;
+              });
+            }
+          },
         ),
+      ),
+    );
+    if (mounted) await session.reload();
+    if (mounted) {
+      setState(() {
+        _invite = null;
+        _team = null;
+      });
+    }
+  }
+
+  Future<void> _review(
+    SalonBusiness business,
+    SalonStaff employee,
+    bool accept,
+  ) async {
+    if (_reviewing != null) return;
+    setState(() => _reviewing = employee.id);
+    try {
+      await session.repository.reviewJoin(employee.id, accept);
+      if (!mounted) return;
+      showMessage(
+        context,
+        accept
+            ? 'Request accepted. Open Billing workspace to use them on bills.'
+            : 'Request declined',
+      );
+      setState(() => _team = session.repository.team(business.id));
+    } catch (error) {
+      if (!mounted) return;
+      showMessage(
+        context,
+        error is OnlineFailure
+            ? error.message
+            : 'Could not update this request. Try again.',
+      );
+    } finally {
+      if (mounted) setState(() => _reviewing = null);
+    }
+  }
+
+  Future<void> _inviteByProfile(SalonBusiness business) async {
+    final code = _inviteCode.text.trim();
+    if (!RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    ).hasMatch(code)) {
+      showMessage(context, 'Paste a valid employee profile code');
+      return;
+    }
+    try {
+      await session.repository.inviteEmployee(business.id, code);
+      if (!mounted) return;
+      _inviteCode.clear();
+      showMessage(
+        context,
+        'Employee added. Open Billing workspace to see them on bills.',
+      );
+      setState(() => _team = session.repository.team(business.id));
+    } catch (error) {
+      if (!mounted) return;
+      showMessage(
+        context,
+        error is OnlineFailure
+            ? error.message
+            : 'Could not add this employee. Try again.',
       );
     }
   }
@@ -66,13 +196,27 @@ class BusinessHome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final workspace = session.workspace!;
+    final active = _choosingBusiness ? null : _primaryActive(workspace);
+    if (active != null) {
+      return WorkspaceScreen(
+        repository: session.repository,
+        business: active,
+        onClose: () => setState(() => _choosingBusiness = true),
+      );
+    }
+    final pendingBusinesses = _choosingBusiness
+        ? <SalonBusiness>[]
+        : workspace.businesses.where((b) => !b.isActive).toList();
+    final singleBusiness =
+        !_choosingBusiness && workspace.businesses.length == 1;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF7F8FA),
-        title: const Text(
-          'Your workspace',
-          style: TextStyle(fontFamily: 'Roboto'),
+        title: Text(
+          active?.name ?? 'Your workspace',
+          style: const TextStyle(fontFamily: 'Roboto'),
         ),
         actions: [
           IconButton(
@@ -89,24 +233,49 @@ class BusinessHome extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'Refresh account',
-            onPressed: session.reload,
+            onPressed: () async {
+              await session.reload();
+              if (!mounted) return;
+              setState(() {
+                _invite = null;
+                _team = null;
+              });
+            },
             icon: const Icon(Icons.refresh),
           ),
           PopupMenuButton<String>(
             tooltip: 'More options',
             onSelected: (value) async {
-              if (value == 'offline') {
-                onOpenOffline();
-              } else {
-                await onSignOut();
+              switch (value) {
+                case 'offline':
+                  widget.onOpenOffline();
+                case 'start':
+                  await _startBusiness(context);
+                case 'join':
+                  if (!mounted) return;
+                  await Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => JoinSalon(repository: session.repository),
+                    ),
+                  );
+                case 'signout':
+                  await widget.onSignOut();
               }
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(
+            itemBuilder: (_) => [
+              if (singleBusiness) ...const [
+                PopupMenuItem(value: 'join', child: Text('Join a salon')),
+                PopupMenuItem(
+                  value: 'start',
+                  child: Text('Start another business'),
+                ),
+              ],
+              const PopupMenuItem(
                 value: 'offline',
                 child: Text('Open offline business app'),
               ),
-              PopupMenuItem(value: 'signout', child: Text('Sign out')),
+              const PopupMenuItem(value: 'signout', child: Text('Sign out')),
             ],
           ),
         ],
@@ -119,10 +288,137 @@ class BusinessHome extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             children: [
               if (workspace.isCached)
-                const Text(
-                  'Offline: showing saved account details. Approval and contract changes require a connection.',
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    'Offline: showing saved account details. Approval and contract changes require a connection.',
+                  ),
                 ),
-              if (workspace.businesses.isNotEmpty) ...[
+              // One business → land straight on that salon's home / approval.
+              if (active != null)
+                _ActiveSalonHome(
+                  business: active,
+                  repository: session.repository,
+                  invite: _invite,
+                  team: _team,
+                  inviteCode: _inviteCode,
+                  reviewing: _reviewing,
+                  onRetryInvite: () => setState(
+                    () =>
+                        _invite = session.repository.businessInvite(active.id),
+                  ),
+                  onRetryTeam: () => setState(
+                    () => _team = session.repository.team(active.id),
+                  ),
+                  onReview: (employee, accept) =>
+                      _review(active, employee, accept),
+                  onInviteByProfile: () => _inviteByProfile(active),
+                  onOpenStaff: () =>
+                      Navigator.push<void>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => StaffScreen(
+                            repository: session.repository,
+                            businessId: active.id,
+                          ),
+                        ),
+                      ).then((_) {
+                        if (mounted) {
+                          setState(
+                            () => _team = session.repository.team(active.id),
+                          );
+                        }
+                      }),
+                  onEditBusiness: () async {
+                    final saved = await Navigator.push<bool>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BusinessForm(
+                          repository: session.repository,
+                          business: active,
+                        ),
+                      ),
+                    );
+                    if (saved == true) await session.reload();
+                    if (mounted) setState(() {});
+                  },
+                  onOpenServices: () => Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OnlineRateList(
+                        repository: session.repository,
+                        businessId: active.id,
+                      ),
+                    ),
+                  ),
+                  onOpenBilling: () => Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => WorkspaceScreen(
+                        repository: session.repository,
+                        business: active,
+                      ),
+                    ),
+                  ),
+                  onOpenOffline: widget.onOpenOffline,
+                )
+              else if (pendingBusinesses.length == 1)
+                BusinessApproval(
+                  business: pendingBusinesses.first,
+                  repository: session.repository,
+                  onRefresh: () {
+                    unawaited(() async {
+                      await session.reload();
+                      if (mounted) {
+                        setState(() {
+                          _invite = null;
+                          _team = null;
+                        });
+                      }
+                    }());
+                  },
+                  onEdit: () async {
+                    final saved = await Navigator.push<bool>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BusinessForm(
+                          repository: session.repository,
+                          business: pendingBusinesses.first,
+                        ),
+                      ),
+                    );
+                    if (saved == true) await session.reload();
+                    if (mounted) setState(() {});
+                  },
+                )
+              else if (pendingBusinesses.isNotEmpty) ...[
+                const Text(
+                  'Waiting for approval',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Pick a salon to check approval status.',
+                  style: TextStyle(color: Color(0xFF718094), height: 1.45),
+                ),
+                const SizedBox(height: 16),
+                WorkspaceCards(
+                  children: [
+                    for (final business in pendingBusinesses)
+                      WorkspaceCard(
+                        title: business.name,
+                        leading: BusinessPhoto(
+                          repository: session.repository,
+                          business: business,
+                        ),
+                        subtitle: 'Awaiting approval · ${business.city}',
+                        icon: Icons.hourglass_top_rounded,
+                        onTap: () => _openSalon(business),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+              ] else if (workspace.businesses.isNotEmpty) ...[
                 const Text(
                   'Your businesses',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
@@ -137,50 +433,377 @@ class BusinessHome extends StatelessWidget {
                           repository: session.repository,
                           business: business,
                         ),
-                        subtitle: business.isActive
-                            ? 'Active · ${business.city}'
-                            : 'Awaiting approval · ${business.city}',
+                        subtitle: '${business.city} · ${business.area}',
                         icon: Icons.storefront_outlined,
-                        onTap: () => Navigator.push<void>(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => OwnerBusiness(
-                              repository: session.repository,
-                              businessId: business.id,
-                            ),
-                          ),
-                        ),
+                        onTap: () => _openSalon(business),
                       ),
                   ],
                 ),
                 const SizedBox(height: 24),
               ],
-              WorkspaceCards(
-                children: [
-                  WorkspaceCard(
-                    title: 'Start a business',
-                    subtitle: 'Set up your salon and manage your team.',
-                    icon: Icons.storefront_outlined,
-                    onTap: () => _startBusiness(context),
+              if (active != null && pendingBusinesses.isNotEmpty) ...[
+                const Text(
+                  'Pending approval',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                WorkspaceCards(
+                  children: [
+                    for (final business in pendingBusinesses)
+                      WorkspaceCard(
+                        title: business.name,
+                        subtitle: 'Awaiting approval · tap for details',
+                        icon: Icons.hourglass_top_rounded,
+                        onTap: () => _openSalon(business),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+              ],
+              // No business yet, or several businesses → show start / join cards.
+              if (!singleBusiness) ...[
+                Text(
+                  workspace.businesses.isEmpty ? 'Get started' : 'More',
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
                   ),
-                  WorkspaceCard(
-                    title: 'Join a salon',
-                    subtitle: 'Join as an employee with a salon code or QR.',
-                    icon: Icons.group_add_outlined,
-                    onTap: () => Navigator.push<void>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            JoinSalon(repository: session.repository),
+                ),
+                const SizedBox(height: 12),
+                WorkspaceCards(
+                  children: [
+                    WorkspaceCard(
+                      title: 'Start a business',
+                      subtitle: active == null
+                          ? 'Set up your salon and manage your team.'
+                          : 'Register another salon location.',
+                      icon: Icons.storefront_outlined,
+                      onTap: () => _startBusiness(context),
+                    ),
+                    WorkspaceCard(
+                      title: 'Join a salon',
+                      subtitle:
+                          'Barbers: finish your profile, then join with a code or QR.',
+                      icon: Icons.group_add_outlined,
+                      onTap: () => Navigator.push<void>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              JoinSalon(repository: session.repository),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ActiveSalonHome extends StatelessWidget {
+  const _ActiveSalonHome({
+    required this.business,
+    required this.repository,
+    required this.invite,
+    required this.team,
+    required this.inviteCode,
+    required this.reviewing,
+    required this.onRetryInvite,
+    required this.onRetryTeam,
+    required this.onReview,
+    required this.onInviteByProfile,
+    required this.onOpenStaff,
+    required this.onEditBusiness,
+    required this.onOpenServices,
+    required this.onOpenBilling,
+    required this.onOpenOffline,
+  });
+
+  final SalonBusiness business;
+  final OnlineRepository repository;
+  final Future<String>? invite;
+  final Future<List<SalonStaff>>? team;
+  final TextEditingController inviteCode;
+  final String? reviewing;
+  final VoidCallback onRetryInvite;
+  final VoidCallback onRetryTeam;
+  final Future<void> Function(SalonStaff employee, bool accept) onReview;
+  final Future<void> Function() onInviteByProfile;
+  final VoidCallback onOpenStaff;
+  final Future<void> Function() onEditBusiness;
+  final VoidCallback onOpenServices;
+  final VoidCallback onOpenBilling;
+  final VoidCallback onOpenOffline;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            BusinessPhoto(repository: repository, business: business),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    business.name,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Approved · ${business.city}',
+                    style: const TextStyle(color: Color(0xFF668400)),
+                  ),
+                  Text(
+                    '${business.area} · ${business.phone}',
+                    style: const TextStyle(color: Color(0xFF718094)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'Manage salon',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 12),
+        WorkspaceCards(
+          children: [
+            WorkspaceCard(
+              title: 'Employees & contracts',
+              subtitle: 'Requests, invite by code, agreements.',
+              leading: FutureBuilder<List<SalonStaff>>(
+                future: team,
+                builder: (context, snapshot) {
+                  final count =
+                      snapshot.data
+                          ?.where((e) => e.joinStatus == 'pending')
+                          .length ??
+                      0;
+                  return Badge(
+                    label: Text('$count'),
+                    isLabelVisible: count > 0,
+                    child: const Icon(
+                      Icons.people_outline,
+                      size: 30,
+                      color: Color(0xFF34441D),
+                    ),
+                  );
+                },
+              ),
+              icon: Icons.people_outline,
+              onTap: onOpenStaff,
+            ),
+            WorkspaceCard(
+              title: 'Services & prices',
+              subtitle: 'Rate list and service media.',
+              icon: Icons.list_alt,
+              onTap: onOpenServices,
+            ),
+            WorkspaceCard(
+              title: 'Billing workspace',
+              subtitle: 'Bills, customers, finance — online & offline.',
+              icon: Icons.point_of_sale_outlined,
+              onTap: onOpenBilling,
+            ),
+            WorkspaceCard(
+              title: 'Offline business app',
+              subtitle: 'Open the full local salon tools.',
+              icon: Icons.phone_android_outlined,
+              onTap: onOpenOffline,
+            ),
+            WorkspaceCard(
+              title: 'Business details',
+              subtitle: 'Update salon information.',
+              icon: Icons.edit_outlined,
+              onTap: () => onEditBusiness(),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          'New employee requests',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        if (team == null)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else
+          RemoteContent<List<SalonStaff>>(
+            future: team!,
+            onRetry: onRetryTeam,
+            builder: (staff) {
+              final pending = staff
+                  .where((e) => e.joinStatus == 'pending')
+                  .toList();
+              if (pending.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Text(
+                    'No pending join requests right now.',
+                    style: TextStyle(color: Color(0xFF718094)),
+                  ),
+                );
+              }
+              return Column(
+                children: [
+                  for (final employee in pending.take(5))
+                    Card(
+                      elevation: 0,
+                      color: Colors.white,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: const BorderSide(color: Color(0xFFE3E7EC)),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              employee.name,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Wants to join your salon',
+                              style: TextStyle(color: Color(0xFF718094)),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ActionButton(
+                                    label: 'Decline',
+                                    icon: Icons.close,
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: const Color(0xFFF3F5F7),
+                                      foregroundColor: Colors.black,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    onPressed: reviewing == employee.id
+                                        ? () async {}
+                                        : () => onReview(employee, false),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: ActionButton(
+                                    label: 'Accept',
+                                    icon: Icons.check,
+                                    style: FilledButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    onPressed: reviewing == employee.id
+                                        ? () async {}
+                                        : () => onReview(employee, true),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  TextButton(
+                    onPressed: onOpenStaff,
+                    child: const Text('View all employees'),
+                  ),
+                ],
+              );
+            },
+          ),
+        const SizedBox(height: 20),
+        const Text(
+          'Add employee by profile code',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'If a barber already has a profile code, invite them directly.',
+          style: TextStyle(color: Color(0xFF718094)),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: inviteCode,
+          autocorrect: false,
+          decoration: InputDecoration(
+            labelText: 'Employee profile code',
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+        ActionButton(
+          label: 'Add employee',
+          icon: Icons.person_add_outlined,
+          style: FilledButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          onPressed: onInviteByProfile,
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          'Employee joining code & QR',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Share this code or QR so staff can request to join after their profile.',
+          style: TextStyle(color: Color(0xFF718094)),
+        ),
+        const SizedBox(height: 12),
+        if (invite == null)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else
+          RemoteContent(
+            future: invite!,
+            onRetry: onRetryInvite,
+            builder: (code) => Column(
+              children: [
+                CopyCode(code: code, label: 'Salon joining code'),
+                PublicQr(
+                  destination: QrDestination('join', code),
+                  label: 'Employee invitation QR',
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 20),
+        PublicQr(
+          destination: QrDestination('salon', business.id),
+          label: 'Customer salon QR',
+        ),
+        const SizedBox(height: 28),
+      ],
     );
   }
 }
@@ -190,9 +813,13 @@ class OwnerBusiness extends StatefulWidget {
     super.key,
     required this.repository,
     required this.businessId,
+    this.managementOnly = false,
+    this.onApproved,
   });
   final OnlineRepository repository;
   final String businessId;
+  final bool managementOnly;
+  final Future<void> Function()? onApproved;
 
   @override
   State<OwnerBusiness> createState() => _OwnerBusinessState();
@@ -203,6 +830,7 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
   Future<String>? _invite;
   Future<List<SalonStaff>>? _team;
   late final Timer _poll;
+  bool _leavingForHome = false;
 
   @override
   void initState() {
@@ -211,7 +839,9 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
       if (mounted &&
           _team != null &&
           ModalRoute.of(context)?.isCurrent == true) {
-        setState(() => _team = widget.repository.team(widget.businessId));
+        setState(() {
+          _team = widget.repository.team(widget.businessId);
+        });
       }
     });
   }
@@ -228,8 +858,34 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
     _team = null;
   });
 
+  Future<void> _goHomeAfterApproval() async {
+    if (_leavingForHome) return;
+    _leavingForHome = true;
+    await widget.onApproved?.call();
+    if (mounted) Navigator.of(context).pop();
+  }
+
   @override
-  Widget build(BuildContext context) => OnlinePage(
+  Widget build(BuildContext context) => FutureBuilder<OnlineWorkspace>(
+    future: _workspace,
+    builder: (context, snapshot) {
+      final matches = snapshot.data?.businesses.where(
+        (business) => business.id == widget.businessId,
+      );
+      if (!widget.managementOnly &&
+          matches != null &&
+          matches.isNotEmpty &&
+          matches.first.isActive) {
+        return WorkspaceScreen(
+          repository: widget.repository,
+          business: matches.first,
+        );
+      }
+      return _management(context);
+    },
+  );
+
+  Widget _management(BuildContext context) => OnlinePage(
     title: 'Business details',
     actions: [
       IconButton(
@@ -256,7 +912,23 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
             return BusinessApproval(
               business: business,
               repository: widget.repository,
-              onRefresh: _refresh,
+              onRefresh: () {
+                final next = widget.repository.loadWorkspace();
+                setState(() {
+                  _workspace = next;
+                  _invite = null;
+                  _team = null;
+                });
+                unawaited(() async {
+                  final latest = await next;
+                  final current = latest.businesses.where(
+                    (item) => item.id == widget.businessId,
+                  );
+                  if (current.isNotEmpty && current.first.isActive && mounted) {
+                    await _goHomeAfterApproval();
+                  }
+                }());
+              },
               onEdit: () async {
                 final saved = await Navigator.push<bool>(
                   context,
@@ -275,55 +947,30 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (business.logoPath != null) ...[
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: BusinessPhoto(
-                    repository: widget.repository,
-                    business: business,
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
               Text(
                 business.name,
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
-              const SizedBox(height: 12),
-              Text(business.address),
-              Text('${business.city} · ${business.area}'),
-              Text(business.phone),
-              const SizedBox(height: 20),
-              Text(
-                business.isActive
-                    ? 'Approved and visible to customers.'
-                    : 'This business is inactive. Admin approval is required before customers can find it or employees can join.',
+              const SizedBox(height: 8),
+              const Text(
+                'Approved. Manage this salon from Home for requests, joining code and billing.',
+                style: TextStyle(color: Color(0xFF718094)),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              ActionButton(
+                label: 'Back to home',
+                icon: Icons.home_outlined,
+                onPressed: () async {
+                  await widget.onApproved?.call();
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+              ),
+              const SizedBox(height: 12),
               WorkspaceCards(
                 children: [
                   WorkspaceCard(
                     title: 'Employees & contracts',
                     subtitle: 'Join requests, employees and agreements.',
-                    leading: FutureBuilder<List<SalonStaff>>(
-                      future: _team,
-                      builder: (context, snapshot) {
-                        final count =
-                            snapshot.data
-                                ?.where((e) => e.joinStatus == 'pending')
-                                .length ??
-                            0;
-                        return Badge(
-                          label: Text('$count'),
-                          isLabelVisible: count > 0,
-                          child: const Icon(
-                            Icons.people_outline,
-                            size: 30,
-                            color: Color(0xFF34441D),
-                          ),
-                        );
-                      },
-                    ),
                     icon: Icons.people_outline,
                     onTap: () => Navigator.push<void>(
                       context,
@@ -336,44 +983,29 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
                     ),
                   ),
                   WorkspaceCard(
-                    title: 'Business details',
-                    subtitle: 'Update your salon information.',
-                    icon: Icons.edit_outlined,
-                    onTap: () async {
-                      final saved = await Navigator.push<bool>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => BusinessForm(
-                            repository: widget.repository,
-                            business: business,
-                          ),
-                        ),
-                      );
-                      if (saved == true && mounted) _refresh();
-                    },
-                  ),
-                  WorkspaceCard(
                     title: 'Services & prices',
                     subtitle: 'Manage your rate list and service photos.',
                     icon: Icons.list_alt,
-                    onTap: () async {
-                      await Navigator.push<void>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => OnlineRateList(
-                            repository: widget.repository,
-                            businessId: business.id,
-                          ),
+                    onTap: () => Navigator.push<void>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => OnlineRateList(
+                          repository: widget.repository,
+                          businessId: business.id,
                         ),
-                      );
-                    },
+                      ),
+                    ),
                   ),
                   WorkspaceCard(
                     title: 'Billing workspace',
                     subtitle: 'Open your salon’s online and offline workspace.',
                     icon: Icons.sync,
-                    onTap: () async {
-                      await Navigator.push<void>(
+                    onTap: () {
+                      if (widget.managementOnly) {
+                        Navigator.of(context).pop();
+                        return;
+                      }
+                      Navigator.push<void>(
                         context,
                         MaterialPageRoute(
                           builder: (_) => WorkspaceScreen(
@@ -387,41 +1019,32 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
                 ],
               ),
               const SizedBox(height: 24),
-              if (business.isActive) ...[
-                PublicQr(
-                  destination: QrDestination('salon', business.id),
-                  label: 'Customer salon QR',
-                ),
-                ActionButton(
-                  label: 'Show employee joining code',
-                  icon: Icons.group_add_outlined,
-                  onPressed: () async {
-                    setState(
-                      () => _invite = widget.repository.businessInvite(
-                        business.id,
-                      ),
-                    );
-                  },
-                ),
-                if (_invite != null)
-                  RemoteContent(
-                    future: _invite!,
-                    onRetry: () => setState(
-                      () => _invite = widget.repository.businessInvite(
-                        business.id,
-                      ),
-                    ),
-                    builder: (code) => Column(
-                      children: [
-                        CopyCode(code: code, label: 'Salon joining code'),
-                        PublicQr(
-                          destination: QrDestination('join', code),
-                          label: 'Employee invitation QR',
-                        ),
-                      ],
-                    ),
+              ActionButton(
+                label: 'Show employee joining code',
+                icon: Icons.group_add_outlined,
+                onPressed: () async {
+                  final future = widget.repository.businessInvite(business.id);
+                  setState(() => _invite = future);
+                  await future;
+                },
+              ),
+              if (_invite != null)
+                RemoteContent(
+                  future: _invite!,
+                  onRetry: () => setState(
+                    () =>
+                        _invite = widget.repository.businessInvite(business.id),
                   ),
-              ],
+                  builder: (code) => Column(
+                    children: [
+                      CopyCode(code: code, label: 'Salon joining code'),
+                      PublicQr(
+                        destination: QrDestination('join', code),
+                        label: 'Employee invitation QR',
+                      ),
+                    ],
+                  ),
+                ),
             ],
           );
         },
@@ -454,7 +1077,9 @@ class _JoinSalonState extends State<JoinSalon> {
       if (mounted &&
           !_requesting &&
           ModalRoute.of(context)?.isCurrent == true) {
-        setState(() => _joinRequests = widget.repository.joinRequests());
+        setState(() {
+          _joinRequests = widget.repository.joinRequests();
+        });
       }
     });
   }
@@ -542,7 +1167,7 @@ class _JoinSalonState extends State<JoinSalon> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Waiting for the salon owner’s approval.',
+                      'Check your request status below.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Color(0xFF718094)),
                     ),
@@ -675,8 +1300,9 @@ class _JoinSalonState extends State<JoinSalon> {
     builder: (context, snapshot) {
       if (snapshot.hasError) {
         return TextButton(
-          onPressed: () =>
-              setState(() => _joinRequests = widget.repository.joinRequests()),
+          onPressed: () => setState(() {
+            _joinRequests = widget.repository.joinRequests();
+          }),
           child: const Text('Retry join request status'),
         );
       }

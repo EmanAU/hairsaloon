@@ -52,11 +52,13 @@ class WorkContract {
     required this.salary,
     required this.commission,
     required this.terms,
+    this.businessId = '',
     this.businessName = 'Salon unavailable',
     this.releaseReason,
   });
   final String id;
   final String employeeId;
+  final String businessId;
   final String kind;
   final DateTime startsAt;
   final DateTime? endsAt;
@@ -66,6 +68,8 @@ class WorkContract {
   final String terms;
   final String businessName;
   final String? releaseReason;
+
+  bool get isLive => displayStatus == 'active';
 
   bool get canRelease =>
       status == 'accepted' &&
@@ -80,22 +84,77 @@ class WorkContract {
     return startsAt.isAfter(DateTime.now()) ? 'scheduled' : 'active';
   }
 
-  factory WorkContract.fromJson(Map<String, dynamic> json) => WorkContract(
-    id: json['id'] as String,
-    employeeId: json['employee_id'] as String,
-    kind: json['kind'] as String,
-    startsAt: DateTime.parse(json['starts_at'] as String),
-    endsAt: DateTime.tryParse(json['ends_at'] as String? ?? ''),
-    status: json['status'] as String,
-    salary: (json['salary'] as num).toDouble(),
-    commission: (json['commission_percent'] as num).toDouble(),
-    terms: json['terms'] as String,
-    businessName:
-        ((json['business_employees'] as Map?)?['businesses'] as Map?)?['name']
-            as String? ??
-        'Salon unavailable',
-    releaseReason: json['release_reason'] as String?,
-  );
+  factory WorkContract.fromJson(Map<String, dynamic> json) {
+    final membership = json['business_employees'] as Map?;
+    return WorkContract(
+      id: json['id'] as String,
+      employeeId: json['employee_id'] as String,
+      businessId: membership?['business_id'] as String? ?? '',
+      kind: json['kind'] as String,
+      startsAt: DateTime.parse(json['starts_at'] as String),
+      endsAt: DateTime.tryParse(json['ends_at'] as String? ?? ''),
+      status: json['status'] as String,
+      salary: (json['salary'] as num).toDouble(),
+      commission: (json['commission_percent'] as num).toDouble(),
+      terms: json['terms'] as String,
+      businessName:
+          (membership?['businesses'] as Map?)?['name'] as String? ??
+          'Salon unavailable',
+      releaseReason: json['release_reason'] as String?,
+    );
+  }
+}
+
+/// One billed job attributed to the signed-in employee.
+class EmployeeWorkJob {
+  const EmployeeWorkJob({
+    required this.id,
+    required this.createdAt,
+    required this.customerName,
+    required this.total,
+    required this.services,
+    required this.businessName,
+    required this.commissionPercent,
+  });
+  final String id;
+  final DateTime createdAt;
+  final String customerName;
+  final double total;
+  final List<String> services;
+  final String businessName;
+  final double commissionPercent;
+
+  double get earning =>
+      double.parse((total * commissionPercent / 100).toStringAsFixed(2));
+}
+
+class EmployeeDayWork {
+  const EmployeeDayWork({
+    required this.date,
+    required this.jobs,
+  });
+  final DateTime date;
+  final List<EmployeeWorkJob> jobs;
+
+  double get sales => jobs.fold<double>(0, (sum, job) => sum + job.total);
+  double get earning => jobs.fold<double>(0, (sum, job) => sum + job.earning);
+  int get jobCount => jobs.length;
+}
+
+class EmployeeDashboardData {
+  const EmployeeDashboardData({
+    required this.contracts,
+    required this.joinRequests,
+    required this.days,
+  });
+  final List<WorkContract> contracts;
+  final List<SalonJoinRequest> joinRequests;
+  final List<EmployeeDayWork> days;
+
+  List<WorkContract> get liveContracts =>
+      contracts.where((c) => c.isLive).toList();
+  List<WorkContract> get draftContracts =>
+      contracts.where((c) => c.status == 'draft').toList();
 }
 
 class OnlineAccount {

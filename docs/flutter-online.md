@@ -141,6 +141,13 @@ remain visible in the apps and portal.
 
 ## Checks
 
+Approved businesses open the same Home/Billing/Expense dashboard as the offline
+app, with salon-scoped storage and synchronization. Home adds matching Join
+requests, Contracts, Online services and Business details shortcuts, inline
+request approval, profile-code employee invites and expandable joining-code/QR.
+Sync status and business switching are available on Home. Unapproved businesses
+continue to use the approval waiting screen.
+
 ```sh
 flutter test --no-pub test/online
 dart analyze lib/src/online lib/main.dart test/online
