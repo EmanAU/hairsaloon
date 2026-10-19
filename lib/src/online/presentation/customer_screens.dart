@@ -27,8 +27,15 @@ class CustomerDirectory extends StatefulWidget {
 class _CustomerDirectoryState extends State<CustomerDirectory> {
   late Future<List<SalonBusiness>> _businesses = widget.repository
       .discoverBusinesses();
+  final _searchCtrl = TextEditingController();
   String _search = '';
   int _page = 0;
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   void _load() => setState(
     () => _businesses = widget.repository.discoverBusinesses(
@@ -37,169 +44,380 @@ class _CustomerDirectoryState extends State<CustomerDirectory> {
     ),
   );
 
-  Widget _salonTile(SalonBusiness salon) {
-    final text = Theme.of(context).textTheme;
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.homeBorder),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        leading: BusinessPhoto(
-          repository: widget.repository,
-          business: salon,
-        ),
-        title: Text(salon.name, style: text.titleSmall),
-        subtitle: Text(
-          '${salon.type}\n${salon.city} · ${salon.area}',
-          style: text.bodySmall?.copyWith(color: AppColors.textSecondary),
-        ),
-        isThreeLine: true,
-        trailing: Icon(
-          Icons.chevron_right,
-          color: AppColors.iconMuted,
-        ),
-        onTap: () => Navigator.push<void>(
+  Future<void> _scanQr() async {
+    final target = await Navigator.push<QrDestination>(
+      context,
+      MaterialPageRoute(builder: (_) => const ScanQr()),
+    );
+    if (target == null || !mounted) return;
+    try {
+      final business = await widget.repository.findBusiness(
+        target.id,
+        barber: target.kind == 'barber',
+      );
+      if (!mounted) return;
+      if (business == null) {
+        showMessage(
           context,
-          MaterialPageRoute(
-            builder: (_) =>
-                SalonDetails(repository: widget.repository, business: salon),
+          'This salon or barber is not currently available.',
+        );
+        return;
+      }
+      await Navigator.push<void>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SalonDetails(
+            repository: widget.repository,
+            business: business,
+            barberId: target.kind == 'barber' ? target.id : null,
           ),
         ),
-      ),
-    );
+      );
+    } catch (_) {
+      if (mounted) {
+        showMessage(
+          context,
+          'Could not open QR. Check your connection and try again.',
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    return OnlinePage(
-      title: 'Find a salon',
-      actions: [
-        IconButton(
-          tooltip: 'Scan salon or barber QR',
-          icon: const Icon(Icons.qr_code_scanner),
-          onPressed: () async {
-            final target = await Navigator.push<QrDestination>(
-              context,
-              MaterialPageRoute(builder: (_) => const ScanQr()),
-            );
-            if (target == null || !mounted) return;
-            try {
-              final business = await widget.repository.findBusiness(
-                target.id,
-                barber: target.kind == 'barber',
-              );
-              if (!context.mounted) return;
-              if (business == null) {
-                showMessage(
-                  context,
-                  'This salon or barber is not currently available.',
-                );
-                return;
-              }
-              await Navigator.push<void>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => SalonDetails(
-                    repository: widget.repository,
-                    business: business,
-                    barberId: target.kind == 'barber' ? target.id : null,
+    return Scaffold(
+      backgroundColor: AppColors.homeCanvas,
+      body: SafeArea(
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'TrimMatrix',
+                                style: text.headlineMedium?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.8,
+                                  color: AppColors.homeInk,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Scan QR',
+                              onPressed: _scanQr,
+                              icon: const Icon(Icons.qr_code_scanner_rounded),
+                            ),
+                            IconButton(
+                              tooltip: 'Refresh',
+                              onPressed: _load,
+                              icon: const Icon(Icons.refresh_rounded),
+                            ),
+                            PopupMenuButton<String>(
+                              onSelected: (value) async {
+                                if (value == 'signout') {
+                                  await widget.onSignOut();
+                                }
+                              },
+                              itemBuilder: (_) => const [
+                                PopupMenuItem(
+                                  value: 'signout',
+                                  child: Text('Sign out'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Find your next look',
+                          style: text.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.homeOlive,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Discover salons near you — pick a service, see real results.',
+                          style: text.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.homeBorder),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: AppColors.shadow,
+                                blurRadius: 16,
+                                offset: Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: TextField(
+                            controller: _searchCtrl,
+                            textInputAction: TextInputAction.search,
+                            onSubmitted: (value) {
+                              _search = value.trim();
+                              _page = 0;
+                              _load();
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'Search salon name',
+                              prefixIcon: const Icon(
+                                Icons.search_rounded,
+                                color: AppColors.iconMuted,
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 14,
+                              ),
+                              suffixIcon: IconButton(
+                                tooltip: 'Search',
+                                onPressed: () {
+                                  _search = _searchCtrl.text.trim();
+                                  _page = 0;
+                                  _load();
+                                },
+                                icon: const Icon(Icons.arrow_forward_rounded),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'Salons',
+                          style: text.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                    ),
                   ),
                 ),
-              );
-            } catch (_) {
-              if (context.mounted) {
-                showMessage(
-                  context,
-                  'Could not open QR. Check your connection and try again.',
-                );
-              }
-            }
-          },
-        ),
-        IconButton(
-          tooltip: 'Refresh salons',
-          onPressed: _load,
-          icon: const Icon(Icons.refresh),
-        ),
-      ],
-      children: [
-        TextField(
-          decoration: InputDecoration(
-            labelText: 'Search salon name',
-            prefixIcon: const Icon(Icons.search),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                  sliver: SliverToBoxAdapter(
+                    child: RemoteContent<List<SalonBusiness>>(
+                      future: _businesses,
+                      onRetry: _load,
+                      builder: (businesses) {
+                        if (businesses.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 48),
+                            child: Text(
+                              'No salons found. Try another search.',
+                              textAlign: TextAlign.center,
+                              style: text.bodyMedium?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          );
+                        }
+                        return Column(
+                          children: [
+                            for (final salon in businesses)
+                              _SalonDiscoverCard(
+                                repository: widget.repository,
+                                salon: salon,
+                                onTap: () => Navigator.push<void>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => SalonDetails(
+                                      repository: widget.repository,
+                                      business: salon,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                TextButton(
+                                  onPressed: _page == 0
+                                      ? null
+                                      : () {
+                                          _page--;
+                                          _load();
+                                        },
+                                  child: const Text('Previous'),
+                                ),
+                                Text(
+                                  'Page ${_page + 1}',
+                                  style: text.bodyMedium,
+                                ),
+                                TextButton(
+                                  onPressed: businesses.length < 25
+                                      ? null
+                                      : () {
+                                          _page++;
+                                          _load();
+                                        },
+                                  child: const Text('Next'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          textInputAction: TextInputAction.search,
-          onSubmitted: (value) {
-            _search = value.trim();
-            _page = 0;
-            _load();
-          },
         ),
-        const SizedBox(height: AppSpacing.md),
-        RemoteContent<List<SalonBusiness>>(
-          future: _businesses,
-          onRetry: _load,
-          builder: (businesses) => Column(
-            children: [
-              if (businesses.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  child: Text(
-                    'No salons found. Try another search or check back later.',
-                    style: text.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                    textAlign: TextAlign.center,
+      ),
+    );
+  }
+}
+
+class _SalonDiscoverCard extends StatelessWidget {
+  const _SalonDiscoverCard({
+    required this.repository,
+    required this.salon,
+    required this.onTap,
+  });
+
+  final OnlineRepository repository;
+  final SalonBusiness salon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.homeBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: 148,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      BusinessPhoto(
+                        repository: repository,
+                        business: salon,
+                        width: double.infinity,
+                        height: 148,
+                        borderRadius: 0,
+                      ),
+                      const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Color(0x00000000),
+                              Color(0x66000000),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: 14,
+                        right: 14,
+                        bottom: 12,
+                        child: Text(
+                          salon.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.titleLarge?.copyWith(
+                            color: AppColors.surface,
+                            fontWeight: FontWeight.w800,
+                            height: 1.15,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ...businesses.map(_salonTile),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextButton(
-                    onPressed: _page == 0
-                        ? null
-                        : () {
-                            _page--;
-                            _load();
-                          },
-                    child: const Text('Previous'),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              salon.type.trim().isEmpty
+                                  ? 'Salon'
+                                  : salon.type,
+                              style: text.labelLarge?.copyWith(
+                                color: AppColors.homeOlive,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              [
+                                salon.area,
+                                salon.city,
+                              ].where((s) => s.trim().isNotEmpty).join(' · '),
+                              style: text.bodyMedium?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: const Text(
+                          'View',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  Text('Page ${_page + 1}', style: text.bodyMedium),
-                  TextButton(
-                    onPressed: businesses.length < 25
-                        ? null
-                        : () {
-                            _page++;
-                            _load();
-                          },
-                    child: const Text('Next'),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: AppSpacing.lg),
-        Center(
-          child: TextButton(
-            onPressed: widget.onSignOut,
-            child: const Text('Sign out'),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -258,244 +476,285 @@ class _SalonDetailsState extends State<SalonDetails> {
     final text = Theme.of(context).textTheme;
     return Scaffold(
       backgroundColor: AppColors.homeCanvas,
-      appBar: AppBar(
-        backgroundColor: AppColors.homeCanvas,
-        title: Text(business.name, style: text.titleLarge),
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh),
-            onPressed: () => setState(() {
-              _staff = widget.repository.staff(business.id);
-              _services = widget.repository.services(business.id);
-            }),
-          ),
-        ],
-      ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.sm,
-              AppSpacing.lg,
-              AppSpacing.xl,
-            ),
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.homeBorder),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+      body: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 220,
+            pinned: true,
+            backgroundColor: AppColors.homeCanvas,
+            foregroundColor: AppColors.homeInk,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  BusinessPhoto(
+                    repository: widget.repository,
+                    business: business,
+                    width: double.infinity,
+                    height: 220,
+                    borderRadius: 0,
+                  ),
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0x33000000),
+                          Color(0x99000000),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 20,
+                    right: 20,
+                    bottom: 20,
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: SizedBox(
-                            width: 72,
-                            height: 72,
-                            child: ColoredBox(
-                              color: AppColors.homeSage,
-                              child: Center(
-                                child: BusinessPhoto(
-                                  repository: widget.repository,
-                                  business: business,
-                                ),
-                              ),
-                            ),
+                        Text(
+                          business.name,
+                          style: text.headlineSmall?.copyWith(
+                            color: AppColors.surface,
+                            fontWeight: FontWeight.w900,
+                            height: 1.15,
                           ),
                         ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(business.name, style: text.headlineSmall),
-                              const SizedBox(height: AppSpacing.xs),
-                              Text(
-                                business.type,
-                                style: text.labelLarge?.copyWith(
-                                  color: AppColors.homeOlive,
-                                ),
-                              ),
-                            ],
+                        const SizedBox(height: 6),
+                        Text(
+                          business.type.trim().isEmpty
+                              ? 'Salon'
+                              : business.type,
+                          style: text.titleSmall?.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    _DetailRow(
-                      icon: Icons.place_outlined,
-                      text: [
-                        business.address,
-                        '${business.area}, ${business.city}',
-                      ].where((s) => s.trim().isNotEmpty).join('\n'),
-                    ),
-                    if (business.phone.trim().isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      _DetailRow(
-                        icon: Icons.phone_outlined,
-                        text: business.phone,
-                      ),
-                    ],
-                    if (widget.barberId != null) ...[
-                      const SizedBox(height: AppSpacing.md),
-                      FutureBuilder<String?>(
-                        future: widget.repository.profilePhoto(
-                          barberId: widget.barberId,
-                        ),
-                        builder: (context, snapshot) {
-                          final url = snapshot.data;
-                          return Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 22,
-                                backgroundColor: AppColors.homeSage,
-                                backgroundImage: url == null
-                                    ? null
-                                    : NetworkImage(url),
-                                child: url == null
-                                    ? const Icon(Icons.person_outline)
-                                    : null,
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              Expanded(
-                                child: Text(
-                                  'Barber profile from QR',
-                                  style: text.titleSmall,
-                                ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              IconButton(
+                tooltip: 'Refresh',
+                icon: const Icon(Icons.refresh_rounded),
+                onPressed: () => setState(() {
+                  _staff = widget.repository.staff(business.id);
+                  _services = widget.repository.services(business.id);
+                }),
+              ),
+            ],
+          ),
+          SliverToBoxAdapter(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _InfoBlock(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _DetailRow(
+                              icon: Icons.place_outlined,
+                              text: [
+                                business.address,
+                                '${business.area}, ${business.city}',
+                              ].where((s) => s.trim().isNotEmpty).join('\n'),
+                            ),
+                            if (business.phone.trim().isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              _DetailRow(
+                                icon: Icons.phone_outlined,
+                                text: business.phone,
                               ),
                             ],
-                          );
-                        },
+                          ],
+                        ),
                       ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Text('Rate list', style: text.titleMedium),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Tap a service for details, photos and price.',
-                style: text.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              RemoteContent<List<SalonService>>(
-                future: _services,
-                onRetry: () => setState(
-                  () => _services = widget.repository.services(business.id),
-                ),
-                builder: (services) {
-                  if (services.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.lg,
+                      if (widget.barberId != null) ...[
+                        const SizedBox(height: 14),
+                        FutureBuilder<String?>(
+                          future: widget.repository.profilePhoto(
+                            barberId: widget.barberId,
+                          ),
+                          builder: (context, snapshot) {
+                            final url = snapshot.data;
+                            return _InfoBlock(
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 24,
+                                    backgroundColor: AppColors.homeSage,
+                                    backgroundImage: url == null
+                                        ? null
+                                        : NetworkImage(url),
+                                    child: url == null
+                                        ? const Icon(Icons.person_outline)
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'Barber from your QR scan',
+                                      style: text.titleSmall?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+                      Text(
+                        'Services',
+                        style: text.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                      child: Text(
-                        'No services published yet.',
-                        textAlign: TextAlign.center,
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tap any service for details, price and photos.',
                         style: text.bodyMedium?.copyWith(
                           color: AppColors.textSecondary,
                         ),
                       ),
-                    );
-                  }
-                  final groups = _group(services);
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (final entry in groups.entries) ...[
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            top: AppSpacing.sm,
-                            bottom: AppSpacing.xs,
-                          ),
-                          child: Text(entry.key, style: text.titleSmall),
+                      const SizedBox(height: 12),
+                      RemoteContent<List<SalonService>>(
+                        future: _services,
+                        onRetry: () => setState(
+                          () => _services =
+                              widget.repository.services(business.id),
                         ),
-                        for (final service in entry.value)
-                          _ServiceRow(
-                            name: service.name,
-                            description: service.description.trim().isEmpty
-                                ? 'View details'
-                                : service.description,
-                            price:
-                                'Rs ${service.price.toStringAsFixed(0)}',
-                            onTap: () => _openService(service),
-                          ),
-                      ],
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Text('Barbers', style: text.titleMedium),
-              const SizedBox(height: AppSpacing.sm),
-              RemoteContent<List<SalonStaff>>(
-                future: _staff,
-                onRetry: () => setState(
-                  () => _staff = widget.repository.staff(business.id),
-                ),
-                builder: (staff) {
-                  final visible = staff
-                      .where(
-                        (b) =>
-                            widget.barberId == null || b.id == widget.barberId,
-                      )
-                      .toList();
-                  if (visible.isEmpty) {
-                    return Text(
-                      'No active barbers listed yet.',
-                      style: text.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    );
-                  }
-                  return Column(
-                    children: [
-                      for (final barber in visible)
-                        _BarberRow(
-                          name: barber.name,
-                          subtitle: barber.isWorking
-                              ? 'Available now'
-                              : 'Listed at this salon',
-                          showChevron: widget.barberId == null,
-                          onTap: widget.barberId != null
-                              ? null
-                              : () => Navigator.push<void>(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => SalonDetails(
-                                      repository: widget.repository,
-                                      business: business,
-                                      barberId: barber.id,
+                        builder: (services) {
+                          if (services.isEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: AppSpacing.lg,
+                              ),
+                              child: Text(
+                                'No services published yet.',
+                                textAlign: TextAlign.center,
+                                style: text.bodyMedium?.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            );
+                          }
+                          final groups = _group(services);
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (final entry in groups.entries) ...[
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 10,
+                                    bottom: 8,
+                                  ),
+                                  child: Text(
+                                    entry.key,
+                                    style: text.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.homeOlive,
                                     ),
                                   ),
                                 ),
+                                for (final service in entry.value)
+                                  _ServiceRow(
+                                    name: service.name,
+                                    description:
+                                        service.description.trim().isEmpty
+                                        ? 'View details'
+                                        : service.description,
+                                    price:
+                                        'Rs ${service.price.toStringAsFixed(0)}',
+                                    onTap: () => _openService(service),
+                                  ),
+                              ],
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Team',
+                        style: text.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
                         ),
+                      ),
+                      const SizedBox(height: 12),
+                      RemoteContent<List<SalonStaff>>(
+                        future: _staff,
+                        onRetry: () => setState(
+                          () =>
+                              _staff = widget.repository.staff(business.id),
+                        ),
+                        builder: (staff) {
+                          final visible = staff
+                              .where(
+                                (b) =>
+                                    widget.barberId == null ||
+                                    b.id == widget.barberId,
+                              )
+                              .toList();
+                          if (visible.isEmpty) {
+                            return Text(
+                              'No team members listed yet.',
+                              style: text.bodyMedium?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            );
+                          }
+                          return Column(
+                            children: [
+                              for (final barber in visible)
+                                _BarberRow(
+                                  name: barber.name,
+                                  subtitle: barber.isWorking
+                                      ? 'Available now'
+                                      : 'At this salon',
+                                  showChevron: widget.barberId == null,
+                                  onTap: widget.barberId != null
+                                      ? null
+                                      : () => Navigator.push<void>(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => SalonDetails(
+                                              repository: widget.repository,
+                                              business: business,
+                                              barberId: barber.id,
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      ReviewsPanel(
+                        repository: widget.repository,
+                        businessId: business.id,
+                        employeeId: widget.barberId,
+                      ),
                     ],
-                  );
-                },
+                  ),
+                ),
               ),
-              const SizedBox(height: AppSpacing.md),
-              ReviewsPanel(
-                repository: widget.repository,
-                businessId: business.id,
-                employeeId: widget.barberId,
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -549,18 +808,12 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
     return Scaffold(
       backgroundColor: AppColors.homeCanvas,
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
+        backgroundColor: AppColors.homeCanvas,
         surfaceTintColor: const Color(0x00000000),
         elevation: 0,
-        foregroundColor: AppColors.onPrimary,
-        iconTheme: const IconThemeData(color: AppColors.onPrimary),
         title: Text(
-          service.name,
-          style: const TextStyle(
-            color: AppColors.onPrimary,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-          ),
+          'Service',
+          style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
         ),
       ),
       body: Align(
@@ -568,64 +821,87 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.xl,
-            ),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
+            physics: const AlwaysScrollableScrollPhysics(),
             children: [
               Text(
-                widget.business.name,
-                style: text.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
+                widget.business.name.toUpperCase(),
+                style: text.labelMedium?.copyWith(
+                  color: AppColors.homeOlive,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.1,
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: 10),
               Text(
                 service.name,
                 style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  height: 1.2,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.homeInk,
+                  height: 1.15,
+                  letterSpacing: -0.6,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Text(
                 category,
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.homeOlive,
+                  color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: 18),
               Container(
+                width: double.infinity,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
+                  horizontal: 16,
+                  vertical: 14,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Rs ${service.price.toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withValues(alpha: 0.75),
+                      AppColors.primary.withValues(alpha: 0.35),
+                    ],
                   ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    const Text(
+                      'From',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Rs ${service.price.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.lg),
-              ServiceRichContent(
-                contentJson: service.contentJson,
-                fallbackDescription: service.description,
+              const SizedBox(height: 22),
+              Text(
+                'About this service',
+                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: 10),
+              _InfoBlock(
+                child: ServiceRichContent(
+                  contentJson: service.contentJson,
+                  fallbackDescription: service.description,
+                ),
+              ),
+              const SizedBox(height: 22),
               FutureBuilder<List<Map<String, dynamic>>>(
                 future: _media,
                 builder: (context, snapshot) {
@@ -641,7 +917,7 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                         vertical: AppSpacing.md,
                       ),
                       child: Text(
-                        'Could not load photos. Pull back and try again.',
+                        'Could not load photos.',
                         style: text.bodyMedium?.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -655,41 +931,56 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Before & after',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                          style: text.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        BeforeAfterSlider(
-                          beforeUrl: pair.before!,
-                          afterUrl: pair.after!,
+                        const SizedBox(height: 6),
+                        Text(
+                          'Slide to compare the real result.',
+                          style: text.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: BeforeAfterSlider(
+                            beforeUrl: pair.before!,
+                            afterUrl: pair.after!,
+                          ),
                         ),
                       ],
                     );
                   }
-                  if (rows.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.sm,
-                    ),
-                    child: Text(
-                      'Photos for this service are not ready yet.',
-                      style: text.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  );
+                  return const SizedBox.shrink();
                 },
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _InfoBlock extends StatelessWidget {
+  const _InfoBlock({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.homeBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: child,
       ),
     );
   }
@@ -711,53 +1002,64 @@ class _ServiceRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Material(
         color: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: const BorderSide(color: AppColors.homeBorder),
-        ),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
+          borderRadius: BorderRadius.circular(14),
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.homeBorder),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(name, style: text.titleSmall),
-                      const SizedBox(height: 2),
-                      Text(
-                        description,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: text.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: text.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        price,
+                        style: text.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.iconMuted,
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(price, style: text.titleSmall),
-                    const Icon(
-                      Icons.chevron_right,
-                      size: 18,
-                      color: AppColors.iconMuted,
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -782,45 +1084,56 @@ class _BarberRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Material(
         color: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: const BorderSide(color: AppColors.homeBorder),
-        ),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
+          borderRadius: BorderRadius.circular(14),
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.homeBorder),
             ),
-            child: Row(
-              children: [
-                const CircleAvatar(
-                  backgroundColor: AppColors.homeSage,
-                  child: Icon(Icons.person_outline),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(name, style: text.titleSmall),
-                      Text(
-                        subtitle,
-                        style: text.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: AppColors.homeSage,
+                    child: Text(
+                      name.isEmpty ? '?' : name[0].toUpperCase(),
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
                   ),
-                ),
-                if (showChevron)
-                  const Icon(Icons.chevron_right, color: AppColors.iconMuted),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: text.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          subtitle,
+                          style: text.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (showChevron)
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.iconMuted,
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -846,8 +1159,9 @@ class _DetailRow extends StatelessWidget {
           child: Text(
             text,
             style: style?.copyWith(
-              height: 1.35,
+              height: 1.4,
               color: AppColors.homeInk,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),

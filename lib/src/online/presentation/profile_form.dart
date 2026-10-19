@@ -350,6 +350,16 @@ class _ProfileFormState extends State<ProfileForm> {
                   children: [
                     Center(child: _photoPicker()),
                     const SizedBox(height: 24),
+                    if (widget.onboarding) ...[
+                      Text(
+                        'If a salon invited you, enter the same CNIC and sign in with the same email they used — you will be asked to join after this.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: _muted,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                     _fields(),
                     const SizedBox(height: 24),
                     SizedBox(
