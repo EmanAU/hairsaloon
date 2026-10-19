@@ -37,10 +37,8 @@ class SettingsStore extends ChangeNotifier {
 
   static const List<String> defaultPaymentAccounts = <String>[
     'Cash — Counter',
-    'Easy — Business',
     'Card — POS',
     'Online — Bank transfer',
-    'JazzCash — Business',
   ];
 
   /// Wire cloud persistence after workspace settings are hydrated.

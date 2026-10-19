@@ -55,10 +55,8 @@ on conflict (name) do update set sort_order = excluded.sort_order;
 insert into public.default_payment_accounts(label, sort_order)
 select * from (values
   ('Cash — Counter', 1),
-  ('Easy — Business', 2),
-  ('Card — POS', 3),
-  ('Online — Bank transfer', 4),
-  ('JazzCash — Business', 5)
+  ('Card — POS', 2),
+  ('Online — Bank transfer', 3)
 ) as v(label, sort_order)
 on conflict (label) do update set sort_order = excluded.sort_order;
 
