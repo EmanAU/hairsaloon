@@ -4,6 +4,7 @@ import '../data/business_workspace.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
 import 'online_dashboard_tools.dart';
+import 'rate_list_screen.dart';
 import 'widgets/online_widgets.dart';
 
 class WorkspaceScreen extends StatefulWidget {
@@ -109,6 +110,16 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         hosted: true,
         onCloseWorkspace:
             widget.onClose ?? () => Navigator.of(context).maybePop(),
+        onManageRateList: () {
+          Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (_) => OnlineRateList(
+                repository: widget.repository,
+                businessId: widget.business.id,
+              ),
+            ),
+          );
+        },
         dashboardExtras: (_) => OnlineDashboardTools(
           workspace: workspace,
           onClose: widget.onClose ?? () => Navigator.of(context).maybePop(),

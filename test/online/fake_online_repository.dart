@@ -213,6 +213,8 @@ class FakeOnlineRepository implements OnlineRepository {
     required String cnic,
     required DateTime dateOfBirth,
     required DateTime workStartedOn,
+    Uint8List? photoBytes,
+    String? photoExtension,
   }) async {
     profileSaves++;
     workspace = OnlineWorkspace(
@@ -224,7 +226,9 @@ class FakeOnlineRepository implements OnlineRepository {
         cnic: cnic,
         dateOfBirth: dateOfBirth,
         workStartedOn: workStartedOn,
-        photoPath: workspace.profile?.photoPath,
+        photoPath: photoBytes != null
+            ? 'photo.$photoExtension'
+            : workspace.profile?.photoPath,
       ),
     );
   }

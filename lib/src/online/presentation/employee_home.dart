@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../domain/online_models.dart';
-import 'contracts_screen.dart';
 import 'business_form.dart';
 import 'business_home.dart';
 import 'online_session.dart';
@@ -158,7 +158,7 @@ class _EmployeeHomeState extends State<EmployeeHome> {
         actions: [
           IconButton(
             tooltip: 'Edit profile',
-            icon: const Icon(Icons.person_outline),
+            icon: const Icon(CupertinoIcons.person),
             onPressed: () async {
               final saved = await Navigator.push<bool>(
                 context,
@@ -179,35 +179,14 @@ class _EmployeeHomeState extends State<EmployeeHome> {
           IconButton(
             tooltip: 'Refresh',
             onPressed: _refresh,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(CupertinoIcons.refresh),
           ),
           PopupMenuButton<String>(
+            icon: const Icon(CupertinoIcons.ellipsis),
             onSelected: (value) async {
-              if (value == 'join') {
-                await Navigator.push<void>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        JoinSalon(repository: widget.session.repository),
-                  ),
-                );
-                if (mounted) _refresh();
-              } else if (value == 'contracts') {
-                await Navigator.push<void>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        ContractsScreen(repository: widget.session.repository),
-                  ),
-                );
-                if (mounted) _refresh();
-              } else {
-                await widget.onSignOut();
-              }
+              if (value == 'signout') await widget.onSignOut();
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'contracts', child: Text('My contracts')),
-              PopupMenuItem(value: 'join', child: Text('Join another salon')),
               PopupMenuItem(value: 'signout', child: Text('Sign out')),
             ],
           ),
@@ -394,9 +373,83 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: AppSpacing.lg),
-                    invitesSection,
-                    managerSection,
+                    // Only when an employer invited this user (no error banners).
+                    FutureBuilder<List<PendingEmployeeInvite>>(
+                      future: _invites,
+                      builder: (context, snapshot) {
+                        final invites = snapshot.data;
+                        if (invites == null || invites.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.lg),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                'Salon invites',
+                                style: text.titleMedium,
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              for (final invite in invites)
+                                _BannerPanel(
+                                  title: 'Added by ${invite.ownerName}',
+                                  subtitle: 'Join ${invite.businessName}?',
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: ActionButton(
+                                          label: 'Not now',
+                                          style: FilledButton.styleFrom(
+                                            backgroundColor:
+                                                AppColors.background,
+                                            foregroundColor:
+                                                AppColors.textPrimary,
+                                          ),
+                                          onPressed: () async {
+                                            await widget.session.repository
+                                                .respondToEmployeeInvite(
+                                                  invite.id,
+                                                  false,
+                                                );
+                                            if (mounted) {
+                                              showMessage(
+                                                context,
+                                                'Invite declined',
+                                              );
+                                              _refresh();
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: AppSpacing.sm),
+                                      Expanded(
+                                        child: ActionButton(
+                                          label: 'Join salon',
+                                          onPressed: () async {
+                                            await widget.session.repository
+                                                .respondToEmployeeInvite(
+                                                  invite.id,
+                                                  true,
+                                                );
+                                            if (mounted) {
+                                              showMessage(
+                                                context,
+                                                'Joined ${invite.businessName}',
+                                              );
+                                              _refresh();
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 );
               }

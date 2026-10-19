@@ -1,15 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
-import 'package:flutter/services.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../data/business_workspace.dart';
 import '../domain/online_models.dart';
+import 'add_employee_screen.dart';
 import 'business_home.dart';
+import 'invite_qr_screen.dart';
 import 'staff_screen.dart';
-import 'rate_list_screen.dart';
-import 'qr_screen.dart';
-import '../domain/qr_destination.dart';
 import 'widgets/online_widgets.dart';
 
 class OnlineDashboardTools extends StatefulWidget {
@@ -30,8 +28,6 @@ class OnlineDashboardTools extends StatefulWidget {
 class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
   late Future<List<SalonStaff>> _team = _load();
   late final Timer _poll;
-  final _inviteCode = TextEditingController();
-  Future<String>? _invite;
   bool _reviewing = false;
   Future<List<SalonStaff>> _load() =>
       widget.workspace.repository.team(widget.workspace.business.id);
@@ -50,7 +46,6 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
   @override
   void dispose() {
     _poll.cancel();
-    _inviteCode.dispose();
     super.dispose();
   }
 
@@ -143,17 +138,32 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
               ),
             ),
             DashboardShortcut(
-              title: 'Online services',
-              detail: 'Photos, videos\nand service prices.',
+              title: 'Add employee',
+              detail: 'Invite with their\nprofile code.',
+              asset: 'salon',
+              tint: AppColors.homeLavender,
+              onTap: () => _open(
+                AddEmployeeScreen(
+                  repository: repository,
+                  businessId: business.id,
+                ),
+              ),
+            ),
+            DashboardShortcut(
+              title: 'QR codes',
+              detail: 'Joining code and\ninvite QR codes.',
               asset: 'rates',
               tint: AppColors.homeSand,
               onTap: () => _open(
-                OnlineRateList(repository: repository, businessId: business.id),
+                InviteQrScreen(
+                  repository: repository,
+                  businessId: business.id,
+                ),
               ),
             ),
             DashboardShortcut(
               title: 'Business details',
-              detail: 'Business profile,\njoining code and QR.',
+              detail: 'Business profile\nand salon info.',
               asset: 'shop',
               tint: AppColors.homeLavender,
               onTap: () async {
@@ -190,146 +200,55 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                   ),
                   for (final employee in pending)
-                    Card(
-                      elevation: 0,
-                      color: AppColors.surface,
-                      margin: const EdgeInsets.only(top: 12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              employee.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            employee.name,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text('Wants to join your salon'),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ActionButton(
+                                  label: 'Decline',
+                                  icon: Icons.close,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.background,
+                                    foregroundColor: AppColors.textPrimary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  onPressed: () => _review(employee, false),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text('Wants to join your salon'),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: ActionButton(
-                                    label: 'Decline',
-                                    icon: Icons.close,
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: AppColors.background,
-                                      foregroundColor: AppColors.textPrimary,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ActionButton(
+                                  label: 'Accept',
+                                  icon: Icons.check,
+                                  style: FilledButton.styleFrom(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                    onPressed: () => _review(employee, false),
                                   ),
+                                  onPressed: () => _review(employee, true),
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: ActionButton(
-                                    label: 'Accept',
-                                    icon: Icons.check,
-                                    style: FilledButton.styleFrom(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                    onPressed: () => _review(employee, true),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                 ],
               ),
             );
           },
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _inviteCode,
-          decoration: InputDecoration(
-            labelText: 'Employee profile code',
-            filled: true,
-            fillColor: AppColors.surface,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        ),
-        SizedBox(
-          width: double.infinity,
-          child: ActionButton(
-            label: 'Add employee',
-            icon: Icons.person_add_outlined,
-            style: FilledButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () async {
-              if (!RegExp(
-                r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
-              ).hasMatch(_inviteCode.text.trim())) {
-                throw const OnlineFailure('Paste a valid profile code');
-              }
-              await repository.inviteEmployee(
-                business.id,
-                _inviteCode.text.trim(),
-              );
-              if (mounted) {
-                setState(() {
-                  _inviteCode.clear();
-                  _team = _load();
-                });
-              }
-            },
-          ),
-        ),
-        ExpansionTile(
-          title: const Text(
-            'Employee joining code & QR',
-            style: TextStyle(fontSize: 14),
-          ),
-          tilePadding: EdgeInsets.zero,
-          onExpansionChanged: (open) {
-            if (open && _invite == null) {
-              setState(() {
-                _invite = repository.businessInvite(business.id);
-              });
-            }
-          },
-          children: [
-            if (_invite != null)
-              RemoteContent(
-                future: _invite!,
-                onRetry: () => setState(() {
-                  _invite = repository.businessInvite(business.id);
-                }),
-                builder: (code) => Column(
-                  children: [
-                    ListTile(
-                      title: const Text('Salon joining code'),
-                      subtitle: SelectableText(code),
-                      trailing: IconButton(
-                        tooltip: 'Copy joining code',
-                        icon: const Icon(Icons.copy),
-                        onPressed: () =>
-                            Clipboard.setData(ClipboardData(text: code)),
-                      ),
-                    ),
-                    PublicQr(
-                      destination: QrDestination('join', code),
-                      label: 'Employee invitation QR',
-                    ),
-                    PublicQr(
-                      destination: QrDestination('salon', business.id),
-                      label: 'Customer salon QR',
-                    ),
-                  ],
-                ),
-              ),
-          ],
         ),
         const SizedBox(height: 8),
         Row(

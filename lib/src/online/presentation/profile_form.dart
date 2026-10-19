@@ -96,32 +96,10 @@ class _ProfileFormState extends State<ProfileForm> {
         cnic: _cnic.text,
         dateOfBirth: _birth!,
         workStartedOn: _started!,
+        photoBytes: _photo,
+        photoExtension: _extension,
       );
-      var photoFailed = false;
-      if (_photo != null) {
-        try {
-          await widget.repository.uploadProfilePhoto(_photo!, _extension!);
-        } on PhotoUploadFailure catch (error) {
-          photoFailed = true;
-          if (mounted) ToastService.error(error.message, context);
-        } on OnlineFailure catch (error) {
-          photoFailed = true;
-          if (mounted) ToastService.error(error.message, context);
-        } catch (_) {
-          photoFailed = true;
-          if (mounted) {
-            ToastService.error(
-              'Details were saved, but the photo could not be uploaded. Try again.',
-              context,
-            );
-          }
-        }
-      }
       if (!mounted) return;
-      if (photoFailed) {
-        // Profile row is saved; stay so the user can retry the photo.
-        return;
-      }
       ToastService.success('Profile saved', context);
       if (widget.onSaved != null) {
         await widget.onSaved!();

@@ -200,6 +200,65 @@ class SupabaseOnlineRepository implements OnlineRepository {
     await _client.storage.from('service-media').remove([path]);
   }
 
+  /// Storage RLS / auth headers can lag one beat after a fresh insert or login.
+  Future<String> _uploadBinaryWithRetry({
+    required String bucketId,
+    required String Function() pathBuilder,
+    required Uint8List bytes,
+    required String mime,
+  }) async {
+    final bucket = _client.storage.from(bucketId);
+    Object? lastError;
+    for (var attempt = 0; attempt < 3; attempt++) {
+      final path = pathBuilder();
+      try {
+        await bucket.uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: mime),
+        );
+        return path;
+      } catch (error) {
+        lastError = error;
+        if (attempt < 2) {
+          await Future<void>.delayed(Duration(milliseconds: 200 * (attempt + 1)));
+        }
+      }
+    }
+    throw lastError!;
+  }
+
+  Future<Map<String, dynamic>> _waitForProfileRow() async {
+    for (var attempt = 0; attempt < 5; attempt++) {
+      final row = await _client
+          .from('profiles')
+          .select('photo_path')
+          .eq('user_id', _requiredUserId)
+          .maybeSingle();
+      if (row != null) return row;
+      await Future<void>.delayed(Duration(milliseconds: 100 * (attempt + 1)));
+    }
+    throw const PhotoUploadFailure(
+      'Details were saved, but the photo could not be uploaded. Try again.',
+    );
+  }
+
+  Future<void> _waitForOwnedBusiness(String businessId) async {
+    for (var attempt = 0; attempt < 5; attempt++) {
+      final row = await _client
+          .from('businesses')
+          .select('id')
+          .eq('id', businessId)
+          .eq('owner_id', _requiredUserId)
+          .maybeSingle();
+      if (row != null) return;
+      await Future<void>.delayed(Duration(milliseconds: 100 * (attempt + 1)));
+    }
+    throw const PhotoUploadFailure(
+      'Business was saved, but the photo could not be uploaded. Try again.',
+    );
+  }
+
   @override
   Future<void> uploadProfilePhoto(Uint8List bytes, String extension) async {
     final mime = _mime(extension);
@@ -209,29 +268,38 @@ class SupabaseOnlineRepository implements OnlineRepository {
       throw const OnlineFailure('Choose a JPG, PNG or WebP photo up to 2 MB.');
     }
     try {
-      final old = await _client
-          .from('profiles')
-          .select('photo_path')
-          .eq('user_id', _requiredUserId)
-          .single();
-      final path = '$_requiredUserId/${const Uuid().v4()}.$extension';
+      // Ensure the profile row from saveProfile is visible before we attach a photo.
+      final old = await _waitForProfileRow();
       final bucket = _client.storage.from('profile-photos');
-      await bucket.uploadBinary(
-        path,
-        bytes,
-        fileOptions: FileOptions(contentType: mime),
+      final path = await _uploadBinaryWithRetry(
+        bucketId: 'profile-photos',
+        pathBuilder: () => '$_requiredUserId/${const Uuid().v4()}.$extension',
+        bytes: bytes,
+        mime: mime,
       );
       try {
-        await _client
+        final updated = await _client
             .from('profiles')
             .update({'photo_path': path})
-            .eq('user_id', _requiredUserId);
-      } catch (_) {
-        await bucket.remove([path]);
+            .eq('user_id', _requiredUserId)
+            .select('photo_path')
+            .maybeSingle();
+        if (updated == null) {
+          throw const PhotoUploadFailure(
+            'Details were saved, but the photo could not be uploaded. Try again.',
+          );
+        }
+      } catch (error) {
+        try {
+          await bucket.remove([path]);
+        } catch (_) {}
         rethrow;
       }
-      if (old['photo_path'] != null) {
-        await bucket.remove([old['photo_path'] as String]);
+      final previous = old['photo_path'] as String?;
+      if (previous != null && previous != path) {
+        try {
+          await bucket.remove([previous]);
+        } catch (_) {}
       }
     } on OnlineFailure {
       rethrow;
@@ -719,6 +787,8 @@ class SupabaseOnlineRepository implements OnlineRepository {
     required String cnic,
     required DateTime dateOfBirth,
     required DateTime workStartedOn,
+    Uint8List? photoBytes,
+    String? photoExtension,
   }) async {
     final id = _requiredUserId;
     if (name.trim().isEmpty || name.trim().length > 120) {
@@ -735,22 +805,56 @@ class SupabaseOnlineRepository implements OnlineRepository {
         'Check your date of birth and work start date.',
       );
     }
-    final values = {
+    if (photoBytes != null &&
+        (photoExtension == null || photoExtension.trim().isEmpty)) {
+      throw const OnlineFailure('Choose a JPG, PNG or WebP photo up to 2 MB.');
+    }
+    final values = <String, dynamic>{
       'phone': PkPhone.normalize(phone),
       'cnic': cnic.replaceAll('-', '').trim(),
       'date_of_birth': dateOfBirth.toIso8601String().substring(0, 10),
       'work_started_on': workStartedOn.toIso8601String().substring(0, 10),
     };
+    String? uploadedPath;
+    String? previousPath;
     try {
       final existing = await _client
           .from('profiles')
-          .select('user_id')
+          .select('user_id, photo_path')
           .eq('user_id', id)
           .maybeSingle();
+      previousPath = existing?['photo_path'] as String?;
+      // Upload first, then write photo_path in the same insert/update so the
+      // first save never leaves details without a photo.
+      if (photoBytes != null) {
+        final mime = _mime(photoExtension!);
+        if (!mime.startsWith('image/') ||
+            photoBytes.isEmpty ||
+            photoBytes.length > 2 * 1024 * 1024) {
+          throw const OnlineFailure(
+            'Choose a JPG, PNG or WebP photo up to 2 MB.',
+          );
+        }
+        uploadedPath = await _uploadBinaryWithRetry(
+          bucketId: 'profile-photos',
+          pathBuilder: () => '$id/${const Uuid().v4()}.$photoExtension',
+          bytes: photoBytes,
+          mime: mime,
+        );
+        values['photo_path'] = uploadedPath;
+      }
       if (existing == null) {
         await _client.from('profiles').insert({'user_id': id, ...values});
       } else {
-        await _client.from('profiles').update(values).eq('user_id', id);
+        final updated = await _client
+            .from('profiles')
+            .update(values)
+            .eq('user_id', id)
+            .select('user_id')
+            .maybeSingle();
+        if (updated == null) {
+          throw const OnlineFailure('Could not save your profile.');
+        }
       }
       try {
         await _client
@@ -760,10 +864,33 @@ class SupabaseOnlineRepository implements OnlineRepository {
       } catch (_) {
         // Profile row is already saved; display name is best-effort.
       }
+      if (uploadedPath != null &&
+          previousPath != null &&
+          previousPath != uploadedPath) {
+        try {
+          await _client.storage.from('profile-photos').remove([previousPath]);
+        } catch (_) {}
+      }
     } on OnlineFailure {
+      if (uploadedPath != null) {
+        try {
+          await _client.storage.from('profile-photos').remove([uploadedPath]);
+        } catch (_) {}
+      }
       rethrow;
     } catch (error) {
-      _throwWriteFailure(error, fallback: 'Could not save your profile.');
+      if (uploadedPath != null) {
+        try {
+          await _client.storage.from('profile-photos').remove([uploadedPath]);
+        } catch (_) {}
+      }
+      _throwWriteFailure(
+        error,
+        fallback: photoBytes != null
+            ? 'Could not upload the photo. Check your connection and try again.'
+            : 'Could not save your profile.',
+        asPhoto: photoBytes != null,
+      );
     }
   }
 
@@ -839,33 +966,45 @@ class SupabaseOnlineRepository implements OnlineRepository {
       throw const OnlineFailure('Choose a JPG, PNG or WebP photo up to 2 MB.');
     }
     try {
+      // Storage RLS checks businesses; wait until the new row is visible.
+      await _waitForOwnedBusiness(businessId);
       final old = await _client
           .from('businesses')
           .select('logo_path')
           .eq('id', businessId)
           .eq('owner_id', _requiredUserId)
-          .single();
+          .maybeSingle();
       final bucket = _client.storage.from('business-photos');
-      final path = '$businessId/${const Uuid().v4()}.$extension';
-      await bucket.uploadBinary(
-        path,
-        bytes,
-        fileOptions: FileOptions(contentType: mime),
+      final path = await _uploadBinaryWithRetry(
+        bucketId: 'business-photos',
+        pathBuilder: () => '$businessId/${const Uuid().v4()}.$extension',
+        bytes: bytes,
+        mime: mime,
       );
       try {
-        await _client
+        final updated = await _client
             .from('businesses')
             .update({'logo_path': path})
             .eq('id', businessId)
             .eq('owner_id', _requiredUserId)
             .select('id')
-            .single();
-      } catch (_) {
-        await bucket.remove([path]);
+            .maybeSingle();
+        if (updated == null) {
+          throw const PhotoUploadFailure(
+            'Business was saved, but the photo could not be uploaded. Try again.',
+          );
+        }
+      } catch (error) {
+        try {
+          await bucket.remove([path]);
+        } catch (_) {}
         rethrow;
       }
-      if (old['logo_path'] != null) {
-        await bucket.remove([old['logo_path'] as String]);
+      final previous = old?['logo_path'] as String?;
+      if (previous != null && previous != path) {
+        try {
+          await bucket.remove([previous]);
+        } catch (_) {}
       }
     } on OnlineFailure {
       rethrow;

@@ -1,25 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
 import '../domain/qr_destination.dart';
 import 'widgets/online_widgets.dart';
 
 class PublicQr extends StatelessWidget {
-  const PublicQr({super.key, required this.destination, required this.label});
+  const PublicQr({
+    super.key,
+    required this.destination,
+    required this.label,
+    this.size = 160,
+  });
   final QrDestination destination;
   final String label;
+  final double size;
+
   @override
-  Widget build(BuildContext context) => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      QrImageView(
-        data: destination.value,
-        size: 200,
-        backgroundColor: Colors.white,
-      ),
-      CopyCode(code: destination.value, label: label),
-    ],
-  );
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: text.titleMedium),
+        const SizedBox(height: AppSpacing.md),
+        Center(
+          child: QrImageView(
+            data: destination.value,
+            size: size,
+            backgroundColor: AppColors.surface,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: SelectableText(
+                destination.value,
+                style: text.bodySmall?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Copy link',
+              onPressed: () async {
+                await Clipboard.setData(
+                  ClipboardData(text: destination.value),
+                );
+                if (context.mounted) showMessage(context, 'Code copied');
+              },
+              icon: const Icon(Icons.copy, size: 18),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 class ScanQr extends StatefulWidget {

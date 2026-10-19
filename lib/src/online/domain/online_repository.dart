@@ -79,6 +79,8 @@ abstract interface class OnlineRepository {
     required String cnic,
     required DateTime dateOfBirth,
     required DateTime workStartedOn,
+    Uint8List? photoBytes,
+    String? photoExtension,
   });
   Future<String> saveBusiness({
     String? id,

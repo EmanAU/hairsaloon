@@ -15,7 +15,11 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AppDrawer extends StatelessWidget {
-  const AppDrawer({super.key});
+  const AppDrawer({super.key, this.onManageRateList});
+
+  /// When set (online workspace), opens the online rate list instead of
+  /// offline categories.
+  final VoidCallback? onManageRateList;
 
   static final Uri _intelligementUri = Uri.parse(
     'http://www.intelligement.com/',
@@ -100,7 +104,12 @@ class AppDrawer extends StatelessWidget {
                     showDivider: false,
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.of(context).pushNamed(AppRoutes.categories);
+                      final online = onManageRateList;
+                      if (online != null) {
+                        online();
+                      } else {
+                        Navigator.of(context).pushNamed(AppRoutes.categories);
+                      }
                     },
                   ),
                   const SizedBox(height: 10),

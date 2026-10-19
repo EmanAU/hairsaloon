@@ -10,9 +10,15 @@ import 'package:hairsaloon/src/features/settings/presentation/app_drawer.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class DashboardShell extends StatefulWidget {
-  const DashboardShell({super.key, this.homeExtras, this.onExit});
+  const DashboardShell({
+    super.key,
+    this.homeExtras,
+    this.onExit,
+    this.onManageRateList,
+  });
   final WidgetBuilder? homeExtras;
   final VoidCallback? onExit;
+  final VoidCallback? onManageRateList;
 
   @override
   State<DashboardShell> createState() => _DashboardShellState();
@@ -58,7 +64,7 @@ class _DashboardShellState extends State<DashboardShell> {
         child: Scaffold(
           backgroundColor: canvas,
           extendBody: !tablet,
-          drawer: const AppDrawer(),
+          drawer: AppDrawer(onManageRateList: widget.onManageRateList),
           body: tablet
               ? Row(
                   children: [
