@@ -16,11 +16,13 @@ class ServiceBeforeAfterCards extends StatefulWidget {
     required this.repository,
     required this.serviceId,
     required this.businessId,
+    this.onChanged,
   });
 
   final OnlineRepository repository;
   final String serviceId;
   final String businessId;
+  final VoidCallback? onChanged;
 
   @override
   State<ServiceBeforeAfterCards> createState() =>
@@ -34,7 +36,10 @@ class _ServiceBeforeAfterCardsState extends State<ServiceBeforeAfterCards> {
   Future<List<Map<String, dynamic>>> _load() =>
       widget.repository.media(widget.serviceId);
 
-  void _refresh() => setState(() => _rows = _load());
+  void _refresh() {
+    setState(() => _rows = _load());
+    widget.onChanged?.call();
+  }
 
   ({Map<String, dynamic>? before, Map<String, dynamic>? after}) _pair(
     List<Map<String, dynamic>> rows,
@@ -269,11 +274,11 @@ class _SectionCard extends StatelessWidget {
             child: Icon(Icons.broken_image_outlined, size: 36),
           ),
         ),
-        // Soft blur + dim so it reads as “already added”.
+        // Soft blur + dim so it reads as “already added — change photo”.
         BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 1.2, sigmaY: 1.2),
+          filter: ImageFilter.blur(sigmaX: 2.2, sigmaY: 2.2),
           child: ColoredBox(
-            color: AppColors.textPrimary.withValues(alpha: 0.22),
+            color: AppColors.textPrimary.withValues(alpha: 0.32),
           ),
         ),
         const Center(
@@ -281,13 +286,13 @@ class _SectionCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.check_circle_rounded,
+                Icons.photo_camera_outlined,
                 color: AppColors.surface,
-                size: 32,
+                size: 30,
               ),
               SizedBox(height: 8),
               Text(
-                'Tap to change',
+                'Change photo',
                 style: TextStyle(
                   color: AppColors.surface,
                   fontSize: 12,

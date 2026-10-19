@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import '../../core/services/toast_service.dart';
@@ -36,6 +38,8 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
   bool _loading = true;
   String? _loadError;
   late SalonService _service;
+  String? _beforeUrl;
+  String? _afterUrl;
 
   @override
   void initState() {
@@ -43,6 +47,36 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
     _service = widget.service;
     _titleCtrl = TextEditingController(text: widget.service.name);
     _resumeFromSupabase();
+    _loadPhotoStatus();
+  }
+
+  Future<void> _loadPhotoStatus() async {
+    try {
+      final rows = await widget.repository.media(_service.id);
+      if (!mounted) return;
+      String? before;
+      String? after;
+      for (final row in rows) {
+        final kind = row['kind'] as String?;
+        final url = row['url'] as String?;
+        if (kind == 'before' && before == null) before = url;
+        if (kind == 'after' && after == null) after = url;
+      }
+      setState(() {
+        _beforeUrl = before;
+        _afterUrl = after;
+      });
+    } catch (_) {
+      // Bottom tiles stay on "Add photo" if status can't load.
+    }
+  }
+
+  void _leavePhotosOrPop() {
+    if (_showPhotos) {
+      setState(() => _showPhotos = false);
+      return;
+    }
+    Navigator.maybePop(context);
   }
 
   Future<void> _resumeFromSupabase() async {
@@ -215,40 +249,51 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final controller = _controller;
 
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      resizeToAvoidBottomInset: true,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        surfaceTintColor: const Color(0x00000000),
-        elevation: 0,
-        foregroundColor: AppColors.onPrimary,
-        iconTheme: const IconThemeData(color: AppColors.onPrimary),
-        title: const Text(
-          'Edit customer view',
-          style: TextStyle(
-            color: AppColors.onPrimary,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
+    return PopScope(
+      canPop: !_showPhotos,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (_showPhotos) setState(() => _showPhotos = false);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.surface,
+        resizeToAvoidBottomInset: true,
+        appBar: AppBar(
+          backgroundColor: AppColors.primary,
+          surfaceTintColor: const Color(0x00000000),
+          elevation: 0,
+          foregroundColor: AppColors.onPrimary,
+          iconTheme: const IconThemeData(color: AppColors.onPrimary),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: _leavePhotosOrPop,
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: _saving || _loading || controller == null ? null : _save,
-            child: Text(
-              _saving ? 'Saving…' : 'Save',
-              style: const TextStyle(
-                color: AppColors.onPrimary,
-                fontWeight: FontWeight.w700,
-              ),
+          title: const Text(
+            'Edit customer view',
+            style: TextStyle(
+              color: AppColors.onPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
             ),
           ),
-        ],
-      ),
-      body: _loading || controller == null
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
+          actions: [
+            TextButton(
+              onPressed:
+                  _saving || _loading || controller == null ? null : _save,
+              child: Text(
+                _saving ? 'Saving…' : 'Save',
+                style: const TextStyle(
+                  color: AppColors.onPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: _loading || controller == null
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
                 if (_loadError != null)
                   Padding(
                     padding: const EdgeInsets.all(8),
@@ -316,6 +361,7 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
                               repository: widget.repository,
                               serviceId: _service.id,
                               businessId: widget.businessId,
+                              onChanged: _loadPhotoStatus,
                             ),
                           ],
                         )
@@ -365,32 +411,55 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
                               ),
                             ),
                           Padding(
-                            padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
-                            child: Row(
-                              children: [
-                                TextButton.icon(
-                                  onPressed: () => setState(
-                                    () => _showPhotos = !_showPhotos,
-                                  ),
-                                  icon: Icon(
-                                    _showPhotos
-                                        ? Icons.edit_note_outlined
-                                        : Icons.photo_library_outlined,
-                                    size: 20,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                  label: Text(
-                                    _showPhotos
-                                        ? 'Back to writing'
-                                        : 'Photos',
-                                    style: const TextStyle(
-                                      color: AppColors.textPrimary,
-                                      fontWeight: FontWeight.w600,
+                            padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                            child: _showPhotos
+                                ? Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: TextButton.icon(
+                                      onPressed: () => setState(
+                                        () => _showPhotos = false,
+                                      ),
+                                      icon: const Icon(
+                                        Icons.edit_note_outlined,
+                                        size: 20,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                      label: const Text(
+                                        'Back to writing',
+                                        style: TextStyle(
+                                          color: AppColors.textPrimary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                     ),
+                                  )
+                                : Row(
+                                    children: [
+                                      Expanded(
+                                        child: _PhotoNavTile(
+                                          label: 'Before photo',
+                                          imageUrl: _beforeUrl,
+                                          onTap: () => setState(
+                                            () => _showPhotos = true,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        width: 1,
+                                        height: 40,
+                                        color: AppColors.border,
+                                      ),
+                                      Expanded(
+                                        child: _PhotoNavTile(
+                                          label: 'After photo',
+                                          imageUrl: _afterUrl,
+                                          onTap: () => setState(
+                                            () => _showPhotos = true,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                              ],
-                            ),
                           ),
                         ],
                       ),
@@ -399,6 +468,105 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
                 ),
               ],
             ),
+      ),
+    );
+  }
+}
+
+class _PhotoNavTile extends StatelessWidget {
+  const _PhotoNavTile({
+    required this.label,
+    required this.onTap,
+    this.imageUrl,
+  });
+
+  final String label;
+  final String? imageUrl;
+  final VoidCallback onTap;
+
+  bool get _hasPhoto => imageUrl != null && imageUrl!.isNotEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Row(
+          children: [
+            _thumb(),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    _hasPhoto ? 'Change photo' : 'Add photo',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _thumb() {
+    if (!_hasPhoto) {
+      return const Icon(
+        Icons.add_photo_alternate_outlined,
+        size: 22,
+        color: AppColors.textPrimary,
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: SizedBox(
+        width: 36,
+        height: 36,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              imageUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const ColoredBox(
+                color: AppColors.background,
+                child: Icon(Icons.broken_image_outlined, size: 16),
+              ),
+            ),
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 1.4, sigmaY: 1.4),
+              child: ColoredBox(
+                color: AppColors.textPrimary.withValues(alpha: 0.28),
+              ),
+            ),
+            const Center(
+              child: Icon(
+                Icons.photo_outlined,
+                size: 16,
+                color: AppColors.surface,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
