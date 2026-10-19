@@ -6,13 +6,23 @@ import 'package:hairsaloon/src/core/widgets/app_confirm_dialog.dart';
 import 'package:hairsaloon/src/features/services/presentation/state/services_store.dart';
 import 'package:hairsaloon/src/features/services/presentation/subcategory_services_screen.dart';
 import 'package:hairsaloon/src/features/services/presentation/widgets/service_edit_sheet.dart';
+import 'package:hairsaloon/src/online/data/business_workspace.dart';
+import 'package:hairsaloon/src/online/domain/online_models.dart';
+import 'package:hairsaloon/src/online/presentation/customer_screens.dart';
+import 'package:hairsaloon/src/online/presentation/resolve_salon_service.dart';
+import 'package:hairsaloon/src/online/presentation/service_customer_view_editor.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
 class SubcategoriesScreen extends StatefulWidget {
-  const SubcategoriesScreen({super.key, this.initialCategory});
+  const SubcategoriesScreen({
+    super.key,
+    this.initialCategory,
+    this.readOnly = false,
+  });
 
   final String? initialCategory;
+  final bool readOnly;
 
   @override
   State<SubcategoriesScreen> createState() => _SubcategoriesScreenState();
@@ -73,23 +83,26 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            tooltip: 'Add subcategory',
-            onPressed: categories.isEmpty
-                ? null
-                : () => setState(() => _showAddForm = !_showAddForm),
-            icon: Icon(
-              _showAddForm ? CupertinoIcons.xmark : CupertinoIcons.add,
-              color: AppColors.onPrimary,
+          if (!widget.readOnly)
+            IconButton(
+              tooltip: 'Add subcategory',
+              onPressed: categories.isEmpty
+                  ? null
+                  : () => setState(() => _showAddForm = !_showAddForm),
+              icon: Icon(
+                _showAddForm ? CupertinoIcons.xmark : CupertinoIcons.add,
+                color: AppColors.onPrimary,
+              ),
             ),
-          ),
         ],
       ),
       body: categories.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
-                'Add a category first from Categories.',
-                style: TextStyle(
+                widget.readOnly
+                    ? 'No categories yet.'
+                    : 'Add a category first from Categories.',
+                style: const TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 13,
                 ),
@@ -131,7 +144,7 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
                     setState(() => _selectedCategory = value);
                   },
                 ),
-                if (_showAddForm) ...[
+                if (!widget.readOnly && _showAddForm) ...[
                   const SizedBox(height: 14),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -215,13 +228,15 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
                 ],
                 const SizedBox(height: 14),
                 if (subcategories.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 20),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 20),
                     child: Center(
                       child: Text(
-                        'No subcategories yet.\nTap + to add one.',
+                        widget.readOnly
+                            ? 'No subcategories yet.'
+                            : 'No subcategories yet.\nTap + to add one.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 13,
                         ),
@@ -249,18 +264,25 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => SubcategoryServicesScreen(
-                  category: _selectedCategory,
-                  subcategory: name,
-                ),
-              ),
-            );
-          },
+          onTap: widget.readOnly
+              ? null
+              : () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SubcategoryServicesScreen(
+                        category: _selectedCategory,
+                        subcategory: name,
+                      ),
+                    ),
+                  );
+                },
           child: Container(
-            padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
+            padding: EdgeInsets.fromLTRB(
+              14,
+              12,
+              widget.readOnly ? 14 : 4,
+              12,
+            ),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFFE1E1E1)),
@@ -285,41 +307,150 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
                     color: AppColors.textPrimary,
                   ),
                 ),
-                PopupMenuButton<String>(
-                  onSelected: (value) async {
-                    if (value == 'edit') {
-                      await _showEditSubcategoryDialog(name);
-                      return;
-                    }
-                    if (value == 'delete') {
-                      final store = context.read<ServicesStore>();
-                      final confirm = await showAppConfirmDialog(
-                        context: context,
-                        title: 'Delete Subcategory',
-                        message: 'Delete "$name" and its services?',
-                        confirmLabel: 'Delete',
-                        isDestructive: true,
+                if (!widget.readOnly)
+                  Builder(
+                    builder: (menuContext) {
+                      final online =
+                          menuContext.read<BusinessWorkspace?>() != null;
+                      return PopupMenuButton<String>(
+                        onSelected: (value) async {
+                          if (value == 'edit') {
+                            await _showEditSubcategoryDialog(name);
+                            return;
+                          }
+                          if (value == 'delete') {
+                            final store = context.read<ServicesStore>();
+                            final confirm = await showAppConfirmDialog(
+                              context: context,
+                              title: 'Delete Subcategory',
+                              message: 'Delete "$name" and its services?',
+                              confirmLabel: 'Delete',
+                              isDestructive: true,
+                            );
+                            if (confirm != true || !mounted) return;
+                            await store.deleteSubcategory(
+                              category: _selectedCategory,
+                              subcategory: name,
+                            );
+                            ToastService.success('Subcategory deleted');
+                            return;
+                          }
+                          if (value == 'customer_view') {
+                            await _openCustomerView(name, preview: false);
+                            return;
+                          }
+                          if (value == 'view_customer_view') {
+                            await _openCustomerView(name, preview: true);
+                          }
+                        },
+                        itemBuilder: (_) => [
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Text('Edit'),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Text('Delete'),
+                          ),
+                          if (online) ...const [
+                            PopupMenuItem(
+                              value: 'customer_view',
+                              child: Text('Customer view'),
+                            ),
+                            PopupMenuItem(
+                              value: 'view_customer_view',
+                              child: Text('View customer view'),
+                            ),
+                          ],
+                        ],
+                        icon: const Icon(
+                          CupertinoIcons.ellipsis_vertical,
+                          size: 18,
+                        ),
                       );
-                      if (confirm != true || !mounted) return;
-                      await store.deleteSubcategory(
-                        category: _selectedCategory,
-                        subcategory: name,
-                      );
-                      ToastService.success('Subcategory deleted');
-                    }
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    PopupMenuItem(value: 'delete', child: Text('Delete')),
-                  ],
-                  icon: const Icon(CupertinoIcons.ellipsis_vertical, size: 18),
-                ),
+                    },
+                  ),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _openCustomerView(
+    String subcategory, {
+    required bool preview,
+  }) async {
+    final workspace = context.read<BusinessWorkspace?>();
+    if (workspace == null) {
+      ToastService.error('Customer view is available in an online salon.');
+      return;
+    }
+
+    final price =
+        context
+            .read<ServicesStore>()
+            .serviceFor(
+              category: _selectedCategory,
+              subcategory: subcategory,
+            )
+            ?.price ??
+        0.0;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final service = await resolveSalonService(
+        workspace: workspace,
+        category: _selectedCategory,
+        subcategory: subcategory,
+        price: price,
+      );
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+
+      if (preview) {
+        await Navigator.of(context).push<void>(
+          MaterialPageRoute(
+            builder: (_) => ServiceDetailPage(
+              repository: workspace.repository,
+              business: workspace.business,
+              service: service,
+            ),
+          ),
+        );
+      } else {
+        await Navigator.of(context).push<void>(
+          MaterialPageRoute(
+            builder: (_) => ServiceCustomerViewEditor(
+              repository: workspace.repository,
+              businessId: workspace.business.id,
+              service: service,
+            ),
+          ),
+        );
+      }
+    } on OnlineFailure catch (error) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      ToastService.error(error.message);
+    } catch (_) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      ToastService.error('Could not open customer view. Try again.');
+    }
   }
 
   InputDecoration _fieldDecoration(String hint) {

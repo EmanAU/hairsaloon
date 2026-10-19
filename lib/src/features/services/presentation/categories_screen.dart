@@ -10,12 +10,16 @@ import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
 class CategoriesScreen extends StatelessWidget {
-  const CategoriesScreen({super.key});
+  const CategoriesScreen({super.key, this.readOnly = false});
+
+  /// Home Rate List: same layout as Manage Rate List, without add/edit.
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
     final store = context.watch<ServicesStore>();
     final categories = store.categories;
+    final titlePrefix = readOnly ? 'Rate List' : 'Manage Rate List';
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -28,7 +32,7 @@ class CategoriesScreen extends StatelessWidget {
           icon: const Icon(CupertinoIcons.back, color: AppColors.onPrimary),
         ),
         title: Text(
-          'Manage Rate List (${categories.length.toString().padLeft(2, '0')})',
+          '$titlePrefix (${categories.length.toString().padLeft(2, '0')})',
           style: const TextStyle(
             color: AppColors.onPrimary,
             fontSize: 15,
@@ -36,19 +40,22 @@ class CategoriesScreen extends StatelessWidget {
           ),
         ),
         actions: [
-          IconButton(
-            tooltip: 'Add category',
-            onPressed: () => _showAddOrEditCategory(context),
-            icon: const Icon(CupertinoIcons.add, color: AppColors.onPrimary),
-          ),
+          if (!readOnly)
+            IconButton(
+              tooltip: 'Add category',
+              onPressed: () => _showAddOrEditCategory(context),
+              icon: const Icon(CupertinoIcons.add, color: AppColors.onPrimary),
+            ),
         ],
       ),
       body: categories.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
-                'No categories yet.\nTap + to add one.',
+                readOnly
+                    ? 'No categories yet.'
+                    : 'No categories yet.\nTap + to add one.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 13,
                 ),
@@ -78,13 +85,20 @@ class CategoriesScreen extends StatelessWidget {
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) =>
-                              SubcategoriesScreen(initialCategory: category),
+                          builder: (_) => SubcategoriesScreen(
+                            initialCategory: category,
+                            readOnly: readOnly,
+                          ),
                         ),
                       );
                     },
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+                      padding: EdgeInsets.fromLTRB(
+                        14,
+                        12,
+                        readOnly ? 12 : 6,
+                        12,
+                      ),
                       child: Row(
                         children: [
                           Expanded(
@@ -110,51 +124,52 @@ class CategoriesScreen extends StatelessWidget {
                               ],
                             ),
                           ),
-                          PopupMenuButton<String>(
-                            onSelected: (value) async {
-                              if (value == 'edit') {
-                                await _showAddOrEditCategory(
-                                  context,
-                                  existing: category,
-                                );
-                                return;
-                              }
-                              if (value == 'delete') {
-                                final store = context.read<ServicesStore>();
-                                final confirm = await showAppConfirmDialog(
-                                  context: context,
-                                  title: 'Delete Category',
-                                  message:
-                                      'Delete "$category"? All its subcategories and services will be removed.',
-                                  confirmLabel: 'Delete',
-                                  isDestructive: true,
-                                );
-                                if (confirm != true) return;
-                                await store.deleteCategory(category);
-                                ToastService.success('Category deleted');
-                              }
-                            },
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(
-                                value: 'edit',
-                                child: Text('Rename'),
+                          if (!readOnly)
+                            PopupMenuButton<String>(
+                              onSelected: (value) async {
+                                if (value == 'edit') {
+                                  await _showAddOrEditCategory(
+                                    context,
+                                    existing: category,
+                                  );
+                                  return;
+                                }
+                                if (value == 'delete') {
+                                  final store = context.read<ServicesStore>();
+                                  final confirm = await showAppConfirmDialog(
+                                    context: context,
+                                    title: 'Delete Category',
+                                    message:
+                                        'Delete "$category"? All its subcategories and services will be removed.',
+                                    confirmLabel: 'Delete',
+                                    isDestructive: true,
+                                  );
+                                  if (confirm != true) return;
+                                  await store.deleteCategory(category);
+                                  ToastService.success('Category deleted');
+                                }
+                              },
+                              itemBuilder: (_) => const [
+                                PopupMenuItem(
+                                  value: 'edit',
+                                  child: Text('Rename'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'delete',
+                                  child: Text('Delete'),
+                                ),
+                              ],
+                              icon: const Icon(
+                                CupertinoIcons.ellipsis_vertical,
+                                size: 18,
                               ),
-                              PopupMenuItem(
-                                value: 'delete',
-                                child: Text('Delete'),
-                              ),
-                            ],
-                            icon: const Icon(
-                              CupertinoIcons.ellipsis_vertical,
-                              size: 18,
                             ),
-                          ),
                           const Icon(
                             CupertinoIcons.chevron_right,
                             color: AppColors.textSecondary,
                             size: 16,
                           ),
-                          const SizedBox(width: 6),
+                          if (!readOnly) const SizedBox(width: 6),
                         ],
                       ),
                     ),

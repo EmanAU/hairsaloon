@@ -131,9 +131,15 @@ class _ScanQrState extends State<ScanQr> {
                 }
               }
             },
-            errorBuilder: (context, error) => const Center(
-              child: Text(
-                'Camera unavailable. Allow camera access or paste the QR link below.',
+            errorBuilder: (context, error) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  widget.profileCode
+                      ? 'Camera unavailable. Allow camera access to scan the QR.'
+                      : 'Camera unavailable. Allow camera access or paste the QR link below.',
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
           ),
@@ -143,19 +149,20 @@ class _ScanQrState extends State<ScanQr> {
             _error!,
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: TextField(
-            controller: _manual,
-            decoration: InputDecoration(
-              labelText: 'Paste QR link',
-              suffixIcon: IconButton(
-                onPressed: () => _read(_manual.text),
-                icon: const Icon(Icons.arrow_forward),
+        if (!widget.profileCode)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              controller: _manual,
+              decoration: InputDecoration(
+                labelText: 'Paste QR link',
+                suffixIcon: IconButton(
+                  onPressed: () => _read(_manual.text),
+                  icon: const Icon(Icons.arrow_forward),
+                ),
               ),
             ),
           ),
-        ),
       ],
     ),
   );

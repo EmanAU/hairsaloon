@@ -14,6 +14,7 @@ import 'package:hairsaloon/src/features/finance/domain/entities/finance_period.d
 import 'package:hairsaloon/src/features/finance/presentation/widgets/finance_widgets.dart';
 import 'package:hairsaloon/src/features/settings/presentation/state/settings_store.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
+import 'package:hairsaloon/src/features/services/presentation/categories_screen.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -175,12 +176,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                               asset: 'rates',
                               tint: const Color(0xFFFFF4DB),
                               onTap: () {
-                                final online = widget.onOpenRateList;
-                                if (online != null) {
-                                  online();
-                                } else {
-                                  open(AppRoutes.serviceList);
-                                }
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) =>
+                                        const CategoriesScreen(readOnly: true),
+                                  ),
+                                );
                               },
                             ),
                             DashboardShortcut(
