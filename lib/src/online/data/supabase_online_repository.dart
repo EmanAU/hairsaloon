@@ -1242,7 +1242,22 @@ class SupabaseOnlineRepository implements OnlineRepository {
   }
 
   @override
-  Future<void> saveService({
+  Future<SalonService?> serviceById(String serviceId) async {
+    try {
+      final row = await _client
+          .from('services')
+          .select()
+          .eq('id', serviceId)
+          .maybeSingle();
+      if (row == null) return null;
+      return SalonService.fromJson(Map<String, dynamic>.from(row));
+    } catch (error) {
+      _throwWriteFailure(error, fallback: 'Could not load the service.');
+    }
+  }
+
+  @override
+  Future<SalonService> saveService({
     required String businessId,
     String? id,
     required String name,
@@ -1263,18 +1278,23 @@ class SupabaseOnlineRepository implements OnlineRepository {
       values['content_json'] = contentJson;
     }
     try {
+      final Map<String, dynamic> row;
       if (id == null) {
-        await _client.from('services').insert({
-          'business_id': businessId,
-          ...values,
-        });
+        row = await _client
+            .from('services')
+            .insert({'business_id': businessId, ...values})
+            .select()
+            .single();
       } else {
-        await _client
+        row = await _client
             .from('services')
             .update(values)
             .eq('id', id)
-            .eq('business_id', businessId);
+            .eq('business_id', businessId)
+            .select()
+            .single();
       }
+      return SalonService.fromJson(row);
     } on OnlineFailure {
       rethrow;
     } catch (error) {

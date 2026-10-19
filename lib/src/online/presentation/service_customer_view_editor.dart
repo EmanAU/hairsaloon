@@ -5,7 +5,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
-import 'service_media.dart';
+import 'service_before_after_cards.dart';
 
 /// Owner editor for the customer-facing rich description of a service.
 class ServiceCustomerViewEditor extends StatefulWidget {
@@ -70,7 +70,7 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
     setState(() => _saving = true);
     try {
       final delta = _controller.document.toDelta().toJson();
-      await widget.repository.saveService(
+      final saved = await widget.repository.saveService(
         businessId: widget.businessId,
         id: widget.service.id,
         name: widget.service.name,
@@ -82,7 +82,8 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
       );
       if (!mounted) return;
       ToastService.success('Customer view saved', context);
-      Navigator.pop(context, true);
+      // Return the persisted service so caller can open View, then back to list.
+      Navigator.pop(context, saved);
     } on OnlineFailure catch (error) {
       if (mounted) ToastService.error(error.message, context);
     } catch (_) {
@@ -94,23 +95,54 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
     }
   }
 
-  static const _toolbarConfig = QuillSimpleToolbarConfig(
+  QuillSimpleToolbarConfig get _toolbarConfig => QuillSimpleToolbarConfig(
     multiRowsDisplay: false,
-    showAlignmentButtons: true,
+    showDividers: true,
+    // Essentials only — what people actually use while writing.
+    showBoldButton: true,
+    showItalicButton: true,
+    showUnderLineButton: true,
+    showListBullets: true,
+    showListNumbers: true,
+    showUndo: true,
+    showRedo: true,
+    // Hide everything else.
     showFontFamily: false,
     showFontSize: false,
-    showBackgroundColorButton: false,
-    showCodeBlock: false,
+    showStrikeThrough: false,
     showInlineCode: false,
+    showColorButton: false,
+    showBackgroundColorButton: false,
+    showClearFormat: false,
+    showHeaderStyle: false,
+    showListCheck: false,
+    showCodeBlock: false,
+    showQuote: false,
+    showIndent: false,
+    showLink: false,
+    showSearchButton: false,
     showSubscript: false,
     showSuperscript: false,
-    showSearchButton: false,
-    showQuote: true,
-    showIndent: true,
-    showListNumbers: true,
-    showListBullets: true,
-    showListCheck: false,
-    showLink: true,
+    showAlignmentButtons: false,
+    showDirection: false,
+    toolbarSize: 40,
+    buttonOptions: QuillSimpleToolbarButtonOptions(
+      base: QuillToolbarBaseButtonOptions(
+        iconTheme: QuillIconTheme(
+          iconButtonSelectedData: IconButtonData(
+            style: IconButton.styleFrom(
+              foregroundColor: AppColors.textPrimary,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.55),
+            ),
+          ),
+          iconButtonUnselectedData: IconButtonData(
+            style: IconButton.styleFrom(
+              foregroundColor: AppColors.textPrimary,
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   @override
@@ -148,7 +180,7 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
                             ?.copyWith(color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: AppSpacing.md),
-                      ServiceMedia(
+                      ServiceBeforeAfterCards(
                         repository: widget.repository,
                         serviceId: widget.service.id,
                         businessId: widget.businessId,
@@ -173,7 +205,8 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
           ),
           Material(
             color: AppColors.surface,
-            elevation: 2,
+            elevation: 3,
+            shadowColor: AppColors.shadow,
             child: SafeArea(
               top: false,
               child: Padding(
@@ -181,17 +214,24 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Divider(height: 1),
+                    const Divider(height: 1, color: AppColors.border),
                     if (!_showPhotos)
-                      QuillSimpleToolbar(
-                        controller: _controller,
-                        config: _toolbarConfig,
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: QuillSimpleToolbar(
+                            controller: _controller,
+                            config: _toolbarConfig,
+                          ),
+                        ),
                       ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
+                      padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
                       child: Row(
                         children: [
                           TextButton.icon(
@@ -202,9 +242,14 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
                                   ? Icons.edit_note_outlined
                                   : Icons.photo_library_outlined,
                               size: 20,
+                              color: AppColors.textPrimary,
                             ),
                             label: Text(
                               _showPhotos ? 'Back to writing' : 'Photos',
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],

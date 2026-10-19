@@ -116,7 +116,8 @@ abstract interface class OnlineRepository {
     String businessId, {
     bool includeInactive = false,
   });
-  Future<void> saveService({
+  Future<SalonService?> serviceById(String serviceId);
+  Future<SalonService> saveService({
     required String businessId,
     String? id,
     required String name,

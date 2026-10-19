@@ -363,7 +363,15 @@ class FakeOnlineRepository implements OnlineRepository {
   }) async => serviceRows;
 
   @override
-  Future<void> saveService({
+  Future<SalonService?> serviceById(String serviceId) async {
+    for (final service in serviceRows) {
+      if (service.id == serviceId) return service;
+    }
+    return null;
+  }
+
+  @override
+  Future<SalonService> saveService({
     required String businessId,
     String? id,
     required String name,
@@ -383,22 +391,23 @@ class FakeOnlineRepository implements OnlineRepository {
       'isActive': isActive,
       'contentJson': contentJson,
     };
+    final saved = SalonService(
+      id: id ?? 'new-service',
+      name: name,
+      category: category,
+      description: description,
+      price: price,
+      isActive: isActive,
+      contentJson: contentJson ?? const [],
+    );
     if (id != null) {
       serviceRows = [
         for (final service in serviceRows)
-          if (service.id == id)
-            SalonService(
-              id: id,
-              name: name,
-              category: category,
-              description: description,
-              price: price,
-              isActive: isActive,
-              contentJson: contentJson ?? service.contentJson,
-            )
-          else
-            service,
+          if (service.id == id) saved else service,
       ];
+    } else {
+      serviceRows = [...serviceRows, saved];
     }
+    return saved;
   }
 }

@@ -394,16 +394,6 @@ class SalonService {
   }
 
   factory SalonService.fromJson(Map<String, dynamic> json) {
-    final raw = json['content_json'];
-    var content = const <dynamic>[];
-    if (raw is List) {
-      content = List<dynamic>.from(raw);
-    } else if (raw is String && raw.trim().isNotEmpty) {
-      try {
-        final decoded = jsonDecode(raw);
-        if (decoded is List) content = List<dynamic>.from(decoded);
-      } catch (_) {}
-    }
     return SalonService(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -411,7 +401,38 @@ class SalonService {
       price: (json['price'] as num).toDouble(),
       category: json['category'] as String,
       isActive: json['is_active'] as bool? ?? true,
-      contentJson: content,
+      contentJson: _parseContentJson(json['content_json']),
     );
+  }
+
+  /// Quill Delta ops list; keeps bold/italic/underline/list attributes intact.
+  static List<dynamic> _parseContentJson(Object? raw) {
+    Object? value = raw;
+    if (value is String && value.trim().isNotEmpty) {
+      try {
+        value = jsonDecode(value);
+      } catch (_) {
+        return const [];
+      }
+    }
+    if (value is Map && value['ops'] is List) {
+      value = value['ops'];
+    }
+    if (value is! List) return const [];
+    final ops = <Map<String, dynamic>>[];
+    for (final item in value) {
+      if (item is! Map) continue;
+      final op = <String, dynamic>{
+        for (final e in item.entries) e.key.toString(): e.value,
+      };
+      if (op['attributes'] is Map) {
+        final attrs = op['attributes'] as Map;
+        op['attributes'] = <String, dynamic>{
+          for (final e in attrs.entries) e.key.toString(): e.value,
+        };
+      }
+      if (op.containsKey('insert')) ops.add(op);
+    }
+    return ops;
   }
 }

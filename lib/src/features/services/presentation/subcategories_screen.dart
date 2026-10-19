@@ -355,7 +355,7 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
                           if (online) ...const [
                             PopupMenuItem(
                               value: 'customer_view',
-                              child: Text('Customer view'),
+                              child: Text('Edit customer view'),
                             ),
                             PopupMenuItem(
                               value: 'view_customer_view',
@@ -432,7 +432,7 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
           ),
         );
       } else {
-        await Navigator.of(context).push<void>(
+        final saved = await Navigator.of(context).push<SalonService>(
           MaterialPageRoute(
             builder: (_) => ServiceCustomerViewEditor(
               repository: workspace.repository,
@@ -441,6 +441,18 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
             ),
           ),
         );
+        // After save → show customer view; back from there returns here.
+        if (saved != null && mounted) {
+          await Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (_) => ServiceDetailPage(
+                repository: workspace.repository,
+                business: workspace.business,
+                service: saved,
+              ),
+            ),
+          );
+        }
       }
     } on OnlineFailure catch (error) {
       if (!mounted) return;

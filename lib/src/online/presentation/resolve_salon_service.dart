@@ -3,6 +3,7 @@ import '../domain/online_models.dart';
 
 /// Finds the online [SalonService] for a local category + subcategory name.
 /// Seeds defaults if needed; creates a row when the rate-list item is new.
+/// Always prefers an existing row (with saved customer view) — never duplicates.
 Future<SalonService> resolveSalonService({
   required BusinessWorkspace workspace,
   required String category,
@@ -19,13 +20,21 @@ Future<SalonService> resolveSalonService({
   }
 
   SalonService? match(List<SalonService> services) {
+    final cat = category.trim().toLowerCase();
+    final name = subcategory.trim().toLowerCase();
+    SalonService? withContent;
+    SalonService? any;
     for (final service in services) {
-      if (service.category.trim().toLowerCase() == category.trim().toLowerCase() &&
-          service.name.trim().toLowerCase() == subcategory.trim().toLowerCase()) {
-        return service;
+      final sameCategory = service.category.trim().toLowerCase() == cat;
+      final sameName = service.name.trim().toLowerCase() == name;
+      if (!sameCategory || !sameName) continue;
+      any ??= service;
+      if (service.hasRichContent) {
+        withContent ??= service;
       }
     }
-    return null;
+    // Resume the row that already has customer-view content when duplicates exist.
+    return withContent ?? any;
   }
 
   var services = await repository.services(
@@ -33,9 +42,13 @@ Future<SalonService> resolveSalonService({
     includeInactive: true,
   );
   final existing = match(services);
-  if (existing != null) return existing;
+  if (existing != null) {
+    // Re-fetch by id so content_json is the latest from Supabase.
+    final fresh = await repository.serviceById(existing.id);
+    return fresh ?? existing;
+  }
 
-  await repository.saveService(
+  final created = await repository.saveService(
     businessId: businessId,
     name: subcategory.trim(),
     category: category.trim(),
@@ -43,12 +56,5 @@ Future<SalonService> resolveSalonService({
     price: price < 0 ? 0 : price,
     isActive: true,
   );
-
-  services = await repository.services(businessId, includeInactive: true);
-  final created = match(services);
-  if (created != null) return created;
-
-  throw const OnlineFailure(
-    'Could not open customer view for this service. Try again.',
-  );
+  return created;
 }

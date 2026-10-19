@@ -6,6 +6,8 @@ import 'features/business_profile/domain/repositories/business_profile_repositor
 import 'package:hairsaloon/src/core/layout/adaptive_page.dart';
 import 'package:hairsaloon/src/features/auth/data/repositories/local_auth_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hairsaloon/src/features/auth/data/datasources/local_auth_session_datasource.dart';
 import 'package:hairsaloon/src/features/auth/domain/usecases/get_current_user.dart';
@@ -241,6 +243,13 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                       ? null
                       : ToastService.messengerKey,
                   theme: AppTheme.light(),
+                  localizationsDelegates: const [
+                    GlobalMaterialLocalizations.delegate,
+                    GlobalWidgetsLocalizations.delegate,
+                    GlobalCupertinoLocalizations.delegate,
+                    FlutterQuillLocalizations.delegate,
+                  ],
+                  supportedLocales: const [Locale('en')],
                   initialRoute: AppRoutes.splash,
                   routes:
                       <String, WidgetBuilder>{
