@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 enum AppAudience { business, customer }
 
 class OnlineFailure implements Exception {
@@ -334,6 +336,7 @@ class SalonService {
     required this.price,
     required this.category,
     this.isActive = true,
+    this.contentJson = const <dynamic>[],
   });
   final String id;
   final String name;
@@ -342,12 +345,40 @@ class SalonService {
   final String category;
   final bool isActive;
 
-  factory SalonService.fromJson(Map<String, dynamic> json) => SalonService(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    description: json['description'] as String,
-    price: (json['price'] as num).toDouble(),
-    category: json['category'] as String,
-    isActive: json['is_active'] as bool,
-  );
+  /// Flutter Quill Delta JSON (list of ops).
+  final List<dynamic> contentJson;
+
+  bool get hasRichContent {
+    if (contentJson.isEmpty) return false;
+    // Empty docs are often [{"insert":"\n"}].
+    final text = contentJson
+        .whereType<Map>()
+        .map((op) => op['insert'])
+        .whereType<String>()
+        .join()
+        .trim();
+    return text.isNotEmpty;
+  }
+
+  factory SalonService.fromJson(Map<String, dynamic> json) {
+    final raw = json['content_json'];
+    var content = const <dynamic>[];
+    if (raw is List) {
+      content = List<dynamic>.from(raw);
+    } else if (raw is String && raw.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) content = List<dynamic>.from(decoded);
+      } catch (_) {}
+    }
+    return SalonService(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      description: json['description'] as String? ?? '',
+      price: (json['price'] as num).toDouble(),
+      category: json['category'] as String,
+      isActive: json['is_active'] as bool? ?? true,
+      contentJson: content,
+    );
+  }
 }

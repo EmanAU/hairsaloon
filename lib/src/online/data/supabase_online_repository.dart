@@ -1054,14 +1054,18 @@ class SupabaseOnlineRepository implements OnlineRepository {
     required String description,
     required double price,
     required bool isActive,
+    List<dynamic>? contentJson,
   }) async {
-    final values = {
+    final values = <String, dynamic>{
       'name': name.trim(),
       'category': category.trim(),
       'description': description.trim(),
       'price': price,
       'is_active': isActive,
     };
+    if (contentJson != null) {
+      values['content_json'] = contentJson;
+    }
     try {
       if (id == null) {
         await _client.from('services').insert({

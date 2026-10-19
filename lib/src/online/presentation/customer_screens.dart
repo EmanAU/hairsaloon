@@ -3,6 +3,8 @@ import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
 import 'widgets/online_widgets.dart';
 import 'widgets/business_photo.dart';
+import 'widgets/before_after_slider.dart';
+import 'widgets/service_rich_content.dart';
 import 'qr_screen.dart';
 import 'reviews_panel.dart';
 import 'service_media.dart';
@@ -546,7 +548,7 @@ class _SalonDetailsState extends State<SalonDetails> {
   }
 }
 
-class ServiceDetailPage extends StatelessWidget {
+class ServiceDetailPage extends StatefulWidget {
   const ServiceDetailPage({
     super.key,
     required this.repository,
@@ -556,6 +558,35 @@ class ServiceDetailPage extends StatelessWidget {
   final OnlineRepository repository;
   final SalonBusiness business;
   final SalonService service;
+
+  @override
+  State<ServiceDetailPage> createState() => _ServiceDetailPageState();
+}
+
+class _ServiceDetailPageState extends State<ServiceDetailPage> {
+  late final Future<List<Map<String, dynamic>>> _media = widget.repository
+      .media(widget.service.id);
+
+  SalonService get service => widget.service;
+
+  ({String? before, String? after}) _pair(List<Map<String, dynamic>> rows) {
+    final pairs = <String, Map<String, String>>{};
+    for (final row in rows) {
+      final kind = row['kind'] as String?;
+      final url = row['url'] as String?;
+      if (url == null || (kind != 'before' && kind != 'after')) continue;
+      final pairId = (row['pair_id'] as String?) ?? '_';
+      pairs.putIfAbsent(pairId, () => <String, String>{})[kind!] = url;
+    }
+    for (final entry in pairs.entries) {
+      final before = entry.value['before'];
+      final after = entry.value['after'];
+      if (before != null && after != null) {
+        return (before: before, after: after);
+      }
+    }
+    return (before: null, after: null);
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -587,7 +618,7 @@ class ServiceDetailPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      business.name,
+                      widget.business.name,
                       style: const TextStyle(
                         color: Color(0xFF718094),
                         fontWeight: FontWeight.w600,
@@ -620,20 +651,32 @@ class ServiceDetailPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      service.description.trim().isEmpty
-                          ? 'No description added yet.'
-                          : service.description,
-                      style: const TextStyle(
-                        height: 1.45,
-                        color: Color(0xFF34441D),
-                      ),
+                    ServiceRichContent(
+                      contentJson: service.contentJson,
+                      fallbackDescription: service.description,
                     ),
                   ],
                 ),
               ),
             ),
-            ServiceMedia(repository: repository, serviceId: service.id),
+            const SizedBox(height: 16),
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _media,
+              builder: (context, snapshot) {
+                final rows = snapshot.data ?? const <Map<String, dynamic>>[];
+                final pair = _pair(rows);
+                if (pair.before != null && pair.after != null) {
+                  return BeforeAfterSlider(
+                    beforeUrl: pair.before!,
+                    afterUrl: pair.after!,
+                  );
+                }
+                return ServiceMedia(
+                  repository: widget.repository,
+                  serviceId: service.id,
+                );
+              },
+            ),
           ],
         ),
       ),

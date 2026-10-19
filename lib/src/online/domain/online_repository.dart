@@ -114,5 +114,6 @@ abstract interface class OnlineRepository {
     required String description,
     required double price,
     required bool isActive,
+    List<dynamic>? contentJson,
   });
 }

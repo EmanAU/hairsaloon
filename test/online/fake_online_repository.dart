@@ -314,11 +314,7 @@ class FakeOnlineRepository implements OnlineRepository {
       isActive: true,
     ),
   ];
-  @override
-  Future<List<SalonService>> services(
-    String businessId, {
-    bool includeInactive = false,
-  }) async => const [
+  List<SalonService> serviceRows = const [
     SalonService(
       id: 'service',
       name: 'Haircut',
@@ -327,6 +323,13 @@ class FakeOnlineRepository implements OnlineRepository {
       category: 'Hair',
     ),
   ];
+  Map<String, dynamic>? lastSavedService;
+
+  @override
+  Future<List<SalonService>> services(
+    String businessId, {
+    bool includeInactive = false,
+  }) async => serviceRows;
 
   @override
   Future<void> saveService({
@@ -337,5 +340,34 @@ class FakeOnlineRepository implements OnlineRepository {
     required String description,
     required double price,
     required bool isActive,
-  }) async {}
+    List<dynamic>? contentJson,
+  }) async {
+    lastSavedService = {
+      'businessId': businessId,
+      'id': id,
+      'name': name,
+      'category': category,
+      'description': description,
+      'price': price,
+      'isActive': isActive,
+      'contentJson': contentJson,
+    };
+    if (id != null) {
+      serviceRows = [
+        for (final service in serviceRows)
+          if (service.id == id)
+            SalonService(
+              id: id,
+              name: name,
+              category: category,
+              description: description,
+              price: price,
+              isActive: isActive,
+              contentJson: contentJson ?? service.contentJson,
+            )
+          else
+            service,
+      ];
+    }
+  }
 }

@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
 import '../domain/online_models.dart';
 import 'contracts_screen.dart';
 import 'business_form.dart';
@@ -146,14 +148,12 @@ class _EmployeeHomeState extends State<EmployeeHome> {
   Widget build(BuildContext context) {
     final workspace = widget.session.workspace!;
     final profile = workspace.profile;
+    final text = Theme.of(context).textTheme;
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: AppColors.homeCanvas,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F8FA),
-        title: const Text(
-          'My work',
-          style: TextStyle(fontFamily: 'Roboto'),
-        ),
+        backgroundColor: AppColors.homeCanvas,
+        title: Text('My work', style: text.titleLarge),
         actions: [
           IconButton(
             tooltip: 'Edit profile',

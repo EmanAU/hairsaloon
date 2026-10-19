@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/toast_service.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
+import 'service_customer_view_editor.dart';
 import 'widgets/online_widgets.dart';
 import 'service_media.dart';
 
@@ -194,12 +195,32 @@ class _ServiceFormState extends State<_ServiceForm> {
               icon: Icons.check,
               onPressed: _save,
             ),
-            if (widget.service != null)
+            if (widget.service != null) ...[
+              ActionButton(
+                label: 'Customer view',
+                icon: Icons.article_outlined,
+                onPressed: () async {
+                  final saved = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ServiceCustomerViewEditor(
+                        repository: widget.repository,
+                        businessId: widget.businessId,
+                        service: widget.service!,
+                      ),
+                    ),
+                  );
+                  if (saved == true && mounted) {
+                    Navigator.pop(context, true);
+                  }
+                },
+              ),
               ServiceMedia(
                 repository: widget.repository,
                 serviceId: widget.service!.id,
                 businessId: widget.businessId,
               ),
+            ],
           ],
         ),
       ),

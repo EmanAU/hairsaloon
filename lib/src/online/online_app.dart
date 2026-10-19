@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:app_links/app_links.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'domain/qr_destination.dart';
 import '../app.dart';
 import '../theme/app_theme.dart';
@@ -177,6 +178,7 @@ class _OnlineAppState extends State<OnlineApp> {
         : 'TrimMatrix Customer',
     debugShowCheckedModeBanner: false,
     theme: AppTheme.light(),
+    localizationsDelegates: const [FlutterQuillLocalizations.delegate],
     home: Builder(
       builder: (context) {
         final session = _session;
