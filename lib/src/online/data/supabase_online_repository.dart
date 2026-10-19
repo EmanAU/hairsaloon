@@ -679,18 +679,25 @@ class SupabaseOnlineRepository implements OnlineRepository {
     required double commission,
     required String terms,
   }) async {
-    await _client.rpc(
-      'propose_contract',
-      params: {
-        'employee': employeeId,
-        'contract_kind': kind,
-        'starts': starts.toUtc().toIso8601String(),
-        'ends': ends?.toUtc().toIso8601String(),
-        'basic_salary': salary,
-        'commission': commission,
-        'description': terms.trim(),
-      },
-    );
+    try {
+      await _client.rpc(
+        'propose_contract',
+        params: {
+          'employee': employeeId,
+          'contract_kind': kind,
+          'starts': starts.toUtc().toIso8601String(),
+          'ends': ends?.toUtc().toIso8601String(),
+          'basic_salary': salary,
+          'commission': commission,
+          'description': terms.trim(),
+        },
+      );
+    } catch (error) {
+      _throwWriteFailure(
+        error,
+        fallback: 'Could not save the contract. Try again.',
+      );
+    }
   }
 
   @override

@@ -520,11 +520,17 @@ from public, anon;
 
 grant execute on function
   public.ensure_business_services(uuid),
+  private.invite_employee_by_identity(uuid, text, text, text, text),
   public.invite_employee_by_identity(uuid, text, text, text, text),
+  private.pending_invites_for_me(),
   public.pending_invites_for_me(),
+  private.respond_to_employee_invite(uuid, boolean),
   public.respond_to_employee_invite(uuid, boolean),
+  private.set_employee_manager(uuid, boolean, text),
   public.set_employee_manager(uuid, boolean, text),
+  private.verify_manager_pin(uuid, text),
   public.verify_manager_pin(uuid, text),
+  private.my_manager_businesses(),
   public.my_manager_businesses(),
   public.business_team(uuid)
 to authenticated;

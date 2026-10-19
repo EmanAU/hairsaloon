@@ -1,11 +1,10 @@
-import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../domain/online_models.dart';
 import 'business_form.dart';
-import 'business_home.dart';
+import 'business_home.dart' show JoinSalon;
 import 'online_session.dart';
 import 'profile_form.dart';
 import 'widgets/online_widgets.dart';
@@ -30,103 +29,13 @@ class _EmployeeHomeState extends State<EmployeeHome> {
       .employeeDashboard();
   late Future<List<PendingEmployeeInvite>> _invites = widget.session.repository
       .pendingInvitesForMe();
-  late Future<List<ManagerBusiness>> _managerSalons = widget
-      .session
-      .repository
-      .myManagerBusinesses();
-  late final Timer _poll;
   var _period = _WorkPeriod.daily;
   late DateTime _anchor = DateTime.now();
-
-  @override
-  void initState() {
-    super.initState();
-    _poll = Timer.periodic(const Duration(seconds: 20), (_) {
-      if (mounted && ModalRoute.of(context)?.isCurrent == true) {
-        _refresh();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _poll.cancel();
-    super.dispose();
-  }
 
   void _refresh() => setState(() {
     _data = widget.session.repository.employeeDashboard();
     _invites = widget.session.repository.pendingInvitesForMe();
-    _managerSalons = widget.session.repository.myManagerBusinesses();
   });
-
-  Future<void> _openManagerDashboard(ManagerBusiness salon) async {
-    final pin = TextEditingController();
-    final submitted = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Manager PIN · ${salon.businessName}'),
-        content: TextField(
-          controller: pin,
-          keyboardType: TextInputType.number,
-          maxLength: 4,
-          obscureText: true,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: '4-digit PIN',
-            counterText: '',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Open'),
-          ),
-        ],
-      ),
-    );
-    if (submitted != true || !mounted) {
-      pin.dispose();
-      return;
-    }
-    try {
-      final ok = await widget.session.repository.verifyManagerPin(
-        salon.businessId,
-        pin.text.trim(),
-      );
-      if (!ok) {
-        showMessage(context, 'Incorrect manager PIN', error: true);
-        return;
-      }
-      if (!mounted) return;
-      await Navigator.push<void>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => OwnerBusiness(
-            repository: widget.session.repository,
-            businessId: salon.businessId,
-            managementOnly: true,
-          ),
-        ),
-      );
-    } catch (error) {
-      if (mounted) {
-        showMessage(
-          context,
-          error is OnlineFailure
-              ? error.message
-              : 'Could not open manager dashboard.',
-          error: true,
-        );
-      }
-    } finally {
-      pin.dispose();
-    }
-  }
 
   bool _inPeriod(DateTime date) {
     final day = DateTime(date.year, date.month, date.day);
@@ -192,14 +101,16 @@ class _EmployeeHomeState extends State<EmployeeHome> {
           ),
         ],
       ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: RemoteContent(
-            future: _data,
-            onRetry: _refresh,
-            builder: (data) {
+      body: SafeArea(
+        top: false,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: RemoteContent(
+              future: _data,
+              onRetry: _refresh,
+              builder: (data) {
               final filtered =
                   data.days.where((d) => _inPeriod(d.date)).toList();
               // If today is empty, still show the latest working day so staff
@@ -210,19 +121,18 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                         ? <EmployeeDayWork>[data.days.first]
                         : filtered);
               final sales = days.fold<double>(0, (s, d) => s + d.sales);
-              final earning = days.fold<double>(0, (s, d) => s + d.earning);
               final jobs = days.fold<int>(0, (s, d) => s + d.jobCount);
               final hasSalonWork =
                   data.liveContracts.isNotEmpty ||
-                  data.notifiedContracts.isNotEmpty ||
-                  data.joinRequests.isNotEmpty;
+                  data.notifiedContracts.isNotEmpty;
 
-              final invitesSection = _AsyncSection<List<PendingEmployeeInvite>>(
+              final invitesSection = FutureBuilder<List<PendingEmployeeInvite>>(
                 future: _invites,
-                onRetry: _refresh,
-                errorLabel: 'Could not load salon invites.',
-                builder: (invites) {
-                  if (invites.isEmpty) return const SizedBox.shrink();
+                builder: (context, snapshot) {
+                  final invites = snapshot.data;
+                  if (invites == null || invites.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -283,33 +193,16 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                 },
               );
 
-              final managerSection = _AsyncSection<List<ManagerBusiness>>(
-                future: _managerSalons,
-                onRetry: _refresh,
-                errorLabel: 'Could not load manager access.',
-                builder: (salons) {
-                  if (salons.isEmpty) return const SizedBox.shrink();
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text('Manager access', style: text.titleMedium),
-                      const SizedBox(height: AppSpacing.sm),
-                      for (final salon in salons)
-                        ActionButton(
-                          label: 'Open ${salon.businessName}',
-                          icon: Icons.admin_panel_settings_outlined,
-                          onPressed: () => _openManagerDashboard(salon),
-                        ),
-                      const SizedBox(height: AppSpacing.md),
-                    ],
-                  );
-                },
-              );
-
               // After personal profile: big Start / Join cards (same as before).
               if (!hasSalonWork) {
                 return ListView(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                    AppSpacing.lg,
+                    AppSpacing.xl,
+                  ),
+                  physics: const AlwaysScrollableScrollPhysics(),
                   children: [
                     Text(
                       'Get started',
@@ -455,7 +348,13 @@ class _EmployeeHomeState extends State<EmployeeHome> {
               }
 
               return ListView(
-                padding: const EdgeInsets.all(AppSpacing.lg),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                  AppSpacing.lg,
+                  AppSpacing.xl,
+                ),
+                physics: const AlwaysScrollableScrollPhysics(),
                 children: [
                   _ProfileHeader(
                     name: workspace.account.name,
@@ -465,7 +364,6 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   invitesSection,
-                  managerSection,
                   if (data.notifiedContracts.isNotEmpty) ...[
                     Text('Your contracts', style: text.titleMedium),
                     const SizedBox(height: AppSpacing.sm),
@@ -476,7 +374,7 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                   if (hasSalonWork &&
                       data.liveContracts.isEmpty &&
                       data.notifiedContracts.isEmpty) ...[
-                    _BannerPanel(
+                    const _BannerPanel(
                       title: 'Contract pending',
                       subtitle:
                           'Waiting for your contract to start. After it begins, every bill you complete shows here.',
@@ -484,45 +382,21 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                     const SizedBox(height: AppSpacing.md),
                   ],
                   if (data.liveContracts.isNotEmpty) ...[
-                    Text(
-                      data.liveContracts.length == 1
-                          ? data.liveContracts.first.businessName
-                          : 'Working at ${data.liveContracts.length} salons',
-                      style: text.titleMedium,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      data.liveContracts
-                          .map(
-                            (c) =>
-                                '${c.kind} · ${c.commission.toStringAsFixed(0)}% commission',
-                          )
-                          .join(' · '),
-                      style: text.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                  ],
-                  if (data.joinRequests.isNotEmpty) ...[
-                    Text('Join requests', style: text.titleMedium),
-                    const SizedBox(height: AppSpacing.sm),
-                    for (final request in data.joinRequests)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(request.businessName),
-                        subtitle: Text(switch (request.status) {
-                          'accepted' => 'Joined',
-                          'declined' => 'Declined',
-                          _ => 'Waiting for owner approval',
-                        }),
-                      ),
+                    for (final contract in data.liveContracts) ...[
+                      _SalonSummaryCard(contract: contract),
+                      const SizedBox(height: AppSpacing.sm),
+                    ],
                     const SizedBox(height: AppSpacing.sm),
                   ],
                   Row(
                     children: [
                       Expanded(
-                        child: Text('Daily work', style: text.titleMedium),
+                        child: Text(
+                          'Daily work',
+                          style: text.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
                       TextButton(
                         onPressed: () async {
@@ -534,7 +408,9 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                               const Duration(days: 1),
                             ),
                           );
-                          if (picked != null) setState(() => _anchor = picked);
+                          if (picked != null) {
+                            setState(() => _anchor = picked);
+                          }
                         },
                         child: Text(
                           '${_anchor.day}/${_anchor.month}/${_anchor.year}',
@@ -574,13 +450,6 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: _StatTile(
-                          label: 'Your earning',
-                          value: _money(earning),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: _StatTile(
                           label: 'Jobs',
                           value: '$jobs',
                         ),
@@ -606,31 +475,31 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                       Padding(
                         padding: const EdgeInsets.only(
                           top: AppSpacing.sm,
-                          bottom: AppSpacing.xs,
+                          bottom: AppSpacing.sm,
                         ),
                         child: Text(
-                          '${day.date.day}/${day.date.month}/${day.date.year}'
-                          ' · ${_money(day.sales)} sales · ${_money(day.earning)} earning',
-                          style: text.titleSmall,
+                          '${day.date.day}/${day.date.month}/${day.date.year}',
+                          style: text.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                       for (final job in day.jobs)
-                        _JobRow(
-                          customerName: job.customerName,
-                          detail: [
-                            job.businessName,
-                            if (job.services.isNotEmpty)
-                              job.services.join(', '),
-                            '${job.createdAt.hour.toString().padLeft(2, '0')}:'
-                                '${job.createdAt.minute.toString().padLeft(2, '0')}',
-                          ].join(' · '),
-                          total: _money(job.total),
-                          earning: '+${_money(job.earning)}',
+                        _JobListTile(
+                          job: job,
+                          money: _money,
+                          onTap: () => Navigator.push<void>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => _JobDetailPage(job: job),
+                            ),
+                          ),
                         ),
                     ],
                 ],
               );
             },
+            ),
           ),
         ),
       ),
@@ -639,43 +508,6 @@ class _EmployeeHomeState extends State<EmployeeHome> {
 }
 
 enum _WorkPeriod { daily, weekly, monthly }
-
-class _AsyncSection<T> extends StatelessWidget {
-  const _AsyncSection({
-    required this.future,
-    required this.onRetry,
-    required this.errorLabel,
-    required this.builder,
-  });
-  final Future<T> future;
-  final VoidCallback onRetry;
-  final String errorLabel;
-  final Widget Function(T data) builder;
-
-  @override
-  Widget build(BuildContext context) => FutureBuilder<T>(
-    future: future,
-    builder: (context, snapshot) {
-      if (snapshot.connectionState != ConnectionState.done) {
-        return const Padding(
-          padding: EdgeInsets.only(bottom: AppSpacing.md),
-          child: LinearProgressIndicator(minHeight: 2),
-        );
-      }
-      if (snapshot.hasError || !snapshot.hasData) {
-        return _BannerPanel(
-          title: 'Something went wrong',
-          subtitle: errorLabel,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(onPressed: onRetry, child: const Text('Retry')),
-          ),
-        );
-      }
-      return builder(snapshot.data as T);
-    },
-  );
-}
 
 class _BannerPanel extends StatelessWidget {
   const _BannerPanel({
@@ -712,6 +544,80 @@ class _BannerPanel extends StatelessWidget {
             child!,
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _SalonSummaryCard extends StatelessWidget {
+  const _SalonSummaryCard({required this.contract});
+  final WorkContract contract;
+
+  String get _kindLabel => switch (contract.kind) {
+    'permanent' => 'Permanent',
+    'daily' => 'Daily',
+    'fixed' => 'Fixed term',
+    _ => contract.kind,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.homeBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Your salon',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              contract.businessName,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Employment type',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              _kindLabel,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Commission',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${contract.commission.toStringAsFixed(0)}%',
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -817,58 +723,191 @@ class _StatTile extends StatelessWidget {
   }
 }
 
-class _JobRow extends StatelessWidget {
-  const _JobRow({
-    required this.customerName,
-    required this.detail,
-    required this.total,
-    required this.earning,
+class _JobListTile extends StatelessWidget {
+  const _JobListTile({
+    required this.job,
+    required this.money,
+    required this.onTap,
   });
-  final String customerName;
-  final String detail;
-  final String total;
-  final String earning;
+
+  final EmployeeWorkJob job;
+  final String Function(double) money;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.homeBorder),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: 14,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          job.customerName.trim().isEmpty
+                              ? 'Customer'
+                              : job.customerName,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Total ${money(job.total)}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.iconMuted,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _JobDetailPage extends StatelessWidget {
+  const _JobDetailPage({required this.job});
+
+  final EmployeeWorkJob job;
+
+  String _money(double value) => value.toStringAsFixed(0);
+
+  String get _time =>
+      '${job.createdAt.hour.toString().padLeft(2, '0')}:'
+      '${job.createdAt.minute.toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
+    return Scaffold(
+      backgroundColor: AppColors.homeCanvas,
+      appBar: AppBar(
+        backgroundColor: AppColors.homeCanvas,
+        surfaceTintColor: const Color(0x00000000),
+        elevation: 0,
+        title: Text(
+          'Job detail',
+          style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
       ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.homeBorder),
-      ),
-      child: Row(
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.md,
+          AppSpacing.lg,
+          AppSpacing.xl,
+        ),
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(customerName, style: text.titleSmall),
-                const SizedBox(height: 2),
-                Text(
-                  detail,
-                  style: text.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _JobField(
+                    label: 'Customer',
+                    value: job.customerName.trim().isEmpty
+                        ? '—'
+                        : job.customerName,
                   ),
-                ),
-              ],
+                  _JobField(label: 'Salon', value: job.businessName),
+                  _JobField(
+                    label: 'Services',
+                    value: job.services.isEmpty
+                        ? '—'
+                        : job.services.join(', '),
+                  ),
+                  _JobField(label: 'Time', value: _time),
+                  _JobField(
+                    label: 'Total to salon',
+                    value: _money(job.total),
+                  ),
+                  _JobField(
+                    label: 'Your commission',
+                    value: '+${_money(job.earning)}'
+                        ' (${job.commissionPercent.toStringAsFixed(0)}%)',
+                    valueColor: AppColors.success,
+                  ),
+                ],
+              ),
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(total, style: text.titleSmall),
-              Text(
-                earning,
-                style: text.labelMedium?.copyWith(color: AppColors.success),
-              ),
-            ],
+        ],
+      ),
+    );
+  }
+}
+
+class _JobField extends StatelessWidget {
+  const _JobField({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: valueColor ?? AppColors.textPrimary,
+              height: 1.3,
+            ),
           ),
         ],
       ),
@@ -880,14 +919,54 @@ class _ContractNotice extends StatelessWidget {
   const _ContractNotice({required this.contract});
   final WorkContract contract;
 
+  String get _kindLabel => switch (contract.kind) {
+    'permanent' => 'Permanent',
+    'daily' => 'Daily',
+    'fixed' => 'Fixed term',
+    _ => contract.kind,
+  };
+
   @override
-  Widget build(BuildContext context) => _BannerPanel(
-    title: contract.businessName,
-    subtitle:
-        '${contract.kind.toUpperCase()} · ${contract.displayStatus} · '
-        'salary ${contract.salary.toStringAsFixed(0)} · '
-        '${contract.commission.toStringAsFixed(0)}% commission'
-        '${contract.terms.isNotEmpty ? '\n${contract.terms}' : ''}\n'
-        'Your salon owner set these terms. No action is required from you.',
-  );
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.homeBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              contract.businessName,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 10),
+            _JobField(label: 'Employment type', value: _kindLabel),
+            _JobField(
+              label: 'Status',
+              value: contract.displayStatus,
+            ),
+            _JobField(
+              label: 'Salary',
+              value: contract.salary.toStringAsFixed(0),
+            ),
+            _JobField(
+              label: 'Commission',
+              value: '${contract.commission.toStringAsFixed(0)}%',
+            ),
+            if (contract.terms.trim().isNotEmpty)
+              _JobField(
+                label: 'Agreement description',
+                value: contract.terms.trim(),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }

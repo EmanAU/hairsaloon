@@ -12,9 +12,16 @@ import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
 class EmployeeDetailsScreen extends StatefulWidget {
-  const EmployeeDetailsScreen({super.key, required this.item});
+  const EmployeeDetailsScreen({
+    super.key,
+    required this.item,
+    this.requireCompletion = false,
+  });
 
   final EmployeeItem item;
+
+  /// After online invite + contract: stay in edit until profile fields are filled.
+  final bool requireCompletion;
 
   @override
   State<EmployeeDetailsScreen> createState() => _EmployeeDetailsScreenState();
@@ -32,14 +39,16 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
   late final TextEditingController _otherCategoryCtrl;
   String? _specialistCategory;
   String? _photoBase64;
-  bool _editing = false;
+  late bool _editing;
   late bool _isActive;
   late bool _isManager;
   bool _usingOther = false;
+  bool _completed = false;
 
   @override
   void initState() {
     super.initState();
+    _editing = widget.requireCompletion;
     _hydrateFrom(widget.item);
   }
 
@@ -123,6 +132,14 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     return (_specialistCategory ?? '').trim();
   }
 
+  void _onBack() {
+    if (widget.requireCompletion && !_completed) {
+      ToastService.error('Complete the employee profile to continue');
+      return;
+    }
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = context.watch<EmployeesStore>();
@@ -132,46 +149,55 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
         otherManager != null &&
         otherManager.id != widget.item.id;
 
-    return AdaptivePage(
-      form: true,
-      child: Scaffold(
-        backgroundColor: AppColors.surface,
-        appBar: AppBar(
-          backgroundColor: AppColors.primary,
-          surfaceTintColor: const Color(0x00000000),
-          leading: IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(CupertinoIcons.back, color: AppColors.onPrimary),
-          ),
-          title: const Text(
-            'Employee Details',
-            style: TextStyle(
-              color: AppColors.onPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
+    final mustComplete = widget.requireCompletion && !_completed;
+
+    return PopScope(
+      canPop: !mustComplete,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _onBack();
+      },
+      child: AdaptivePage(
+        form: true,
+        child: Scaffold(
+          backgroundColor: AppColors.surface,
+          appBar: AppBar(
+            backgroundColor: AppColors.primary,
+            surfaceTintColor: const Color(0x00000000),
+            leading: IconButton(
+              onPressed: _onBack,
+              icon: const Icon(CupertinoIcons.back, color: AppColors.onPrimary),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => setState(() {
-                if (_editing) {
-                  _resetFromItem();
-                  _editing = false;
-                } else {
-                  _editing = true;
-                }
-              }),
-              child: Text(
-                _editing ? 'Cancel' : 'Edit',
-                style: const TextStyle(
-                  color: AppColors.onPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
+            title: Text(
+              mustComplete ? 'Complete employee profile' : 'Employee Details',
+              style: const TextStyle(
+                color: AppColors.onPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
               ),
             ),
-          ],
-        ),
+            actions: [
+              if (!mustComplete)
+                TextButton(
+                  onPressed: () => setState(() {
+                    if (_editing) {
+                      _resetFromItem();
+                      _editing = false;
+                    } else {
+                      _editing = true;
+                    }
+                  }),
+                  child: Text(
+                    _editing ? 'Cancel' : 'Edit',
+                    style: const TextStyle(
+                      color: AppColors.onPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         body: ListView(
           padding: SafeScrollPadding.of(
             context,
@@ -295,9 +321,9 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
                     ),
                   ),
                   onPressed: () => _save(store),
-                  child: const Text(
-                    'Save Changes',
-                    style: TextStyle(
+                  child: Text(
+                    mustComplete ? 'Save profile' : 'Save Changes',
+                    style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                     ),
@@ -321,6 +347,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
             ],
           ],
         ),
+      ),
       ),
     );
   }
@@ -446,11 +473,17 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
         address.isEmpty ||
         !PkPhone.isValid(phone) ||
         !_isValidCnic(cnic)) {
-      ToastService.error('Please fill valid details');
+      ToastService.error(
+        'Fill name, 11-digit phone (03…), CNIC, and home address.',
+      );
       return;
     }
 
     var category = _specialistCategory?.trim();
+    if (category == null || category.isEmpty) {
+      ToastService.error('Select a specialist category');
+      return;
+    }
     if (category == 'Other') {
       final other = _otherCategoryCtrl.text.trim();
       if (other.isEmpty) {
@@ -474,7 +507,13 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
       photoBase64: _photoBase64,
       clearPhoto: _photoBase64 == null,
     );
-    ToastService.success('Employee updated');
+    await store.update(updated);
+    _completed = true;
+    ToastService.success(
+      widget.requireCompletion
+          ? 'Employee profile complete'
+          : 'Employee updated',
+    );
     if (!mounted) return;
     Navigator.of(context).pop(updated);
   }

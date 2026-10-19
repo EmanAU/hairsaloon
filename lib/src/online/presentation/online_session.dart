@@ -49,11 +49,18 @@ class OnlineSession extends ChangeNotifier {
     final generation = ++_generation;
     final id = repository.userId;
     final previous = _workspaceUser == id ? workspace : null;
-    workspace = null;
+    // Keep existing workspace on screen while refreshing — avoid sync/extra panels.
+    if (previous == null) {
+      workspace = null;
+    }
     error = null;
-    loading = id != null;
+    loading = id != null && previous == null;
     notifyListeners();
-    if (id == null) return;
+    if (id == null) {
+      workspace = null;
+      _workspaceUser = null;
+      return;
+    }
     try {
       final result = await repository.loadWorkspace();
       if (!_disposed && generation == _generation && repository.userId == id) {
@@ -72,6 +79,7 @@ class OnlineSession extends ChangeNotifier {
                 isCached: result.isCached,
               );
         _workspaceUser = id;
+        error = null;
       }
     } catch (failure) {
       if (!_disposed && generation == _generation) {
@@ -82,10 +90,13 @@ class OnlineSession extends ChangeNotifier {
             businesses: previous.businesses,
             isCached: true,
           );
+          // Soft refresh failed but we still have a home — stay quiet.
+          error = null;
+        } else {
+          error = failure is OnlineFailure
+              ? failure.message
+              : 'Could not open your account. Please retry.';
         }
-        error = failure is OnlineFailure
-            ? failure.message
-            : 'Could not refresh your account. Please retry.';
       }
     } finally {
       if (!_disposed && generation == _generation) {

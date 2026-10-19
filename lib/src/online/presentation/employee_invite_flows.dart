@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/toast_service.dart';
+import '../../core/utils/pk_phone.dart';
 import '../../core/widgets/app_sheet.dart';
 import '../../features/employees/presentation/state/employees_store.dart';
 import '../../theme/app_colors.dart';
@@ -30,35 +32,36 @@ Future<void> showEmployeeInviteOptions(BuildContext context) async {
           Text(
             'Add employee',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: 6),
           Text(
-            'Choose how you want to invite them.',
+            'Invite someone new, or someone already on TrimMatrix.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: AppColors.textSecondary,
+              height: 1.35,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
           _InviteOptionTile(
-            icon: Icons.person_add_outlined,
-            title: 'New person (not registered)',
-            subtitle: 'CNIC, phone and email',
+            icon: Icons.person_add_alt_1_outlined,
+            title: 'New person',
+            subtitle: 'Fill their details and send an invite',
             onTap: () => Navigator.pop(context, 'identity'),
           ),
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
+          const SizedBox(height: AppSpacing.sm),
           _InviteOptionTile(
             icon: Icons.badge_outlined,
-            title: 'Invite by profile code',
-            subtitle: 'Enter their TrimMatrix profile code',
+            title: 'Profile code',
+            subtitle: 'Paste their TrimMatrix profile code',
             onTap: () => Navigator.pop(context, 'code'),
           ),
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
+          const SizedBox(height: AppSpacing.sm),
           _InviteOptionTile(
-            icon: Icons.qr_code_scanner,
-            title: 'Invite by QR code',
-            subtitle: 'Scan their profile QR',
+            icon: Icons.qr_code_scanner_rounded,
+            title: 'Scan QR',
+            subtitle: 'Scan their profile QR code',
             onTap: () => Navigator.pop(context, 'qr'),
           ),
         ],
@@ -129,52 +132,65 @@ class _InviteOptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm + 2),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, size: 20, color: AppColors.textPrimary),
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 14,
             ),
-            const SizedBox(width: AppSpacing.sm + 4),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                      height: 1.3,
-                    ),
+                  child: Icon(icon, size: 22, color: AppColors.textPrimary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: AppColors.textSecondary,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.iconMuted,
+                ),
+              ],
             ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.iconMuted,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -216,13 +232,17 @@ class _IdentityInvitePageState extends State<_IdentityInvitePage> {
     if (!RegExp(r'^\d{13}$').hasMatch(_cnic.text.trim())) {
       throw const OnlineFailure('Enter a valid 13-digit CNIC');
     }
+    final phoneError = PkPhone.localValidationError(_phone.text);
+    if (phoneError != null) {
+      throw OnlineFailure(phoneError);
+    }
     if (!_email.text.contains('@')) {
       throw const OnlineFailure('Enter a valid email');
     }
     await widget.workspace.repository.inviteEmployeeByIdentity(
       businessId: widget.workspace.business.id,
       cnic: _cnic.text,
-      phone: _phone.text,
+      phone: PkPhone.normalize(_phone.text),
       email: _email.text,
       name: _name.text,
     );
@@ -236,62 +256,138 @@ class _IdentityInvitePageState extends State<_IdentityInvitePage> {
     Navigator.pop(context);
   }
 
-  InputDecoration _decoration(String label, {String? hint}) => InputDecoration(
-    labelText: label,
-    hintText: hint,
-    filled: true,
-    fillColor: AppColors.surface,
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
-  );
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.homeCanvas,
+      appBar: AppBar(
+        backgroundColor: AppColors.homeCanvas,
+        surfaceTintColor: const Color(0x00000000),
+        elevation: 0,
+        title: Text(
+          'Invite new person',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.sm,
+                AppSpacing.lg,
+                AppSpacing.lg,
+              ),
+              children: [
+                const _FieldLabel('Details'),
+                const SizedBox(height: AppSpacing.sm),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+                    child: Column(
+                      children: [
+                        TextField(
+                          controller: _name,
+                          textCapitalization: TextCapitalization.words,
+                          textInputAction: TextInputAction.next,
+                          decoration: appSheetInputDecoration(
+                            'Full name',
+                            hint: 'Optional',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _cnic,
+                          keyboardType: TextInputType.number,
+                          maxLength: 13,
+                          textInputAction: TextInputAction.next,
+                          decoration: appSheetInputDecoration(
+                            'CNIC',
+                            hint: '13 digits',
+                          ).copyWith(counterText: ''),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _phone,
+                          keyboardType: TextInputType.phone,
+                          maxLength: 11,
+                          textInputAction: TextInputAction.next,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(11),
+                          ],
+                          decoration: appSheetInputDecoration(
+                            'Mobile number',
+                            hint: '03124545452',
+                          ).copyWith(counterText: ''),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _email,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.done,
+                          decoration: appSheetInputDecoration(
+                            'Email',
+                            hint: 'name@example.com',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.sm,
+                AppSpacing.lg,
+                AppSpacing.md,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: ActionButton(
+                  label: 'Send invite',
+                  showIcon: false,
+                  style: appPrimaryButtonStyle(),
+                  onPressed: _submit,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.text);
+  final String text;
 
   @override
-  Widget build(BuildContext context) => OnlinePage(
-    title: 'Invite new person',
-    children: [
-      Text(
-        'If they are not on TrimMatrix yet, enter CNIC, phone and email. '
-        'They will see a join offer after installing the app and completing their profile.',
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: AppColors.textSecondary,
-          height: 1.45,
-        ),
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w800,
+        color: AppColors.textPrimary,
+        letterSpacing: 0.2,
       ),
-      const SizedBox(height: AppSpacing.lg),
-      TextField(
-        controller: _name,
-        textCapitalization: TextCapitalization.words,
-        decoration: _decoration('Full name (optional)'),
-      ),
-      const SizedBox(height: AppSpacing.sm),
-      TextField(
-        controller: _cnic,
-        keyboardType: TextInputType.number,
-        maxLength: 13,
-        decoration: _decoration('CNIC (13 digits)').copyWith(counterText: ''),
-      ),
-      const SizedBox(height: AppSpacing.sm),
-      TextField(
-        controller: _phone,
-        keyboardType: TextInputType.phone,
-        decoration: _decoration('Mobile number', hint: '03127712502'),
-      ),
-      const SizedBox(height: AppSpacing.sm),
-      TextField(
-        controller: _email,
-        keyboardType: TextInputType.emailAddress,
-        decoration: _decoration('Email'),
-      ),
-      const SizedBox(height: AppSpacing.md),
-      SizedBox(
-        width: double.infinity,
-        child: ActionButton(
-          label: 'Send invite',
-          icon: Icons.person_add_outlined,
-          onPressed: _submit,
-        ),
-      ),
-    ],
-  );
+    );
+  }
 }
 
 class _ProfileCodeInvitePage extends StatefulWidget {
@@ -331,36 +427,82 @@ class _ProfileCodeInvitePageState extends State<_ProfileCodeInvitePage> {
   }
 
   @override
-  Widget build(BuildContext context) => OnlinePage(
-    title: 'Invite by profile code',
-    children: [
-      Text(
-        'Paste their TrimMatrix profile code to add them to this salon.',
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: AppColors.textSecondary,
-          height: 1.45,
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Scaffold(
+      backgroundColor: AppColors.homeCanvas,
+      appBar: AppBar(
+        backgroundColor: AppColors.homeCanvas,
+        surfaceTintColor: const Color(0x00000000),
+        elevation: 0,
+        title: Text(
+          'Invite by profile code',
+          style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
       ),
-      const SizedBox(height: AppSpacing.lg),
-      TextField(
-        controller: _code,
-        autocorrect: false,
-        decoration: InputDecoration(
-          labelText: 'Employee profile code',
-          filled: true,
-          fillColor: AppColors.surface,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
-        ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.sm,
+                AppSpacing.lg,
+                AppSpacing.lg,
+              ),
+              children: [
+                Text(
+                  'Paste their TrimMatrix profile code to add them to this salon.',
+                  style: text.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+                    child: TextField(
+                      controller: _code,
+                      autocorrect: false,
+                      textInputAction: TextInputAction.done,
+                      decoration: appSheetInputDecoration(
+                        'Profile code',
+                        hint: 'Paste code here',
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.sm,
+                AppSpacing.lg,
+                AppSpacing.md,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: ActionButton(
+                  label: 'Add employee',
+                  icon: Icons.badge_outlined,
+                  style: appPrimaryButtonStyle(),
+                  onPressed: _submit,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-      const SizedBox(height: AppSpacing.md),
-      SizedBox(
-        width: double.infinity,
-        child: ActionButton(
-          label: 'Add employee',
-          icon: Icons.badge_outlined,
-          onPressed: _submit,
-        ),
-      ),
-    ],
-  );
+    );
+  }
 }

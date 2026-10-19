@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../core/services/toast_service.dart';
 import '../../theme/app_colors.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../data/business_workspace.dart';
 import '../domain/online_models.dart';
+import 'contracts_screen.dart';
 import 'invite_qr_screen.dart';
 import 'join_requests_screen.dart';
 import 'team_contracts_screen.dart';
@@ -51,14 +53,41 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
     setState(() => _reviewing = true);
     try {
       await widget.workspace.repository.reviewJoin(employee.id, accept);
+    } on OnlineFailure catch (error) {
+      if (mounted) ToastService.error(error.message, context);
+      return;
+    } catch (_) {
       if (mounted) {
-        setState(() {
-          _team = _load();
-        });
+        ToastService.error(
+          'Could not update this request. Try again.',
+          context,
+        );
       }
+      return;
     } finally {
       if (mounted) setState(() => _reviewing = false);
     }
+
+    try {
+      await widget.workspace.syncOnlineTeam();
+    } catch (_) {}
+    if (!mounted) return;
+    ToastService.success(
+      accept ? 'Request accepted' : 'Request declined',
+      context,
+    );
+    setState(() => _team = _load());
+    if (!accept) return;
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProposeContractPage(
+          repository: widget.workspace.repository,
+          employee: employee,
+        ),
+      ),
+    );
+    if (mounted) setState(() => _team = _load());
   }
 
   Future<void> _open(Widget page) async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter/services.dart';
+import '../../core/services/toast_service.dart';
 import '../../theme/app_colors.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
@@ -152,25 +153,42 @@ class _BusinessHomeState extends State<BusinessHome> {
     setState(() => _reviewing = employee.id);
     try {
       await session.repository.reviewJoin(employee.id, accept);
-      if (!mounted) return;
-      showMessage(
-        context,
-        accept
-            ? 'Request accepted. Open Billing workspace to use them on bills.'
-            : 'Request declined',
-      );
-      setState(() => _team = session.repository.team(business.id));
-    } catch (error) {
-      if (!mounted) return;
-      showMessage(
-        context,
-        error is OnlineFailure
-            ? error.message
-            : 'Could not update this request. Try again.',
-      );
-    } finally {
-      if (mounted) setState(() => _reviewing = null);
+    } on OnlineFailure catch (error) {
+      if (mounted) {
+        ToastService.error(error.message, context);
+        setState(() => _reviewing = null);
+      }
+      return;
+    } catch (_) {
+      if (mounted) {
+        ToastService.error(
+          'Could not update this request. Try again.',
+          context,
+        );
+        setState(() => _reviewing = null);
+      }
+      return;
     }
+
+    if (!mounted) return;
+    ToastService.success(
+      accept ? 'Request accepted' : 'Request declined',
+      context,
+    );
+    setState(() {
+      _team = session.repository.team(business.id);
+      _reviewing = null;
+    });
+    if (!accept) return;
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProposeContractPage(
+          repository: session.repository,
+          employee: employee,
+        ),
+      ),
+    );
   }
 
   Future<void> _inviteByProfile(SalonBusiness business) async {

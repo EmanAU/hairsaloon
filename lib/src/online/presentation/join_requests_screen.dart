@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/services/toast_service.dart';
 import '../../features/employees/presentation/state/employees_store.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../data/business_workspace.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
+import 'contracts_screen.dart';
 import 'widgets/online_widgets.dart';
 
 class JoinRequestsScreen extends StatefulWidget {
@@ -58,7 +60,9 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
   void _refresh() => setState(() => _staff = _load());
 
   Future<void> _syncLocal() async {
-    await widget.workspace?.syncOnlineTeam();
+    try {
+      await widget.workspace?.syncOnlineTeam();
+    } catch (_) {}
     if (!mounted) return;
     try {
       context.read<EmployeesStore>().refresh();
@@ -70,23 +74,42 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
     setState(() => _reviewing = employee.id);
     try {
       await widget.repository.reviewJoin(employee.id, accept);
-      await _syncLocal();
+    } on OnlineFailure catch (error) {
       if (mounted) {
-        showMessage(context, accept ? 'Request accepted' : 'Request declined');
-        _refresh();
+        ToastService.error(error.message, context);
+        setState(() => _reviewing = null);
       }
-    } catch (error) {
+      return;
+    } catch (_) {
       if (mounted) {
-        showMessage(
+        ToastService.error(
+          'Could not update this request. Try again.',
           context,
-          error is OnlineFailure
-              ? error.message
-              : 'Could not update this request. Try again.',
         );
+        setState(() => _reviewing = null);
       }
-    } finally {
-      if (mounted) setState(() => _reviewing = null);
+      return;
     }
+
+    // Accept/decline already committed — never surface follow-up noise as failure.
+    await _syncLocal();
+    if (!mounted) return;
+    ToastService.success(
+      accept ? 'Request accepted' : 'Request declined',
+      context,
+    );
+    _refresh();
+    setState(() => _reviewing = null);
+    if (!accept) return;
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProposeContractPage(
+          repository: widget.repository,
+          employee: employee,
+        ),
+      ),
+    );
   }
 
   Widget _tile(SalonStaff employee) {

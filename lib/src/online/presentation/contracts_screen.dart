@@ -1,4 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../core/services/toast_service.dart';
+import '../../core/widgets/app_sheet.dart';
+import '../../features/employees/domain/entities/employee_item.dart';
+import '../../features/employees/presentation/employee_details_screen.dart';
+import '../../features/employees/presentation/state/employees_store.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
+import '../data/business_workspace.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
 import 'widgets/online_widgets.dart';
@@ -18,68 +27,42 @@ class _ContractsScreenState extends State<ContractsScreen> {
       widget.repository.contracts(employeeId: widget.employee?.id);
   void _refresh() => setState(() => _contracts = _load());
 
+  Future<void> _openPropose() async {
+    final employee = widget.employee;
+    if (employee == null) return;
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProposeContractPage(
+          repository: widget.repository,
+          employee: employee,
+        ),
+      ),
+    );
+    if (saved == true && mounted) _refresh();
+  }
+
   Future<void> _release(WorkContract contract) async {
     final reason = await Navigator.push<String>(
       context,
       MaterialPageRoute(builder: (_) => const _ReleaseReason()),
     );
     if (reason == null) return;
-    await widget.repository.releaseContract(contract.id, reason);
-    if (mounted) _refresh();
+    try {
+      await widget.repository.releaseContract(contract.id, reason);
+    } on OnlineFailure catch (error) {
+      if (mounted) ToastService.error(error.message, context);
+      return;
+    } catch (_) {
+      if (mounted) {
+        ToastService.error('Could not release this contract. Try again.', context);
+      }
+      return;
+    }
+    if (!mounted) return;
+    ToastService.success('Contract released', context);
+    _refresh();
   }
-
-  Widget _card(WorkContract contract) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            contract.businessName,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          Text(
-            '${contract.kind.toUpperCase()} · ${contract.displayStatus}',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          Text('From: ${contract.startsAt.toLocal()}'),
-          Text('To: ${contract.endsAt?.toLocal() ?? 'Until released'}'),
-          Text(
-            'Salary: ${contract.salary.toStringAsFixed(2)} · Commission: ${contract.commission}%',
-          ),
-          if (contract.terms.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(contract.terms),
-            ),
-          if (contract.endingSoon)
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Text(
-                'Reminder: this contract ends within 7 days.',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          if (contract.releaseReason != null)
-            Text('Released: ${contract.releaseReason}'),
-          if (widget.employee == null &&
-              (contract.status == 'accepted' || contract.status == 'draft'))
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Text(
-                'Your owner set these terms. Contact them if anything looks wrong.',
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
-            ),
-          if (widget.employee != null && contract.canRelease)
-            ActionButton(
-              label: 'Release employee',
-              onPressed: () => _release(contract),
-            ),
-        ],
-      ),
-    ),
-  );
 
   @override
   Widget build(BuildContext context) => OnlinePage(
@@ -92,32 +75,184 @@ class _ContractsScreenState extends State<ContractsScreen> {
       ),
     ],
     children: [
-      if (widget.employee != null)
-        ActionButton(
-          label: 'Propose contract',
-          icon: Icons.add,
-          onPressed: () async {
-            final saved = await Navigator.push<bool>(
-              context,
-              MaterialPageRoute(
-                builder: (_) => _ContractForm(
-                  repository: widget.repository,
-                  employee: widget.employee!,
-                ),
-              ),
-            );
-            if (saved == true && mounted) _refresh();
-          },
+      if (widget.employee != null) ...[
+        SizedBox(
+          width: double.infinity,
+          child: ActionButton(
+            label: 'Propose contract',
+            icon: Icons.add,
+            style: appPrimaryButtonStyle(),
+            onPressed: _openPropose,
+          ),
         ),
+        const SizedBox(height: AppSpacing.md),
+      ],
       RemoteContent<List<WorkContract>>(
         future: _contracts,
         onRetry: _refresh,
         builder: (contracts) => contracts.isEmpty
-            ? const Text('No contracts yet.')
-            : Column(children: contracts.map(_card).toList()),
+            ? const Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Text(
+                  'No contracts yet.',
+                  textAlign: TextAlign.center,
+                ),
+              )
+            : Column(
+                children: [
+                  for (var i = 0; i < contracts.length; i++) ...[
+                    if (i > 0) const SizedBox(height: AppSpacing.md),
+                    _ContractDetailCard(
+                      contract: contracts[i],
+                      onRelease: widget.employee != null &&
+                              contracts[i].canRelease
+                          ? () => _release(contracts[i])
+                          : null,
+                    ),
+                  ],
+                ],
+              ),
       ),
     ],
   );
+}
+
+class _ContractDetailCard extends StatelessWidget {
+  const _ContractDetailCard({required this.contract, this.onRelease});
+
+  final WorkContract contract;
+  final Future<void> Function()? onRelease;
+
+  String get _kindLabel => switch (contract.kind) {
+    'permanent' => 'Permanent',
+    'daily' => 'Daily',
+    'fixed' => 'Fixed term',
+    _ => contract.kind,
+  };
+
+  String get _statusLabel => switch (contract.displayStatus) {
+    'active' => 'Active',
+    'scheduled' => 'Scheduled',
+    'expired' => 'Expired',
+    'released' => 'Released',
+    'draft' => 'Draft',
+    'declined' => 'Declined',
+    _ => contract.displayStatus,
+  };
+
+  String _formatDate(DateTime value) {
+    final local = value.toLocal();
+    final d = local.day.toString().padLeft(2, '0');
+    final m = local.month.toString().padLeft(2, '0');
+    final h = local.hour.toString().padLeft(2, '0');
+    final min = local.minute.toString().padLeft(2, '0');
+    return '$d/$m/${local.year} · $h:$min';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _DetailRow(label: 'Salon', value: contract.businessName),
+            _DetailRow(label: 'Employment type', value: _kindLabel),
+            _DetailRow(label: 'Status', value: _statusLabel),
+            _DetailRow(label: 'From', value: _formatDate(contract.startsAt)),
+            _DetailRow(
+              label: 'To',
+              value: contract.endsAt == null
+                  ? 'Until released'
+                  : _formatDate(contract.endsAt!),
+            ),
+            _DetailRow(
+              label: 'Salary',
+              value: contract.salary.toStringAsFixed(0),
+            ),
+            _DetailRow(
+              label: 'Commission',
+              value: '${contract.commission.toStringAsFixed(0)}%',
+            ),
+            if (contract.terms.trim().isNotEmpty)
+              _DetailRow(
+                label: 'Agreement description',
+                value: contract.terms.trim(),
+              ),
+            if (contract.endingSoon) ...[
+              const SizedBox(height: 8),
+              Text(
+                'This contract ends within 7 days.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.homeBronze,
+                ),
+              ),
+            ],
+            if (contract.releaseReason != null) ...[
+              const SizedBox(height: 8),
+              _DetailRow(
+                label: 'Release reason',
+                value: contract.releaseReason!,
+              ),
+            ],
+            if (onRelease != null) ...[
+              const SizedBox(height: 12),
+              ActionButton(
+                label: 'Release employee',
+                icon: Icons.person_off_outlined,
+                onPressed: onRelease!,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ReleaseReason extends StatefulWidget {
@@ -142,38 +277,51 @@ class _ReleaseReasonState extends State<_ReleaseReason> {
       const Text(
         'This ends the contract now. Its history will remain available.',
       ),
+      const SizedBox(height: AppSpacing.md),
       Form(
         key: _form,
         child: TextFormField(
           controller: _reason,
-          decoration: const InputDecoration(labelText: 'Reason for release'),
+          decoration: appSheetInputDecoration('Reason for release'),
           maxLength: 1000,
           validator: (value) => value == null || value.trim().isEmpty
               ? 'A reason is required'
               : null,
         ),
       ),
-      FilledButton(
-        onPressed: () {
-          if (_form.currentState!.validate()) {
-            Navigator.pop(context, _reason.text.trim());
-          }
-        },
-        child: const Text('Confirm release'),
+      const SizedBox(height: AppSpacing.md),
+      SizedBox(
+        width: double.infinity,
+        child: FilledButton(
+          style: appPrimaryButtonStyle(),
+          onPressed: () {
+            if (_form.currentState!.validate()) {
+              Navigator.pop(context, _reason.text.trim());
+            }
+          },
+          child: const Text('Confirm release'),
+        ),
       ),
     ],
   );
 }
 
-class _ContractForm extends StatefulWidget {
-  const _ContractForm({required this.repository, required this.employee});
+/// Owner form to set employment terms for an accepted team member.
+class ProposeContractPage extends StatefulWidget {
+  const ProposeContractPage({
+    super.key,
+    required this.repository,
+    required this.employee,
+  });
+
   final OnlineRepository repository;
   final SalonStaff employee;
+
   @override
-  State<_ContractForm> createState() => _ContractFormState();
+  State<ProposeContractPage> createState() => _ProposeContractPageState();
 }
 
-class _ContractFormState extends State<_ContractForm> {
+class _ProposeContractPageState extends State<ProposeContractPage> {
   final _form = GlobalKey<FormState>();
   final _salary = TextEditingController(text: '0');
   final _commission = TextEditingController(text: '0');
@@ -188,6 +336,14 @@ class _ContractFormState extends State<_ContractForm> {
     _commission.dispose();
     _terms.dispose();
     super.dispose();
+  }
+
+  String _formatDateTime(DateTime value) {
+    final d = value.day.toString().padLeft(2, '0');
+    final m = value.month.toString().padLeft(2, '0');
+    final h = value.hour.toString().padLeft(2, '0');
+    final min = value.minute.toString().padLeft(2, '0');
+    return '$d/$m/${value.year} · $h:$min';
   }
 
   Future<void> _pickDate(bool start) async {
@@ -240,89 +396,432 @@ class _ContractFormState extends State<_ContractForm> {
         : _ends;
     if (ends != null &&
         (!ends.isAfter(_starts) || !ends.isAfter(DateTime.now()))) {
-      showMessage(
-        context,
+      ToastService.error(
         'End time must be after the start time and in the future.',
+        context,
       );
       return;
     }
-    await widget.repository.proposeContract(
-      employeeId: widget.employee.id,
-      kind: _kind,
-      starts: _starts,
-      ends: ends,
-      salary: double.parse(_salary.text),
-      commission: double.parse(_commission.text),
-      terms: _terms.text,
+    try {
+      await widget.repository.proposeContract(
+        employeeId: widget.employee.id,
+        kind: _kind,
+        starts: _starts,
+        ends: ends,
+        salary: double.parse(_salary.text),
+        commission: double.parse(_commission.text),
+        terms: _terms.text,
+      );
+    } on OnlineFailure catch (error) {
+      if (mounted) ToastService.error(error.message, context);
+      return;
+    } catch (_) {
+      if (mounted) {
+        ToastService.error(
+          'Could not save the contract. Try again.',
+          context,
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    ToastService.success('Contract saved', context);
+    await _openCompleteProfile();
+  }
+
+  EmployeeItem _employeeItemFromLocal() {
+    final staff = widget.employee;
+    final parts = staff.name.trim().split(RegExp(r'\s+'));
+    final first =
+        parts.isEmpty || parts.first.isEmpty ? 'Staff' : parts.first;
+    final last = parts.length <= 1 ? '' : parts.sublist(1).join(' ');
+
+    EmployeesStore? store;
+    try {
+      store = context.read<EmployeesStore>();
+    } catch (_) {}
+    final existing = store?.byId(staff.id);
+    if (existing != null) {
+      return existing.copyWith(
+        basicSalary: _salary.text.trim(),
+        commission: _commission.text.trim(),
+        agreementDescription: _terms.text.trim(),
+      );
+    }
+
+    BusinessWorkspace? workspace;
+    try {
+      workspace = context.read<BusinessWorkspace?>();
+    } catch (_) {}
+    final row = workspace?.maps['employees']?.get(staff.id);
+    if (row != null) {
+      final map = Map<String, dynamic>.from(row);
+      return EmployeeItem(
+        id: staff.id,
+        firstName: (map['firstName'] as String?)?.trim().isNotEmpty == true
+            ? map['firstName'] as String
+            : first,
+        lastName: (map['lastName'] as String?) ?? last,
+        phoneNumber: (map['phoneNumber'] as String?) ?? '',
+        cnicNumber: (map['cnicNumber'] as String?) ?? '',
+        homeAddress: (map['homeAddress'] as String?) ?? '',
+        isActive: map['isActive'] as bool? ?? true,
+        isManager: map['isManager'] as bool? ?? false,
+        photoBase64: map['photoBase64'] as String?,
+        speciality: map['speciality'] as String?,
+        employeeType: (map['employeeType'] as String?) ?? 'General',
+        basicSalary: _salary.text.trim(),
+        commission: _commission.text.trim(),
+        agreementDescription: _terms.text.trim(),
+      );
+    }
+
+    return EmployeeItem(
+      id: staff.id,
+      firstName: first,
+      lastName: last,
+      phoneNumber: '',
+      cnicNumber: '',
+      homeAddress: '',
+      isActive: true,
+      employeeType: 'General',
+      basicSalary: _salary.text.trim(),
+      commission: _commission.text.trim(),
+      agreementDescription: _terms.text.trim(),
     );
-    if (mounted) Navigator.pop(context, true);
+  }
+
+  Future<void> _openCompleteProfile() async {
+    BusinessWorkspace? workspace;
+    EmployeesStore? store;
+    try {
+      workspace = context.read<BusinessWorkspace?>();
+    } catch (_) {}
+    try {
+      store = context.read<EmployeesStore>();
+    } catch (_) {}
+
+    final item = _employeeItemFromLocal();
+
+    try {
+      await workspace?.syncOnlineTeam();
+    } catch (_) {}
+
+    if (store != null) {
+      final known = store.byId(item.id);
+      if (known == null) {
+        await store.add(item);
+      } else {
+        await store.update(item);
+      }
+      store.refresh();
+    } else if (workspace != null) {
+      final box = workspace.maps['employees'];
+      if (box != null) {
+        await box.put(item.id, <String, dynamic>{
+          'id': item.id,
+          'firstName': item.firstName,
+          'lastName': item.lastName,
+          'phoneNumber': item.phoneNumber,
+          'cnicNumber': item.cnicNumber,
+          'homeAddress': item.homeAddress,
+          'isActive': item.isActive,
+          'isManager': item.isManager,
+          'onlineSynced': true,
+          'commission': item.commission ?? '',
+          'basicSalary': item.basicSalary ?? '',
+          'agreementDescription': item.agreementDescription ?? '',
+          'employeeType': item.employeeType ?? 'General',
+          'speciality': item.speciality,
+          'photoBase64': item.photoBase64,
+        });
+      }
+    }
+
+    if (!mounted) return;
+
+    if (store == null) {
+      ToastService.info(
+        'Finish their profile in Billing → Employees.',
+        context,
+      );
+      Navigator.pop(context, true);
+      return;
+    }
+
+    final fresh = store.byId(item.id) ?? item;
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute<EmployeeItem>(
+        builder: (_) => EmployeeDetailsScreen(
+          item: fresh,
+          requireCompletion: true,
+        ),
+      ),
+    );
   }
 
   @override
-  Widget build(BuildContext context) => OnlinePage(
-    title: 'Propose contract',
-    children: [
-      Text(
-        'For ${widget.employee.name}. Terms take effect immediately. The employee is notified only.',
-      ),
-      Form(
-        key: _form,
-        child: Column(
-          children: [
-            DropdownButtonFormField<String>(
-              initialValue: _kind,
-              decoration: const InputDecoration(labelText: 'Contract type'),
-              items: const [
-                DropdownMenuItem(value: 'permanent', child: Text('Permanent')),
-                DropdownMenuItem(
-                  value: 'daily',
-                  child: Text('Daily (24 hours)'),
-                ),
-                DropdownMenuItem(value: 'fixed', child: Text('Fixed term')),
-              ],
-              onChanged: (value) => setState(() => _kind = value!),
-            ),
-            ListTile(
-              title: const Text('Starts'),
-              subtitle: Text('$_starts'),
-              trailing: const Icon(Icons.edit_calendar),
-              onTap: () => _pickDate(true),
-            ),
-            if (_kind == 'fixed')
-              ListTile(
-                title: const Text('Ends'),
-                subtitle: Text('$_ends'),
-                trailing: const Icon(Icons.edit_calendar),
-                onTap: () => _pickDate(false),
-              ),
-            TextFormField(
-              controller: _salary,
-              decoration: const InputDecoration(labelText: 'Basic salary'),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              validator: (value) => _number(value, 9999999999.99),
-            ),
-            TextFormField(
-              controller: _commission,
-              decoration: const InputDecoration(labelText: 'Commission (%)'),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              validator: (value) => _number(value, 100),
-            ),
-            TextFormField(
-              controller: _terms,
-              decoration: const InputDecoration(
-                labelText: 'Terms (including salary period)',
-              ),
-              minLines: 3,
-              maxLines: 6,
-            ),
-            ActionButton(label: 'Save contract', onPressed: _save),
-          ],
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Scaffold(
+      backgroundColor: AppColors.homeCanvas,
+      appBar: AppBar(
+        backgroundColor: AppColors.homeCanvas,
+        surfaceTintColor: const Color(0x00000000),
+        elevation: 0,
+        title: Text(
+          'Propose contract',
+          style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
       ),
-    ],
-  );
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.sm,
+                AppSpacing.lg,
+                AppSpacing.lg,
+              ),
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.homeSage,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.description_outlined,
+                            color: AppColors.homeOlive,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.employee.name,
+                                style: text.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.homeInk,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Set employment terms. They take effect immediately.',
+                                style: text.bodyMedium?.copyWith(
+                                  color: AppColors.homeOlive,
+                                  height: 1.4,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                const Text(
+                  'Terms',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+                    child: Form(
+                      key: _form,
+                      child: Column(
+                        children: [
+                          DropdownButtonFormField<String>(
+                            initialValue: _kind,
+                            decoration: appSheetInputDecoration(
+                              'Contract type',
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'permanent',
+                                child: Text('Permanent'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'daily',
+                                child: Text('Daily (24 hours)'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'fixed',
+                                child: Text('Fixed term'),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setState(() => _kind = value);
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          _DateFieldTile(
+                            label: 'Start date',
+                            value: _formatDateTime(_starts),
+                            onTap: () => _pickDate(true),
+                          ),
+                          if (_kind == 'fixed') ...[
+                            const SizedBox(height: 12),
+                            _DateFieldTile(
+                              label: 'End date',
+                              value: _formatDateTime(_ends),
+                              onTap: () => _pickDate(false),
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _salary,
+                            decoration: appSheetInputDecoration(
+                              'Basic salary',
+                              hint: '0',
+                            ),
+                            keyboardType:
+                                const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            validator: (value) =>
+                                _number(value, 9999999999.99),
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _commission,
+                            decoration: appSheetInputDecoration(
+                              'Commission (%)',
+                              hint: '0',
+                            ),
+                            keyboardType:
+                                const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            validator: (value) => _number(value, 100),
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _terms,
+                            decoration: appSheetInputDecoration(
+                              'Agreement description',
+                              hint: 'Optional notes',
+                            ),
+                            minLines: 3,
+                            maxLines: 6,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.sm,
+                AppSpacing.lg,
+                AppSpacing.md,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: ActionButton(
+                  label: 'Save contract',
+                  icon: Icons.check_rounded,
+                  style: appPrimaryButtonStyle(),
+                  onPressed: _save,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DateFieldTile extends StatelessWidget {
+  const _DateFieldTile({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.background,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.edit_calendar_outlined,
+                size: 20,
+                color: AppColors.iconMuted,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

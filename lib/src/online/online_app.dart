@@ -5,6 +5,7 @@ import 'package:flutter_quill/flutter_quill.dart';
 import '../core/services/toast_service.dart';
 import 'domain/qr_destination.dart';
 import '../app.dart';
+import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import 'domain/online_models.dart';
 import 'domain/online_repository.dart';
@@ -195,23 +196,43 @@ class _OnlineAppState extends State<OnlineApp> {
             sessionError: session?.error,
           );
         }
-        if (session.loading) {
+        // Quiet entry: spinner only until workspace is ready (no sync copy).
+        if (session.loading && session.workspace == null) {
           return const Scaffold(
+            backgroundColor: AppColors.homeCanvas,
             body: Center(child: CircularProgressIndicator()),
           );
         }
         if (session.workspace == null) {
-          return OnlinePage(
-            title: 'Your account',
-            children: [
-              Text(session.error ?? 'Your account could not be loaded.'),
-              ActionButton(label: 'Retry', onPressed: session.reload),
-              ActionButton(
-                label: 'Sign out',
-                onPressed: session.repository.signOut,
-                icon: Icons.logout,
+          return Scaffold(
+            backgroundColor: AppColors.homeCanvas,
+            body: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        session.error ?? 'Could not open your account.',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ActionButton(
+                        label: 'Retry',
+                        onPressed: session.reload,
+                      ),
+                      ActionButton(
+                        label: 'Sign out',
+                        onPressed: session.repository.signOut,
+                        icon: Icons.logout,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ],
+            ),
           );
         }
         if (widget.audience == AppAudience.customer) {

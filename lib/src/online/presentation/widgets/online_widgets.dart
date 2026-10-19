@@ -55,11 +55,13 @@ class ActionButton extends StatefulWidget {
     required this.onPressed,
     this.icon,
     this.style,
+    this.showIcon = true,
   });
   final String label;
   final Future<void> Function() onPressed;
   final IconData? icon;
   final ButtonStyle? style;
+  final bool showIcon;
 
   @override
   State<ActionButton> createState() => _ActionButtonState();
@@ -87,21 +89,30 @@ class _ActionButtonState extends State<ActionButton> {
   }
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs + 2),
-    child: FilledButton.icon(
-      style: widget.style,
-      onPressed: _busy ? null : _run,
-      icon: _busy
-          ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
+  Widget build(BuildContext context) {
+    final label = Text(_busy ? 'Please wait…' : widget.label);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs + 2),
+      child: widget.showIcon || _busy
+          ? FilledButton.icon(
+              style: widget.style,
+              onPressed: _busy ? null : _run,
+              icon: _busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(widget.icon ?? Icons.arrow_forward),
+              label: label,
             )
-          : Icon(widget.icon ?? Icons.arrow_forward),
-      label: Text(_busy ? 'Please wait…' : widget.label),
-    ),
-  );
+          : FilledButton(
+              style: widget.style,
+              onPressed: _busy ? null : _run,
+              child: label,
+            ),
+    );
+  }
 }
 
 /// Routes feedback through [ToastService] (branded floating snackbars).
