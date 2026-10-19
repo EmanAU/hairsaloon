@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_colors.dart';
 import 'package:flutter_quill/flutter_quill.dart';
-
 import '../../core/services/toast_service.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
 import 'service_media.dart';
@@ -27,10 +27,10 @@ class ServiceCustomerViewEditor extends StatefulWidget {
 
 class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
   late final QuillController _controller;
-  final _scroll = ScrollController();
   final _editorScroll = ScrollController();
   final _focus = FocusNode();
   bool _saving = false;
+  bool _showPhotos = false;
 
   @override
   void initState() {
@@ -53,7 +53,6 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
   @override
   void dispose() {
     _controller.dispose();
-    _scroll.dispose();
     _editorScroll.dispose();
     _focus.dispose();
     super.dispose();
@@ -95,81 +94,129 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AppColors.surface,
-    appBar: AppBar(
-      backgroundColor: AppColors.surface,
-      title: Text('Customer view · ${widget.service.name}'),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : _save,
-          child: Text(_saving ? 'Saving…' : 'Save'),
-        ),
-      ],
-    ),
-    body: Column(
-      children: [
-        QuillSimpleToolbar(
-          controller: _controller,
-          config: const QuillSimpleToolbarConfig(
-            multiRowsDisplay: false,
-            showAlignmentButtons: true,
-            showFontFamily: false,
-            showFontSize: false,
-            showBackgroundColorButton: false,
-            showCodeBlock: false,
-            showInlineCode: false,
-            showSubscript: false,
-            showSuperscript: false,
-            showSearchButton: false,
-            showQuote: true,
-            showIndent: true,
-            showListNumbers: true,
-            showListBullets: true,
-            showListCheck: false,
-            showLink: true,
-          ),
-        ),
-        const Divider(height: 1),
-        Expanded(
-          child: ListView(
-            controller: _scroll,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            children: [
-              const Text(
-                'Describe this service for customers. Add before & after photos below.',
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                height: 280,
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.all(12),
-                child: QuillEditor.basic(
-                  controller: _controller,
-                  focusNode: _focus,
-                  scrollController: _editorScroll,
-                  config: const QuillEditorConfig(
-                    placeholder: 'Write what is included in this service…',
-                    padding: EdgeInsets.zero,
-                    autoFocus: false,
-                    expands: false,
-                  ),
-                ),
-              ),
-              ServiceMedia(
-                repository: widget.repository,
-                serviceId: widget.service.id,
-                businessId: widget.businessId,
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
+  static const _toolbarConfig = QuillSimpleToolbarConfig(
+    multiRowsDisplay: false,
+    showAlignmentButtons: true,
+    showFontFamily: false,
+    showFontSize: false,
+    showBackgroundColorButton: false,
+    showCodeBlock: false,
+    showInlineCode: false,
+    showSubscript: false,
+    showSuperscript: false,
+    showSearchButton: false,
+    showQuote: true,
+    showIndent: true,
+    showListNumbers: true,
+    showListBullets: true,
+    showListCheck: false,
+    showLink: true,
   );
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      resizeToAvoidBottomInset: true,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        title: Text(widget.service.name),
+        actions: [
+          TextButton(
+            onPressed: _saving ? null : _save,
+            child: Text(_saving ? 'Saving…' : 'Save'),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: _showPhotos
+                ? ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                    children: [
+                      Text(
+                        'Before & after photos',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'These appear on the customer service page.',
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      ServiceMedia(
+                        repository: widget.repository,
+                        serviceId: widget.service.id,
+                        businessId: widget.businessId,
+                      ),
+                    ],
+                  )
+                : Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: QuillEditor.basic(
+                      controller: _controller,
+                      focusNode: _focus,
+                      scrollController: _editorScroll,
+                      config: const QuillEditorConfig(
+                        placeholder:
+                            'Write what customers should know about this service…',
+                        padding: EdgeInsets.only(bottom: 12),
+                        autoFocus: false,
+                        expands: true,
+                      ),
+                    ),
+                  ),
+          ),
+          Material(
+            color: AppColors.surface,
+            elevation: 2,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: bottomInset > 0 ? 0 : 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Divider(height: 1),
+                    if (!_showPhotos)
+                      QuillSimpleToolbar(
+                        controller: _controller,
+                        config: _toolbarConfig,
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        children: [
+                          TextButton.icon(
+                            onPressed: () =>
+                                setState(() => _showPhotos = !_showPhotos),
+                            icon: Icon(
+                              _showPhotos
+                                  ? Icons.edit_note_outlined
+                                  : Icons.photo_library_outlined,
+                              size: 20,
+                            ),
+                            label: Text(
+                              _showPhotos ? 'Back to writing' : 'Photos',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

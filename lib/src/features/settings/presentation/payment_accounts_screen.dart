@@ -115,34 +115,15 @@ class PaymentAccountsScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                if (store.paymentAccounts.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 28,
+                ...store.paymentAccounts.map(
+                  (account) => _AccountCard(
+                    account: account,
+                    canDelete: !SettingsStore.defaultPaymentAccounts.any(
+                      (d) => d.toLowerCase() == account.toLowerCase(),
                     ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: const Text(
-                      'No payment accounts yet.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  )
-                else
-                  ...store.paymentAccounts.map(
-                    (account) => _AccountCard(
-                      account: account,
-                      onMenu: (action) => _onMenu(context, account, action),
-                    ),
+                    onMenu: (action) => _onMenu(context, account, action),
                   ),
+                ),
               ],
             ),
           ),
@@ -153,10 +134,15 @@ class PaymentAccountsScreen extends StatelessWidget {
 }
 
 class _AccountCard extends StatelessWidget {
-  const _AccountCard({required this.account, required this.onMenu});
+  const _AccountCard({
+    required this.account,
+    required this.onMenu,
+    this.canDelete = true,
+  });
 
   final String account;
   final ValueChanged<String> onMenu;
+  final bool canDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -220,44 +206,56 @@ class _AccountCard extends StatelessWidget {
               ],
             ),
           ),
-          PopupMenuButton<String>(
-            tooltip: 'Account options',
-            onSelected: onMenu,
-            itemBuilder: (_) => const [
-              PopupMenuItem(
-                value: 'edit',
-                child: Row(
-                  children: [
-                    Icon(CupertinoIcons.pencil, size: 16),
-                    SizedBox(width: 10),
-                    Text('Edit'),
-                  ],
+          if (canDelete)
+            PopupMenuButton<String>(
+              tooltip: 'Account options',
+              onSelected: onMenu,
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(CupertinoIcons.pencil, size: 16),
+                      SizedBox(width: 10),
+                      Text('Edit'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(
+                        CupertinoIcons.trash,
+                        size: 16,
+                        color: AppColors.danger,
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        'Delete',
+                        style: TextStyle(color: AppColors.danger),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              icon: const Icon(
+                CupertinoIcons.ellipsis_vertical,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
+            )
+          else
+            const Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: Text(
+                'Default',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
                 ),
               ),
-              PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(
-                      CupertinoIcons.trash,
-                      size: 16,
-                      color: AppColors.danger,
-                    ),
-                    SizedBox(width: 10),
-                    Text(
-                      'Delete',
-                      style: TextStyle(color: AppColors.danger),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            icon: const Icon(
-              CupertinoIcons.ellipsis_vertical,
-              size: 18,
-              color: AppColors.textSecondary,
             ),
-          ),
         ],
       ),
     );

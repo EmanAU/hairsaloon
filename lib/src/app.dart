@@ -138,7 +138,9 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                 ChangeNotifierProvider<AuthStore>.value(
                   value: bootstrap.authStore,
                 ),
-                Provider<BusinessWorkspace?>.value(value: widget.workspace),
+                ChangeNotifierProvider<BusinessWorkspace?>.value(
+                  value: widget.workspace,
+                ),
                 // Created on first use (lazy) so splash stays light.
                 ChangeNotifierProvider<BillingStore>(
                   create: (_) => BillingStore(

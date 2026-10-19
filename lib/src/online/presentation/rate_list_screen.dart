@@ -4,7 +4,6 @@ import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
 import 'service_customer_view_editor.dart';
 import 'widgets/online_widgets.dart';
-import 'service_media.dart';
 
 class OnlineRateList extends StatefulWidget {
   const OnlineRateList({
@@ -195,7 +194,7 @@ class _ServiceFormState extends State<_ServiceForm> {
               icon: Icons.check,
               onPressed: _save,
             ),
-            if (widget.service != null) ...[
+            if (widget.service != null)
               ActionButton(
                 label: 'Customer view',
                 icon: Icons.article_outlined,
@@ -215,12 +214,6 @@ class _ServiceFormState extends State<_ServiceForm> {
                   }
                 },
               ),
-              ServiceMedia(
-                repository: widget.repository,
-                serviceId: widget.service!.id,
-                businessId: widget.businessId,
-              ),
-            ],
           ],
         ),
       ),

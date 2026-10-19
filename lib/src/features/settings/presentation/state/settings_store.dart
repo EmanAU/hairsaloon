@@ -22,13 +22,42 @@ class SettingsStore extends ChangeNotifier {
     'Miscellaneous',
   ];
 
+  static const List<String> defaultPaymentAccounts = <String>[
+    'Cash — Counter',
+    'Card — POS',
+    'Online — Bank transfer',
+    'JazzCash — Business',
+    'Easypaisa — Business',
+  ];
+
   List<String> get paymentMethods => [
     'Cash',
     'Card',
     'Online',
-    ..._repository.getPaymentAccounts(),
+    ...paymentAccounts.where(
+      (a) =>
+          !a.toLowerCase().startsWith('cash —') &&
+          !a.toLowerCase().startsWith('card —') &&
+          !a.toLowerCase().startsWith('online —'),
+    ),
   ];
-  List<String> get paymentAccounts => _repository.getPaymentAccounts();
+
+  /// Defaults + user-added accounts (unique, case-insensitive).
+  List<String> get paymentAccounts {
+    final seen = <String>{};
+    final result = <String>[];
+    for (final account in [
+      ...defaultPaymentAccounts,
+      ..._repository.getPaymentAccounts(),
+    ]) {
+      final key = account.trim().toLowerCase();
+      if (key.isEmpty || !seen.add(key)) continue;
+      result.add(account.trim());
+    }
+    return result;
+  }
+
+  List<String> get customPaymentAccounts => _repository.getPaymentAccounts();
 
   List<String> get customExpenseTypes =>
       _repository.getCustomExpenseTypes();
@@ -83,24 +112,39 @@ class SettingsStore extends ChangeNotifier {
       throw ArgumentError('Enter the payment method and account holder.');
     }
     final label = '${method.trim()} — ${holder.trim()}';
-    final accounts = paymentAccounts;
-    if (accounts.any(
+    if (paymentAccounts.any(
       (v) => v != previous && v.toLowerCase() == label.toLowerCase(),
     )) {
       throw ArgumentError('This payment account already exists.');
     }
-    final index = previous == null ? -1 : accounts.indexOf(previous);
+    final custom = List<String>.from(customPaymentAccounts);
+    final index = previous == null ? -1 : custom.indexOf(previous);
     if (index < 0) {
-      accounts.add(label);
+      if (defaultPaymentAccounts.any(
+        (d) => d.toLowerCase() == label.toLowerCase(),
+      )) {
+        throw ArgumentError('This payment account already exists.');
+      }
+      custom.add(label);
     } else {
-      accounts[index] = label;
+      custom[index] = label;
     }
-    await _repository.savePaymentAccounts(accounts);
+    await _repository.savePaymentAccounts(custom);
     notifyListeners();
   }
 
   Future<void> removePaymentAccount(String label) async {
-    await _repository.savePaymentAccounts(paymentAccounts..remove(label));
+    final isDefault = defaultPaymentAccounts.any(
+      (d) => d.toLowerCase() == label.toLowerCase(),
+    );
+    if (isDefault) {
+      throw ArgumentError('Default payment accounts cannot be removed.');
+    }
+    await _repository.savePaymentAccounts(
+      customPaymentAccounts
+          .where((a) => a.toLowerCase() != label.toLowerCase())
+          .toList(),
+    );
     notifyListeners();
   }
 
