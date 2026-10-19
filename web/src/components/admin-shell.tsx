@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { signOut } from '@/app/login/actions';
+import { BrandLogo } from '@/components/brand-logo';
 
 const NAV = [
   { view: 'businesses', label: 'Businesses' },
@@ -23,7 +24,7 @@ export function AdminShell({
       <aside className="sidebar">
         <div className="sidebar-top">
           <Link href="/?view=businesses" className="brand">
-            <span className="brand-mark" aria-hidden />
+            <BrandLogo size={36} />
             <span>
               <strong>TrimMatrix</strong>
               <em>Admin</em>
