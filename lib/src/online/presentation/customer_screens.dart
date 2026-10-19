@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
 import 'widgets/online_widgets.dart';
@@ -36,149 +38,171 @@ class _CustomerDirectoryState extends State<CustomerDirectory> {
     ),
   );
 
-  Widget _salonTile(SalonBusiness salon) => Card(
-    elevation: 0,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-      side: const BorderSide(color: Color(0xFFE3E7EC)),
-    ),
-    child: ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      leading: BusinessPhoto(
-        repository: widget.repository,
-        business: salon,
+  Widget _salonTile(SalonBusiness salon) {
+    final text = Theme.of(context).textTheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.homeBorder),
       ),
-      title: Text(
-        salon.name,
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
-      subtitle: Text('${salon.type}\n${salon.city} · ${salon.area}'),
-      isThreeLine: true,
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => Navigator.push<void>(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              SalonDetails(repository: widget.repository, business: salon),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        leading: BusinessPhoto(
+          repository: widget.repository,
+          business: salon,
+        ),
+        title: Text(salon.name, style: text.titleSmall),
+        subtitle: Text(
+          '${salon.type}\n${salon.city} · ${salon.area}',
+          style: text.bodySmall?.copyWith(color: AppColors.textSecondary),
+        ),
+        isThreeLine: true,
+        trailing: Icon(
+          Icons.chevron_right,
+          color: AppColors.iconMuted,
+        ),
+        onTap: () => Navigator.push<void>(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                SalonDetails(repository: widget.repository, business: salon),
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 
   @override
-  Widget build(BuildContext context) => OnlinePage(
-    title: 'Find a salon',
-    actions: [
-      IconButton(
-        tooltip: 'Scan salon or barber QR',
-        icon: const Icon(Icons.qr_code_scanner),
-        onPressed: () async {
-          final target = await Navigator.push<QrDestination>(
-            context,
-            MaterialPageRoute(builder: (_) => const ScanQr()),
-          );
-          if (target == null || !mounted) return;
-          try {
-            final business = await widget.repository.findBusiness(
-              target.id,
-              barber: target.kind == 'barber',
-            );
-            if (!context.mounted) return;
-            if (business == null) {
-              showMessage(
-                context,
-                'This salon or barber is not currently available.',
-              );
-              return;
-            }
-            await Navigator.push<void>(
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return OnlinePage(
+      title: 'Find a salon',
+      actions: [
+        IconButton(
+          tooltip: 'Scan salon or barber QR',
+          icon: const Icon(Icons.qr_code_scanner),
+          onPressed: () async {
+            final target = await Navigator.push<QrDestination>(
               context,
-              MaterialPageRoute(
-                builder: (_) => SalonDetails(
-                  repository: widget.repository,
-                  business: business,
-                  barberId: target.kind == 'barber' ? target.id : null,
-                ),
-              ),
+              MaterialPageRoute(builder: (_) => const ScanQr()),
             );
-          } catch (_) {
-            if (context.mounted) {
-              showMessage(
-                context,
-                'Could not open QR. Check your connection and try again.',
+            if (target == null || !mounted) return;
+            try {
+              final business = await widget.repository.findBusiness(
+                target.id,
+                barber: target.kind == 'barber',
               );
+              if (!context.mounted) return;
+              if (business == null) {
+                showMessage(
+                  context,
+                  'This salon or barber is not currently available.',
+                );
+                return;
+              }
+              await Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SalonDetails(
+                    repository: widget.repository,
+                    business: business,
+                    barberId: target.kind == 'barber' ? target.id : null,
+                  ),
+                ),
+              );
+            } catch (_) {
+              if (context.mounted) {
+                showMessage(
+                  context,
+                  'Could not open QR. Check your connection and try again.',
+                );
+              }
             }
-          }
-        },
-      ),
-      IconButton(
-        tooltip: 'Refresh salons',
-        onPressed: _load,
-        icon: const Icon(Icons.refresh),
-      ),
-    ],
-    children: [
-      TextField(
-        decoration: const InputDecoration(
-          labelText: 'Search salon name',
-          prefixIcon: Icon(Icons.search),
+          },
         ),
-        textInputAction: TextInputAction.search,
-        onSubmitted: (value) {
-          _search = value.trim();
-          _page = 0;
-          _load();
-        },
-      ),
-      const SizedBox(height: 20),
-      RemoteContent<List<SalonBusiness>>(
-        future: _businesses,
-        onRetry: _load,
-        builder: (businesses) => Column(
-          children: [
-            if (businesses.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'No salons found. Try another search or check back later.',
-                ),
-              ),
-            ...businesses.map(_salonTile),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton(
-                  onPressed: _page == 0
-                      ? null
-                      : () {
-                          _page--;
-                          _load();
-                        },
-                  child: const Text('Previous'),
-                ),
-                Text('Page ${_page + 1}'),
-                TextButton(
-                  onPressed: businesses.length < 25
-                      ? null
-                      : () {
-                          _page++;
-                          _load();
-                        },
-                  child: const Text('Next'),
-                ),
-              ],
+        IconButton(
+          tooltip: 'Refresh salons',
+          onPressed: _load,
+          icon: const Icon(Icons.refresh),
+        ),
+      ],
+      children: [
+        TextField(
+          decoration: InputDecoration(
+            labelText: 'Search salon name',
+            prefixIcon: const Icon(Icons.search),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
             ),
-          ],
+          ),
+          textInputAction: TextInputAction.search,
+          onSubmitted: (value) {
+            _search = value.trim();
+            _page = 0;
+            _load();
+          },
         ),
-      ),
-      const SizedBox(height: 24),
-      ActionButton(
-        label: 'Sign out',
-        onPressed: widget.onSignOut,
-        icon: Icons.logout,
-      ),
-    ],
-  );
+        const SizedBox(height: AppSpacing.md),
+        RemoteContent<List<SalonBusiness>>(
+          future: _businesses,
+          onRetry: _load,
+          builder: (businesses) => Column(
+            children: [
+              if (businesses.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Text(
+                    'No salons found. Try another search or check back later.',
+                    style: text.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ...businesses.map(_salonTile),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: _page == 0
+                        ? null
+                        : () {
+                            _page--;
+                            _load();
+                          },
+                    child: const Text('Previous'),
+                  ),
+                  Text('Page ${_page + 1}', style: text.bodyMedium),
+                  TextButton(
+                    onPressed: businesses.length < 25
+                        ? null
+                        : () {
+                            _page++;
+                            _load();
+                          },
+                    child: const Text('Next'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Center(
+          child: TextButton(
+            onPressed: widget.onSignOut,
+            child: const Text('Sign out'),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class SalonDetails extends StatefulWidget {
@@ -232,14 +256,12 @@ class _SalonDetailsState extends State<SalonDetails> {
   @override
   Widget build(BuildContext context) {
     final business = widget.business;
+    final text = Theme.of(context).textTheme;
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: AppColors.homeCanvas,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F8FA),
-        title: Text(
-          business.name,
-          style: const TextStyle(fontFamily: 'Roboto'),
-        ),
+        backgroundColor: AppColors.homeCanvas,
+        title: Text(business.name, style: text.titleLarge),
         actions: [
           IconButton(
             tooltip: 'Refresh',
@@ -256,129 +278,120 @@ class _SalonDetailsState extends State<SalonDetails> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.lg,
+              AppSpacing.xl,
+            ),
             children: [
-              Card(
-                elevation: 0,
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: const BorderSide(color: Color(0xFFE3E7EC)),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.homeBorder),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: SizedBox(
-                              width: 72,
-                              height: 72,
-                              child: ColoredBox(
-                                color: const Color(0xFFF0F5DE),
-                                child: Center(
-                                  child: BusinessPhoto(
-                                    repository: widget.repository,
-                                    business: business,
-                                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: SizedBox(
+                            width: 72,
+                            height: 72,
+                            child: ColoredBox(
+                              color: AppColors.homeSage,
+                              child: Center(
+                                child: BusinessPhoto(
+                                  repository: widget.repository,
+                                  business: business,
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  business.name,
-                                  style: const TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w800,
-                                    height: 1.2,
-                                  ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(business.name, style: text.headlineSmall),
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                business.type,
+                                style: text.labelLarge?.copyWith(
+                                  color: AppColors.homeOlive,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  business.type,
-                                  style: const TextStyle(
-                                    color: Color(0xFF668400),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _DetailRow(
+                      icon: Icons.place_outlined,
+                      text: [
+                        business.address,
+                        '${business.area}, ${business.city}',
+                      ].where((s) => s.trim().isNotEmpty).join('\n'),
+                    ),
+                    if (business.phone.trim().isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.sm),
                       _DetailRow(
-                        icon: Icons.place_outlined,
-                        text: [
-                          business.address,
-                          '${business.area}, ${business.city}',
-                        ].where((s) => s.trim().isNotEmpty).join('\n'),
+                        icon: Icons.phone_outlined,
+                        text: business.phone,
                       ),
-                      if (business.phone.trim().isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        _DetailRow(
-                          icon: Icons.phone_outlined,
-                          text: business.phone,
-                        ),
-                      ],
-                      if (widget.barberId != null) ...[
-                        const SizedBox(height: 14),
-                        FutureBuilder<String?>(
-                          future: widget.repository.profilePhoto(
-                            barberId: widget.barberId,
-                          ),
-                          builder: (context, snapshot) {
-                            final url = snapshot.data;
-                            return Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 22,
-                                  backgroundColor: const Color(0xFFF0F5DE),
-                                  backgroundImage: url == null
-                                      ? null
-                                      : NetworkImage(url),
-                                  child: url == null
-                                      ? const Icon(Icons.person_outline)
-                                      : null,
-                                ),
-                                const SizedBox(width: 10),
-                                const Expanded(
-                                  child: Text(
-                                    'Barber profile from QR',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                      ],
                     ],
-                  ),
+                    if (widget.barberId != null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      FutureBuilder<String?>(
+                        future: widget.repository.profilePhoto(
+                          barberId: widget.barberId,
+                        ),
+                        builder: (context, snapshot) {
+                          final url = snapshot.data;
+                          return Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 22,
+                                backgroundColor: AppColors.homeSage,
+                                backgroundImage: url == null
+                                    ? null
+                                    : NetworkImage(url),
+                                child: url == null
+                                    ? const Icon(Icons.person_outline)
+                                    : null,
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Text(
+                                  'Barber profile from QR',
+                                  style: text.titleSmall,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              const SizedBox(height: 22),
-              const Text(
-                'Rate list',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 4),
-              const Text(
+              const SizedBox(height: AppSpacing.lg),
+              Text('Rate list', style: text.titleMedium),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
                 'Tap a service for details, photos and price.',
-                style: TextStyle(color: Color(0xFF718094)),
+                style: text.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
               RemoteContent<List<SalonService>>(
                 future: _services,
                 onRetry: () => setState(
@@ -386,12 +399,16 @@ class _SalonDetailsState extends State<SalonDetails> {
                 ),
                 builder: (services) {
                   if (services.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 28),
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.lg,
+                      ),
                       child: Text(
                         'No services published yet.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Color(0xFF718094)),
+                        style: text.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     );
                   }
@@ -401,75 +418,30 @@ class _SalonDetailsState extends State<SalonDetails> {
                     children: [
                       for (final entry in groups.entries) ...[
                         Padding(
-                          padding: const EdgeInsets.only(top: 8, bottom: 8),
-                          child: Text(
-                            entry.key,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF34441D),
-                            ),
+                          padding: const EdgeInsets.only(
+                            top: AppSpacing.sm,
+                            bottom: AppSpacing.xs,
                           ),
+                          child: Text(entry.key, style: text.titleSmall),
                         ),
                         for (final service in entry.value)
-                          Card(
-                            elevation: 0,
-                            margin: const EdgeInsets.only(bottom: 8),
-                            color: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: const BorderSide(color: Color(0xFFE3E7EC)),
-                            ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 6,
-                              ),
-                              title: Text(
-                                service.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              subtitle: Text(
-                                service.description.trim().isEmpty
-                                    ? 'View details'
-                                    : service.description,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    'Rs ${service.price.toStringAsFixed(0)}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  const Icon(
-                                    Icons.chevron_right,
-                                    size: 18,
-                                    color: Color(0xFF718094),
-                                  ),
-                                ],
-                              ),
-                              onTap: () => _openService(service),
-                            ),
+                          _ServiceRow(
+                            name: service.name,
+                            description: service.description.trim().isEmpty
+                                ? 'View details'
+                                : service.description,
+                            price:
+                                'Rs ${service.price.toStringAsFixed(0)}',
+                            onTap: () => _openService(service),
                           ),
                       ],
                     ],
                   );
                 },
               ),
-              const SizedBox(height: 22),
-              const Text(
-                'Barbers',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.lg),
+              Text('Barbers', style: text.titleMedium),
+              const SizedBox(height: AppSpacing.sm),
               RemoteContent<List<SalonStaff>>(
                 future: _staff,
                 onRetry: () => setState(
@@ -483,58 +455,40 @@ class _SalonDetailsState extends State<SalonDetails> {
                       )
                       .toList();
                   if (visible.isEmpty) {
-                    return const Text(
+                    return Text(
                       'No active barbers listed yet.',
-                      style: TextStyle(color: Color(0xFF718094)),
+                      style: text.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     );
                   }
                   return Column(
                     children: [
                       for (final barber in visible)
-                        Card(
-                          elevation: 0,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          color: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(color: Color(0xFFE3E7EC)),
-                          ),
-                          child: ListTile(
-                            leading: const CircleAvatar(
-                              backgroundColor: Color(0xFFF0F5DE),
-                              child: Icon(Icons.person_outline),
-                            ),
-                            title: Text(
-                              barber.name,
-                              style: const TextStyle(fontWeight: FontWeight.w700),
-                            ),
-                            subtitle: Text(
-                              barber.isWorking
-                                  ? 'Available now'
-                                  : 'Listed at this salon',
-                            ),
-                            trailing: widget.barberId == null
-                                ? const Icon(Icons.chevron_right)
-                                : null,
-                            onTap: widget.barberId != null
-                                ? null
-                                : () => Navigator.push<void>(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => SalonDetails(
-                                        repository: widget.repository,
-                                        business: business,
-                                        barberId: barber.id,
-                                      ),
+                        _BarberRow(
+                          name: barber.name,
+                          subtitle: barber.isWorking
+                              ? 'Available now'
+                              : 'Listed at this salon',
+                          showChevron: widget.barberId == null,
+                          onTap: widget.barberId != null
+                              ? null
+                              : () => Navigator.push<void>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => SalonDetails(
+                                      repository: widget.repository,
+                                      business: business,
+                                      barberId: barber.id,
                                     ),
                                   ),
-                          ),
+                                ),
                         ),
                     ],
                   );
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               ReviewsPanel(
                 repository: widget.repository,
                 businessId: business.id,
@@ -589,99 +543,207 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFFF7F8FA),
-    appBar: AppBar(
-      backgroundColor: const Color(0xFFF7F8FA),
-      title: Text(
-        service.name,
-        style: const TextStyle(fontFamily: 'Roboto'),
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Scaffold(
+      backgroundColor: AppColors.homeCanvas,
+      appBar: AppBar(
+        backgroundColor: AppColors.homeCanvas,
+        title: Text(service.name, style: text.titleLarge),
       ),
-    ),
-    body: Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 720),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-          children: [
-            Card(
-              elevation: 0,
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: Color(0xFFE3E7EC)),
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.lg,
+              AppSpacing.xl,
+            ),
+            children: [
+              Text(
+                widget.business.name,
+                style: text.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: AppSpacing.xs),
+              Text(service.name, style: text.headlineSmall),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                service.category.trim().isEmpty ? 'Service' : service.category,
+                style: text.labelLarge?.copyWith(color: AppColors.homeOlive),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'Rs ${service.price.toStringAsFixed(0)}',
+                style: text.headlineMedium,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              ServiceRichContent(
+                contentJson: service.contentJson,
+                fallbackDescription: service.description,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: _media,
+                builder: (context, snapshot) {
+                  final rows = snapshot.data ?? const <Map<String, dynamic>>[];
+                  final pair = _pair(rows);
+                  if (pair.before != null && pair.after != null) {
+                    return BeforeAfterSlider(
+                      beforeUrl: pair.before!,
+                      afterUrl: pair.after!,
+                    );
+                  }
+                  return ServiceMedia(
+                    repository: widget.repository,
+                    serviceId: service.id,
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ServiceRow extends StatelessWidget {
+  const _ServiceRow({
+    required this.name,
+    required this.description,
+    required this.price,
+    required this.onTap,
+  });
+  final String name;
+  final String description;
+  final String price;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Material(
+        color: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: const BorderSide(color: AppColors.homeBorder),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: text.titleSmall),
+                      const SizedBox(height: 2),
+                      Text(
+                        description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      widget.business.name,
-                      style: const TextStyle(
-                        color: Color(0xFF718094),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      service.name,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      service.category.trim().isEmpty
-                          ? 'Service'
-                          : service.category,
-                      style: const TextStyle(
-                        color: Color(0xFF668400),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      'Rs ${service.price.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ServiceRichContent(
-                      contentJson: service.contentJson,
-                      fallbackDescription: service.description,
+                    Text(price, style: text.titleSmall),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 18,
+                      color: AppColors.iconMuted,
                     ),
                   ],
                 ),
-              ),
+              ],
             ),
-            const SizedBox(height: 16),
-            FutureBuilder<List<Map<String, dynamic>>>(
-              future: _media,
-              builder: (context, snapshot) {
-                final rows = snapshot.data ?? const <Map<String, dynamic>>[];
-                final pair = _pair(rows);
-                if (pair.before != null && pair.after != null) {
-                  return BeforeAfterSlider(
-                    beforeUrl: pair.before!,
-                    afterUrl: pair.after!,
-                  );
-                }
-                return ServiceMedia(
-                  repository: widget.repository,
-                  serviceId: service.id,
-                );
-              },
-            ),
-          ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
+}
+
+class _BarberRow extends StatelessWidget {
+  const _BarberRow({
+    required this.name,
+    required this.subtitle,
+    required this.showChevron,
+    this.onTap,
+  });
+  final String name;
+  final String subtitle;
+  final bool showChevron;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Material(
+        color: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: const BorderSide(color: AppColors.homeBorder),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  backgroundColor: AppColors.homeSage,
+                  child: Icon(Icons.person_outline),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: text.titleSmall),
+                      Text(
+                        subtitle,
+                        style: text.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (showChevron)
+                  const Icon(Icons.chevron_right, color: AppColors.iconMuted),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _DetailRow extends StatelessWidget {
@@ -690,17 +752,23 @@ class _DetailRow extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Icon(icon, size: 18, color: const Color(0xFF718094)),
-      const SizedBox(width: 10),
-      Expanded(
-        child: Text(
-          text,
-          style: const TextStyle(height: 1.35, color: Color(0xFF34441D)),
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodyMedium;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: AppColors.iconMuted),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(
+            text,
+            style: style?.copyWith(
+              height: 1.35,
+              color: AppColors.homeInk,
+            ),
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }

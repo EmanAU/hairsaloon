@@ -237,7 +237,7 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                   data.notifiedContracts.isNotEmpty ||
                   data.joinRequests.isNotEmpty;
               return ListView(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 children: [
                   _ProfileHeader(
                     name: workspace.account.name,
@@ -245,7 +245,7 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                     experience: profile?.experienceAt(DateTime.now()) ?? '',
                     photoFuture: widget.session.repository.profilePhoto(),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpacing.md),
                   FutureBuilder<List<PendingEmployeeInvite>>(
                     future: _invites,
                     builder: (context, snapshot) {
@@ -254,100 +254,61 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Text(
-                            'Salon invites',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
+                          Text('Salon invites', style: text.titleMedium),
+                          const SizedBox(height: AppSpacing.sm),
                           for (final invite in invites)
-                            Card(
-                              elevation: 0,
-                              color: Colors.white,
-                              margin: const EdgeInsets.only(bottom: 10),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                side: const BorderSide(
-                                  color: Color(0xFFE3E7EC),
-                                ),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    Text(
-                                      'Added by ${invite.ownerName}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 16,
+                            _BannerPanel(
+                              title: 'Added by ${invite.ownerName}',
+                              subtitle: 'Join ${invite.businessName}?',
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: ActionButton(
+                                      label: 'Not now',
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: AppColors.background,
+                                        foregroundColor: AppColors.textPrimary,
                                       ),
+                                      onPressed: () async {
+                                        await widget.session.repository
+                                            .respondToEmployeeInvite(
+                                              invite.id,
+                                              false,
+                                            );
+                                        if (mounted) {
+                                          showMessage(
+                                            context,
+                                            'Invite declined',
+                                          );
+                                          _refresh();
+                                        }
+                                      },
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Join ${invite.businessName}?',
-                                      style: const TextStyle(
-                                        color: Color(0xFF718094),
-                                      ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  Expanded(
+                                    child: ActionButton(
+                                      label: 'Join salon',
+                                      onPressed: () async {
+                                        await widget.session.repository
+                                            .respondToEmployeeInvite(
+                                              invite.id,
+                                              true,
+                                            );
+                                        if (mounted) {
+                                          showMessage(
+                                            context,
+                                            'Joined ${invite.businessName}',
+                                          );
+                                          _refresh();
+                                        }
+                                      },
                                     ),
-                                    const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: ActionButton(
-                                            label: 'Not now',
-                                            style: FilledButton.styleFrom(
-                                              backgroundColor: const Color(
-                                                0xFFF3F5F7,
-                                              ),
-                                              foregroundColor: Colors.black,
-                                            ),
-                                            onPressed: () async {
-                                              await widget.session.repository
-                                                  .respondToEmployeeInvite(
-                                                    invite.id,
-                                                    false,
-                                                  );
-                                              if (mounted) {
-                                                showMessage(
-                                                  context,
-                                                  'Invite declined',
-                                                );
-                                                _refresh();
-                                              }
-                                            },
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: ActionButton(
-                                            label: 'Join salon',
-                                            onPressed: () async {
-                                              await widget.session.repository
-                                                  .respondToEmployeeInvite(
-                                                    invite.id,
-                                                    true,
-                                                  );
-                                              if (mounted) {
-                                                showMessage(
-                                                  context,
-                                                  'Joined ${invite.businessName}',
-                                                );
-                                                _refresh();
-                                              }
-                                            },
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: AppSpacing.md),
                         ],
                       );
                     },
@@ -360,34 +321,22 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Text(
-                            'Manager access',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
+                          Text('Manager access', style: text.titleMedium),
+                          const SizedBox(height: AppSpacing.sm),
                           for (final salon in salons)
                             ActionButton(
                               label: 'Open ${salon.businessName}',
                               icon: Icons.admin_panel_settings_outlined,
                               onPressed: () => _openManagerDashboard(salon),
                             ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: AppSpacing.md),
                         ],
                       );
                     },
                   ),
                   if (!hasSalonWork) ...[
-                    const Text(
-                      'Get started',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
+                    Text('Get started', style: text.titleMedium),
+                    const SizedBox(height: AppSpacing.sm),
                     ActionButton(
                       label: 'Start a business',
                       icon: Icons.storefront_outlined,
@@ -426,49 +375,33 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                         if (mounted) _refresh();
                       },
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppSpacing.md),
                   ],
                   if (data.notifiedContracts.isNotEmpty) ...[
-                    const Text(
-                      'Your contracts',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+                    Text('Your contracts', style: text.titleMedium),
+                    const SizedBox(height: AppSpacing.sm),
                     for (final contract in data.notifiedContracts)
                       _ContractNotice(contract: contract),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                   ],
                   if (hasSalonWork &&
                       data.liveContracts.isEmpty &&
                       data.notifiedContracts.isEmpty) ...[
-                    const Card(
-                      elevation: 0,
-                      color: Colors.white,
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Text(
-                          'Waiting for your contract to start. After it begins, every bill you complete shows here day by day.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Color(0xFF718094)),
-                        ),
-                      ),
+                    _BannerPanel(
+                      title: 'Contract pending',
+                      subtitle:
+                          'Waiting for your contract to start. After it begins, every bill you complete shows here.',
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                   ],
                   if (data.liveContracts.isNotEmpty) ...[
                     Text(
                       data.liveContracts.length == 1
                           ? data.liveContracts.first.businessName
                           : 'Working at ${data.liveContracts.length} salons',
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: text.titleMedium,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       data.liveContracts
                           .map(
@@ -476,19 +409,15 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                                 '${c.kind} · ${c.commission.toStringAsFixed(0)}% commission',
                           )
                           .join(' · '),
-                      style: const TextStyle(color: Color(0xFF718094)),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (data.joinRequests.isNotEmpty) ...[
-                    const Text(
-                      'Join requests',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
+                      style: text.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
+                  if (data.joinRequests.isNotEmpty) ...[
+                    Text('Join requests', style: text.titleMedium),
+                    const SizedBox(height: AppSpacing.sm),
                     for (final request in data.joinRequests)
                       ListTile(
                         contentPadding: EdgeInsets.zero,
@@ -499,18 +428,12 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                           _ => 'Waiting for owner approval',
                         }),
                       ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.sm),
                   ],
                   Row(
                     children: [
-                      const Expanded(
-                        child: Text(
-                          'Daily work',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                      Expanded(
+                        child: Text('Daily work', style: text.titleMedium),
                       ),
                       TextButton(
                         onPressed: () async {
@@ -530,7 +453,7 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   SegmentedButton<_WorkPeriod>(
                     segments: const [
                       ButtonSegment(
@@ -550,7 +473,7 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                     onSelectionChanged: (value) =>
                         setState(() => _period = value.first),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.md),
                   Row(
                     children: [
                       Expanded(
@@ -559,14 +482,14 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                           value: _money(sales),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: _StatTile(
                           label: 'Your earning',
                           value: _money(earning),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: _StatTile(
                           label: 'Jobs',
@@ -575,66 +498,45 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   if (days.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 32),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.xl,
+                      ),
                       child: Text(
                         'No work recorded for this period yet.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Color(0xFF718094)),
+                        style: text.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     )
                   else
                     for (final day in days) ...[
                       Padding(
-                        padding: const EdgeInsets.only(top: 8, bottom: 6),
+                        padding: const EdgeInsets.only(
+                          top: AppSpacing.sm,
+                          bottom: AppSpacing.xs,
+                        ),
                         child: Text(
                           '${day.date.day}/${day.date.month}/${day.date.year}'
                           ' · ${_money(day.sales)} sales · ${_money(day.earning)} earning',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          style: text.titleSmall,
                         ),
                       ),
                       for (final job in day.jobs)
-                        Card(
-                          elevation: 0,
-                          color: Colors.white,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            side: const BorderSide(color: Color(0xFFE3E7EC)),
-                          ),
-                          child: ListTile(
-                            title: Text(job.customerName),
-                            subtitle: Text(
-                              [
-                                job.businessName,
-                                if (job.services.isNotEmpty)
-                                  job.services.join(', '),
-                                '${job.createdAt.hour.toString().padLeft(2, '0')}:'
-                                    '${job.createdAt.minute.toString().padLeft(2, '0')}',
-                              ].join(' · '),
-                            ),
-                            trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  _money(job.total),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                Text(
-                                  '+${_money(job.earning)}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF668400),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                        _JobRow(
+                          customerName: job.customerName,
+                          detail: [
+                            job.businessName,
+                            if (job.services.isNotEmpty)
+                              job.services.join(', '),
+                            '${job.createdAt.hour.toString().padLeft(2, '0')}:'
+                                '${job.createdAt.minute.toString().padLeft(2, '0')}',
+                          ].join(' · '),
+                          total: _money(job.total),
+                          earning: '+${_money(job.earning)}',
                         ),
                     ],
                 ],
@@ -649,6 +551,46 @@ class _EmployeeHomeState extends State<EmployeeHome> {
 
 enum _WorkPeriod { daily, weekly, monthly }
 
+class _BannerPanel extends StatelessWidget {
+  const _BannerPanel({
+    required this.title,
+    required this.subtitle,
+    this.child,
+  });
+  final String title;
+  final String subtitle;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.homeSage,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.homeBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(title, style: text.titleSmall),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            subtitle,
+            style: text.bodyMedium?.copyWith(color: AppColors.textSecondary),
+          ),
+          if (child != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            child!,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({
     required this.name,
@@ -662,15 +604,15 @@ class _ProfileHeader extends StatelessWidget {
   final Future<String?> photoFuture;
 
   @override
-  Widget build(BuildContext context) => Card(
-    elevation: 0,
-    color: Colors.white,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(14),
-      side: const BorderSide(color: Color(0xFFE3E7EC)),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(18),
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.homeBorder),
+      ),
       child: Row(
         children: [
           FutureBuilder<String?>(
@@ -679,46 +621,44 @@ class _ProfileHeader extends StatelessWidget {
               final url = snapshot.data;
               return CircleAvatar(
                 radius: 28,
-                backgroundColor: const Color(0xFFF0F5DE),
+                backgroundColor: AppColors.homeSage,
                 backgroundImage: url == null ? null : NetworkImage(url),
                 child: url == null
                     ? Text(
                         name.isEmpty ? '?' : name[0].toUpperCase(),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 20,
-                        ),
+                        style: text.titleLarge,
                       )
                     : null,
               );
             },
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                Text(name, style: text.titleMedium),
                 if (phone.isNotEmpty)
-                  Text(phone, style: const TextStyle(color: Color(0xFF718094))),
+                  Text(
+                    phone,
+                    style: text.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 if (experience.isNotEmpty)
                   Text(
                     'Experience · $experience',
-                    style: const TextStyle(color: Color(0xFF718094)),
+                    style: text.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
               ],
             ),
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _StatTile extends StatelessWidget {
@@ -727,28 +667,87 @@ class _StatTile extends StatelessWidget {
   final String value;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: const Color(0xFFE3E7EC)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(color: Color(0xFF718094), fontSize: 12),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-        ),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.homeBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: text.labelMedium?.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(value, style: text.titleLarge),
+        ],
+      ),
+    );
+  }
+}
+
+class _JobRow extends StatelessWidget {
+  const _JobRow({
+    required this.customerName,
+    required this.detail,
+    required this.total,
+    required this.earning,
+  });
+  final String customerName;
+  final String detail;
+  final String total;
+  final String earning;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.homeBorder),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(customerName, style: text.titleSmall),
+                const SizedBox(height: 2),
+                Text(
+                  detail,
+                  style: text.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(total, style: text.titleSmall),
+              Text(
+                earning,
+                style: text.labelMedium?.copyWith(color: AppColors.success),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ContractNotice extends StatelessWidget {
@@ -756,41 +755,13 @@ class _ContractNotice extends StatelessWidget {
   final WorkContract contract;
 
   @override
-  Widget build(BuildContext context) => Card(
-    elevation: 0,
-    color: Colors.white,
-    margin: const EdgeInsets.only(bottom: 10),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-      side: const BorderSide(color: Color(0xFFE3E7EC)),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            contract.businessName,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${contract.kind.toUpperCase()} · ${contract.displayStatus} · '
-            'salary ${contract.salary.toStringAsFixed(0)} · '
-            '${contract.commission.toStringAsFixed(0)}% commission',
-            style: const TextStyle(color: Color(0xFF718094)),
-          ),
-          if (contract.terms.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(contract.terms),
-          ],
-          const SizedBox(height: 8),
-          const Text(
-            'Your salon owner set these terms. No action is required from you.',
-            style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-          ),
-        ],
-      ),
-    ),
+  Widget build(BuildContext context) => _BannerPanel(
+    title: contract.businessName,
+    subtitle:
+        '${contract.kind.toUpperCase()} · ${contract.displayStatus} · '
+        'salary ${contract.salary.toStringAsFixed(0)} · '
+        '${contract.commission.toStringAsFixed(0)}% commission'
+        '${contract.terms.isNotEmpty ? '\n${contract.terms}' : ''}\n'
+        'Your salon owner set these terms. No action is required from you.',
   );
 }

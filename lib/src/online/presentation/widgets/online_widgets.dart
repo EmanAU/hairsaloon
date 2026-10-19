@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/services/toast_service.dart';
+import '../../../theme/app_colors.dart';
+import '../../../theme/app_spacing.dart';
 import '../../domain/online_models.dart';
 
 class OnlinePage extends StatelessWidget {
@@ -16,29 +18,34 @@ class OnlinePage extends StatelessWidget {
   final List<Widget>? actions;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(title, style: const TextStyle(fontFamily: 'Roboto')),
-      actions: actions,
-    ),
-    body: LayoutBuilder(
-      builder: (context, constraints) {
-        final maxWidth = AppBreakpoints.isTabletWidth(constraints.maxWidth)
-            ? 720.0
-            : 640.0;
-        return Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
-            child: ListView(
-              padding: const EdgeInsets.all(24),
-              children: children,
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Scaffold(
+      backgroundColor: AppColors.homeCanvas,
+      appBar: AppBar(
+        backgroundColor: AppColors.homeCanvas,
+        title: Text(title, style: text.titleLarge),
+        actions: actions,
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final maxWidth = AppBreakpoints.isTabletWidth(constraints.maxWidth)
+              ? 720.0
+              : 640.0;
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              child: ListView(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                children: children,
+              ),
             ),
-          ),
-        );
-      },
-    ),
-  );
+          );
+        },
+      ),
+    );
+  }
 }
 
 class ActionButton extends StatefulWidget {
@@ -81,7 +88,7 @@ class _ActionButtonState extends State<ActionButton> {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 6),
+    padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs + 2),
     child: FilledButton.icon(
       style: widget.style,
       onPressed: _busy ? null : _run,
@@ -114,12 +121,12 @@ class CopyCode extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Card(
     child: Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           SelectableText(code),
           TextButton.icon(
             onPressed: () async {
@@ -152,7 +159,7 @@ class RemoteContent<T> extends StatelessWidget {
     builder: (context, snapshot) {
       if (snapshot.connectionState != ConnectionState.done) {
         return const Padding(
-          padding: EdgeInsets.all(32),
+          padding: EdgeInsets.all(AppSpacing.xl),
           child: Center(child: CircularProgressIndicator()),
         );
       }
