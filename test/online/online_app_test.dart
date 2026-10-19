@@ -288,12 +288,13 @@ void main() {
     );
     expect(find.text('PERMANENT · scheduled'), findsOneWidget);
   });
-  testWidgets('unconfigured business app preserves an offline entry', (
+  testWidgets('unconfigured business app shows setup without offline entry', (
     tester,
   ) async {
     await tester.pumpWidget(const OnlineApp(audience: AppAudience.business));
+    await tester.pumpAndSettle();
     expect(find.text('Online setup is not connected yet.'), findsOneWidget);
-    expect(find.text('Open offline business app'), findsOneWidget);
+    expect(find.text('Open offline business app'), findsNothing);
     expect(find.text('Continue with Google'), findsNothing);
   });
 
@@ -301,8 +302,9 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const OnlineApp(audience: AppAudience.customer));
+    await tester.pumpAndSettle();
     expect(find.text('Open offline business app'), findsNothing);
-    expect(find.text('Find your next haircut.'), findsOneWidget);
+    expect(find.text('TrimMatrix'), findsOneWidget);
   });
 
   testWidgets('Google button delegates sign-in to the repository', (

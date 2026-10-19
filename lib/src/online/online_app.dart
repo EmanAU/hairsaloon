@@ -10,6 +10,7 @@ import 'domain/online_models.dart';
 import 'domain/online_repository.dart';
 import 'presentation/business_home.dart';
 import 'presentation/employee_home.dart';
+import 'presentation/online_login_page.dart';
 import 'presentation/profile_form.dart';
 import 'presentation/customer_screens.dart';
 import 'presentation/online_session.dart';
@@ -187,44 +188,11 @@ class _OnlineAppState extends State<OnlineApp> {
       builder: (context) {
         final session = _session;
         if (session == null || !session.signedIn) {
-          return OnlinePage(
-            title: 'TrimMatrix',
-            children: [
-              const SizedBox(height: 32),
-              Text(
-                widget.audience == AppAudience.business
-                    ? 'Your salon. Your team.'
-                    : 'Find your next haircut.',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                widget.audience == AppAudience.business
-                    ? 'Sign in to register a business or create your barber profile.'
-                    : 'Sign in to explore salons and their services.',
-              ),
-              const SizedBox(height: 24),
-              if (widget.repository != null)
-                ActionButton(
-                  label: 'Continue with Google',
-                  onPressed: widget.repository!.signInWithGoogle,
-                  icon: Icons.login,
-                )
-              else
-                Text(
-                  widget.startupError ?? 'Online setup is not connected yet.',
-                ),
-              if (session?.error != null) Text(session!.error!),
-              if (widget.audience == AppAudience.business)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: OutlinedButton.icon(
-                    onPressed: () => _openOffline(context),
-                    icon: const Icon(Icons.offline_bolt_outlined),
-                    label: const Text('Open offline business app'),
-                  ),
-                ),
-            ],
+          return OnlineLoginPage(
+            audience: widget.audience,
+            repository: widget.repository,
+            startupError: widget.startupError,
+            sessionError: session?.error,
           );
         }
         if (session.loading) {
@@ -243,11 +211,6 @@ class _OnlineAppState extends State<OnlineApp> {
                 onPressed: session.repository.signOut,
                 icon: Icons.logout,
               ),
-              if (widget.audience == AppAudience.business)
-                OutlinedButton(
-                  onPressed: () => _openOffline(context),
-                  child: const Text('Open offline business app'),
-                ),
             ],
           );
         }

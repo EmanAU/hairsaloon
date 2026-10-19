@@ -9,6 +9,7 @@ import 'business_home.dart';
 import 'online_session.dart';
 import 'profile_form.dart';
 import 'widgets/online_widgets.dart';
+import 'widgets/workspace_card.dart';
 
 /// Home for staff who joined a salon (not business owners).
 class EmployeeHome extends StatefulWidget {
@@ -153,7 +154,7 @@ class _EmployeeHomeState extends State<EmployeeHome> {
       backgroundColor: AppColors.homeCanvas,
       appBar: AppBar(
         backgroundColor: AppColors.homeCanvas,
-        title: Text('My work', style: text.titleLarge),
+        title: Text('Your workspace', style: text.titleLarge),
         actions: [
           IconButton(
             tooltip: 'Edit profile',
@@ -236,6 +237,170 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                   data.liveContracts.isNotEmpty ||
                   data.notifiedContracts.isNotEmpty ||
                   data.joinRequests.isNotEmpty;
+
+              final invitesSection = _AsyncSection<List<PendingEmployeeInvite>>(
+                future: _invites,
+                onRetry: _refresh,
+                errorLabel: 'Could not load salon invites.',
+                builder: (invites) {
+                  if (invites.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('Salon invites', style: text.titleMedium),
+                      const SizedBox(height: AppSpacing.sm),
+                      for (final invite in invites)
+                        _BannerPanel(
+                          title: 'Added by ${invite.ownerName}',
+                          subtitle: 'Join ${invite.businessName}?',
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: ActionButton(
+                                  label: 'Not now',
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.background,
+                                    foregroundColor: AppColors.textPrimary,
+                                  ),
+                                  onPressed: () async {
+                                    await widget.session.repository
+                                        .respondToEmployeeInvite(
+                                          invite.id,
+                                          false,
+                                        );
+                                    if (mounted) {
+                                      showMessage(context, 'Invite declined');
+                                      _refresh();
+                                    }
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: ActionButton(
+                                  label: 'Join salon',
+                                  onPressed: () async {
+                                    await widget.session.repository
+                                        .respondToEmployeeInvite(
+                                          invite.id,
+                                          true,
+                                        );
+                                    if (mounted) {
+                                      showMessage(
+                                        context,
+                                        'Joined ${invite.businessName}',
+                                      );
+                                      _refresh();
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: AppSpacing.md),
+                    ],
+                  );
+                },
+              );
+
+              final managerSection = _AsyncSection<List<ManagerBusiness>>(
+                future: _managerSalons,
+                onRetry: _refresh,
+                errorLabel: 'Could not load manager access.',
+                builder: (salons) {
+                  if (salons.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('Manager access', style: text.titleMedium),
+                      const SizedBox(height: AppSpacing.sm),
+                      for (final salon in salons)
+                        ActionButton(
+                          label: 'Open ${salon.businessName}',
+                          icon: Icons.admin_panel_settings_outlined,
+                          onPressed: () => _openManagerDashboard(salon),
+                        ),
+                      const SizedBox(height: AppSpacing.md),
+                    ],
+                  );
+                },
+              );
+
+              // After personal profile: big Start / Join cards (same as before).
+              if (!hasSalonWork) {
+                return ListView(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  children: [
+                    Text(
+                      'Get started',
+                      style: text.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'Choose how you want to use TrimMatrix.',
+                      style: text.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                        height: 1.45,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    WorkspaceCards(
+                      children: [
+                        WorkspaceCard(
+                          title: 'Start a business',
+                          subtitle:
+                              'Set up your salon and manage your team.',
+                          icon: Icons.storefront_outlined,
+                          onTap: () async {
+                            final saved = await Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => BusinessForm(
+                                  repository: widget.session.repository,
+                                  onRegistered: widget
+                                      .session
+                                      .rememberRegisteredBusiness,
+                                ),
+                              ),
+                            );
+                            await widget.session.reload();
+                            if (saved == true && mounted) {
+                              showMessage(
+                                context,
+                                'Business saved. It opens after admin approval.',
+                              );
+                            }
+                          },
+                        ),
+                        WorkspaceCard(
+                          title: 'Join a salon',
+                          subtitle:
+                              'Finish with a code or QR from your salon owner.',
+                          icon: Icons.group_add_outlined,
+                          onTap: () async {
+                            await Navigator.push<void>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => JoinSalon(
+                                  repository: widget.session.repository,
+                                ),
+                              ),
+                            );
+                            if (mounted) _refresh();
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    invitesSection,
+                    managerSection,
+                  ],
+                );
+              }
+
               return ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 children: [
@@ -246,139 +411,8 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                     photoFuture: widget.session.repository.profilePhoto(),
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  _AsyncSection<List<PendingEmployeeInvite>>(
-                    future: _invites,
-                    onRetry: _refresh,
-                    errorLabel: 'Could not load salon invites.',
-                    builder: (invites) {
-                      if (invites.isEmpty) return const SizedBox.shrink();
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text('Salon invites', style: text.titleMedium),
-                          const SizedBox(height: AppSpacing.sm),
-                          for (final invite in invites)
-                            _BannerPanel(
-                              title: 'Added by ${invite.ownerName}',
-                              subtitle: 'Join ${invite.businessName}?',
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: ActionButton(
-                                      label: 'Not now',
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor: AppColors.background,
-                                        foregroundColor: AppColors.textPrimary,
-                                      ),
-                                      onPressed: () async {
-                                        await widget.session.repository
-                                            .respondToEmployeeInvite(
-                                              invite.id,
-                                              false,
-                                            );
-                                        if (mounted) {
-                                          showMessage(
-                                            context,
-                                            'Invite declined',
-                                          );
-                                          _refresh();
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSpacing.sm),
-                                  Expanded(
-                                    child: ActionButton(
-                                      label: 'Join salon',
-                                      onPressed: () async {
-                                        await widget.session.repository
-                                            .respondToEmployeeInvite(
-                                              invite.id,
-                                              true,
-                                            );
-                                        if (mounted) {
-                                          showMessage(
-                                            context,
-                                            'Joined ${invite.businessName}',
-                                          );
-                                          _refresh();
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          const SizedBox(height: AppSpacing.md),
-                        ],
-                      );
-                    },
-                  ),
-                  _AsyncSection<List<ManagerBusiness>>(
-                    future: _managerSalons,
-                    onRetry: _refresh,
-                    errorLabel: 'Could not load manager access.',
-                    builder: (salons) {
-                      if (salons.isEmpty) return const SizedBox.shrink();
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text('Manager access', style: text.titleMedium),
-                          const SizedBox(height: AppSpacing.sm),
-                          for (final salon in salons)
-                            ActionButton(
-                              label: 'Open ${salon.businessName}',
-                              icon: Icons.admin_panel_settings_outlined,
-                              onPressed: () => _openManagerDashboard(salon),
-                            ),
-                          const SizedBox(height: AppSpacing.md),
-                        ],
-                      );
-                    },
-                  ),
-                  if (!hasSalonWork) ...[
-                    Text('Get started', style: text.titleMedium),
-                    const SizedBox(height: AppSpacing.sm),
-                    ActionButton(
-                      label: 'Start a business',
-                      icon: Icons.storefront_outlined,
-                      onPressed: () async {
-                        final saved = await Navigator.push<bool>(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => BusinessForm(
-                              repository: widget.session.repository,
-                              onRegistered:
-                                  widget.session.rememberRegisteredBusiness,
-                            ),
-                          ),
-                        );
-                        await widget.session.reload();
-                        if (saved == true && mounted) {
-                          showMessage(
-                            context,
-                            'Business saved. It opens after admin approval.',
-                          );
-                        }
-                      },
-                    ),
-                    ActionButton(
-                      label: 'Join a salon',
-                      icon: Icons.group_add_outlined,
-                      onPressed: () async {
-                        await Navigator.push<void>(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => JoinSalon(
-                              repository: widget.session.repository,
-                            ),
-                          ),
-                        );
-                        if (mounted) _refresh();
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                  ],
+                  invitesSection,
+                  managerSection,
                   if (data.notifiedContracts.isNotEmpty) ...[
                     Text('Your contracts', style: text.titleMedium),
                     const SizedBox(height: AppSpacing.sm),
