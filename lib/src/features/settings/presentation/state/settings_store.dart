@@ -1,13 +1,26 @@
 import 'package:flutter/foundation.dart';
 import 'package:hairsaloon/src/features/settings/data/repositories/hive_settings_repository.dart';
+import 'package:hairsaloon/src/online/domain/online_models.dart';
+
+typedef SettingsRemotePersist =
+    Future<void> Function({
+      double? taxRate,
+      String? currencyCode,
+      List<String>? expenseTypes,
+      List<String>? paymentAccounts,
+    });
 
 class SettingsStore extends ChangeNotifier {
-  SettingsStore({required HiveSettingsRepository repository})
-    : _repository = repository,
-      _taxRate = repository.getTaxRate(),
-      _currencyCode = repository.getCurrencyCode();
+  SettingsStore({
+    required HiveSettingsRepository repository,
+    SettingsRemotePersist? persistRemote,
+  }) : _repository = repository,
+       _persistRemote = persistRemote,
+       _taxRate = repository.getTaxRate(),
+       _currencyCode = repository.getCurrencyCode();
 
   final HiveSettingsRepository _repository;
+  SettingsRemotePersist? _persistRemote;
 
   static const List<String> defaultExpenseTypes = <String>[
     'Utilities',
@@ -24,11 +37,49 @@ class SettingsStore extends ChangeNotifier {
 
   static const List<String> defaultPaymentAccounts = <String>[
     'Cash — Counter',
+    'Easy — Business',
     'Card — POS',
     'Online — Bank transfer',
     'JazzCash — Business',
-    'Easypaisa — Business',
   ];
+
+  /// Wire cloud persistence after workspace settings are hydrated.
+  void bindRemotePersist(SettingsRemotePersist? persist) {
+    _persistRemote = persist;
+  }
+
+  /// Reload local values after Hive was hydrated from the database.
+  void reloadFromRepository() {
+    _taxRate = _repository.getTaxRate();
+    _currencyCode = _repository.getCurrencyCode();
+    notifyListeners();
+  }
+
+  /// Apply DB business defaults into local Hive (customs only).
+  Future<void> hydrateFromBusinessSettings(BusinessSettings settings) async {
+    await _repository.setTaxRate(settings.taxRate);
+    await _repository.setCurrencyCode(settings.currencyCode);
+
+    final defaultExpenses = defaultExpenseTypes
+        .map((e) => e.toLowerCase())
+        .toSet();
+    await _repository.saveCustomExpenseTypes(
+      settings.expenseTypes
+          .where((e) => !defaultExpenses.contains(e.toLowerCase()))
+          .toList(growable: false),
+    );
+
+    final defaultPayments = defaultPaymentAccounts
+        .map((e) => e.toLowerCase())
+        .toSet();
+    await _repository.savePaymentAccounts(
+      settings.paymentAccounts
+          .where((e) => !defaultPayments.contains(e.toLowerCase()))
+          .toList(growable: false),
+    );
+
+    reloadFromRepository();
+  }
 
   List<String> get paymentMethods => [
     'Cash',
@@ -59,8 +110,7 @@ class SettingsStore extends ChangeNotifier {
 
   List<String> get customPaymentAccounts => _repository.getPaymentAccounts();
 
-  List<String> get customExpenseTypes =>
-      _repository.getCustomExpenseTypes();
+  List<String> get customExpenseTypes => _repository.getCustomExpenseTypes();
 
   /// Defaults + user-added types (unique, case-insensitive).
   List<String> get expenseTypes {
@@ -84,6 +134,7 @@ class SettingsStore extends ChangeNotifier {
     }
     final custom = customExpenseTypes..add(trimmed);
     await _repository.saveCustomExpenseTypes(custom);
+    await _persistRemote?.call(expenseTypes: expenseTypes);
     notifyListeners();
   }
 
@@ -100,6 +151,7 @@ class SettingsStore extends ChangeNotifier {
           .where((t) => t.toLowerCase() != trimmed.toLowerCase())
           .toList(),
     );
+    await _persistRemote?.call(expenseTypes: expenseTypes);
     notifyListeners();
   }
 
@@ -130,6 +182,7 @@ class SettingsStore extends ChangeNotifier {
       custom[index] = label;
     }
     await _repository.savePaymentAccounts(custom);
+    await _persistRemote?.call(paymentAccounts: paymentAccounts);
     notifyListeners();
   }
 
@@ -145,6 +198,7 @@ class SettingsStore extends ChangeNotifier {
           .where((a) => a.toLowerCase() != label.toLowerCase())
           .toList(),
     );
+    await _persistRemote?.call(paymentAccounts: paymentAccounts);
     notifyListeners();
   }
 
@@ -158,6 +212,7 @@ class SettingsStore extends ChangeNotifier {
     if (value < 0 || value == _taxRate) return;
     await _repository.setTaxRate(value);
     _taxRate = value;
+    await _persistRemote?.call(taxRate: value);
     notifyListeners();
   }
 
@@ -166,6 +221,7 @@ class SettingsStore extends ChangeNotifier {
     if (normalized.isEmpty || normalized == _currencyCode) return;
     await _repository.setCurrencyCode(normalized);
     _currencyCode = normalized;
+    await _persistRemote?.call(currencyCode: normalized);
     notifyListeners();
   }
 }

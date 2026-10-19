@@ -55,6 +55,14 @@ abstract interface class OnlineRepository {
   Future<bool> verifyManagerPin(String businessId, String pin);
   Future<List<ManagerBusiness>> myManagerBusinesses();
   Future<void> ensureBusinessServices(String businessId);
+  Future<BusinessSettings> getBusinessSettings(String businessId);
+  Future<void> updateBusinessSettings({
+    required String businessId,
+    double? taxRate,
+    String? currencyCode,
+    List<String>? expenseTypes,
+    List<String>? paymentAccounts,
+  });
   Future<List<WorkContract>> contracts({String? employeeId});
   Future<EmployeeDashboardData> employeeDashboard();
   Future<void> proposeContract({

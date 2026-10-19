@@ -182,12 +182,41 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                   ),
                 ),
                 ChangeNotifierProvider<SettingsStore>(
-                  create: (_) => SettingsStore(
-                    repository: HiveSettingsRepository(
-                      box: widget.workspace?.settings,
-                      accountId: () => bootstrap.authStore.currentUser?.id,
-                    ),
-                  ),
+                  create: (_) {
+                    final workspace = widget.workspace;
+                    final store = SettingsStore(
+                      repository: HiveSettingsRepository(
+                        box: workspace?.settings,
+                        accountId: () =>
+                            bootstrap.authStore.currentUser?.id ??
+                            workspace?.account.id,
+                      ),
+                    );
+                    if (workspace != null) {
+                      store.bindRemotePersist(({
+                        double? taxRate,
+                        String? currencyCode,
+                        List<String>? expenseTypes,
+                        List<String>? paymentAccounts,
+                      }) async {
+                        try {
+                          await workspace.repository.updateBusinessSettings(
+                            businessId: workspace.business.id,
+                            taxRate: taxRate,
+                            currencyCode: currencyCode,
+                            expenseTypes: expenseTypes,
+                            paymentAccounts: paymentAccounts,
+                          );
+                        } catch (_) {
+                          // Local Hive still holds the change if cloud is down.
+                        }
+                      });
+                      // Hive already hydrated in BusinessWorkspace.open;
+                      // refresh in-memory tax/currency from the box.
+                      store.reloadFromRepository();
+                    }
+                    return store;
+                  },
                 ),
               ],
               child: _DeferredStoreWarmup(

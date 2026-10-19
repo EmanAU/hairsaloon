@@ -67,12 +67,70 @@ class BusinessWorkspace extends ChangeNotifier {
     if (recovery != null) {
       await workspace._apply(Map<String, dynamic>.from(recovery as Map));
     }
+    await workspace.ensureBusinessDefaults();
     await workspace.syncOnlineTeam();
     workspace._timer = Timer.periodic(
       const Duration(seconds: 30),
       (_) => workspace.synchronize(),
     );
     return workspace;
+  }
+
+  /// Seeds empty rate list / settings in DB, then mirrors tax, currency,
+  /// expense types and payment accounts into this workspace's Hive settings.
+  Future<BusinessSettings?> ensureBusinessDefaults() async {
+    if (_disposed) return null;
+    try {
+      await repository.ensureBusinessServices(business.id);
+      final remote = await repository.getBusinessSettings(business.id);
+      await settings.put('tax_rate', remote.taxRate);
+      await settings.put('currency_code', remote.currencyCode);
+      // Customs only — system defaults live in SettingsStore / DB catalog.
+      const defaultExpenses = {
+        'utilities',
+        'supplies',
+        'maintenance',
+        'tea/coffee',
+        'rent',
+        'salary advance',
+        'marketing',
+        'transport',
+        'cleaning',
+        'miscellaneous',
+      };
+      const defaultPayments = {
+        'cash — counter',
+        'easy — business',
+        'card — pos',
+        'online — bank transfer',
+        'jazzcash — business',
+      };
+      final accountKey =
+          'payment_accounts.v1.${account.id}';
+      final expenseKey = 'expense_types.v1.${account.id}';
+      await settings.put(
+        expenseKey,
+        remote.expenseTypes
+            .where((e) => !defaultExpenses.contains(e.toLowerCase()))
+            .toList(),
+      );
+      await settings.put(
+        accountKey,
+        remote.paymentAccounts
+            .where((e) => !defaultPayments.contains(e.toLowerCase()))
+            .toList(),
+      );
+      return remote;
+    } catch (_) {
+      // Offline / older schema: keep local Hive defaults (17 / PKR / in-app lists).
+      if (settings.get('tax_rate') == null) {
+        await settings.put('tax_rate', 17.0);
+      }
+      if (settings.get('currency_code') == null) {
+        await settings.put('currency_code', 'PKR');
+      }
+      return null;
+    }
   }
 
   /// Copies accepted online staff into the local employees box used by billing.

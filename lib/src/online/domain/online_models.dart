@@ -315,6 +315,39 @@ class SalonBusiness {
   );
 }
 
+class BusinessSettings {
+  const BusinessSettings({
+    required this.taxRate,
+    required this.currencyCode,
+    required this.expenseTypes,
+    required this.paymentAccounts,
+  });
+
+  final double taxRate;
+  final String currencyCode;
+  final List<String> expenseTypes;
+  final List<String> paymentAccounts;
+
+  factory BusinessSettings.fromJson(Map<String, dynamic> json) =>
+      BusinessSettings(
+        taxRate: (json['tax_rate'] as num?)?.toDouble() ?? 17,
+        currencyCode: (json['currency_code'] as String?)?.trim().isNotEmpty ==
+                true
+            ? (json['currency_code'] as String).trim().toUpperCase()
+            : 'PKR',
+        expenseTypes: _stringList(json['expense_types']),
+        paymentAccounts: _stringList(json['payment_accounts']),
+      );
+
+  static List<String> _stringList(Object? raw) {
+    if (raw is! List) return const [];
+    return raw
+        .map((e) => e.toString().trim())
+        .where((e) => e.isNotEmpty)
+        .toList(growable: false);
+  }
+}
+
 class OnlineWorkspace {
   const OnlineWorkspace({
     required this.account,

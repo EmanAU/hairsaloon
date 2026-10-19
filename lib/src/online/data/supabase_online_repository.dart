@@ -482,11 +482,68 @@ class SupabaseOnlineRepository implements OnlineRepository {
   Future<void> ensureBusinessServices(String businessId) async {
     try {
       await _client.rpc(
-        'ensure_business_services',
+        'ensure_business_defaults',
         params: {'business': businessId},
       );
     } catch (error) {
-      _throwWriteFailure(error, fallback: 'Could not load default services.');
+      // Older DBs may only expose ensure_business_services.
+      try {
+        await _client.rpc(
+          'ensure_business_services',
+          params: {'business': businessId},
+        );
+      } catch (_) {
+        _throwWriteFailure(error, fallback: 'Could not load default services.');
+      }
+    }
+  }
+
+  @override
+  Future<BusinessSettings> getBusinessSettings(String businessId) async {
+    try {
+      final rows =
+          await _client.rpc(
+                'get_business_settings',
+                params: {'business': businessId},
+              )
+              as List;
+      if (rows.isEmpty) {
+        return const BusinessSettings(
+          taxRate: 17,
+          currencyCode: 'PKR',
+          expenseTypes: [],
+          paymentAccounts: [],
+        );
+      }
+      return BusinessSettings.fromJson(
+        Map<String, dynamic>.from(rows.first as Map),
+      );
+    } catch (error) {
+      _throwWriteFailure(error, fallback: 'Could not load business settings.');
+    }
+  }
+
+  @override
+  Future<void> updateBusinessSettings({
+    required String businessId,
+    double? taxRate,
+    String? currencyCode,
+    List<String>? expenseTypes,
+    List<String>? paymentAccounts,
+  }) async {
+    try {
+      await _client.rpc(
+        'update_business_settings',
+        params: {
+          'business': businessId,
+          'new_tax_rate': taxRate,
+          'new_currency_code': currencyCode,
+          'new_expense_types': expenseTypes,
+          'new_payment_accounts': paymentAccounts,
+        },
+      );
+    } catch (error) {
+      _throwWriteFailure(error, fallback: 'Could not save business settings.');
     }
   }
 

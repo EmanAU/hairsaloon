@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/toast_service.dart';
+import '../../core/widgets/app_sheet.dart';
 import '../../features/employees/presentation/state/employees_store.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
@@ -13,54 +14,54 @@ import 'widgets/online_widgets.dart';
 Future<void> showEmployeeInviteOptions(BuildContext context) async {
   final workspace = context.read<BusinessWorkspace?>();
   if (workspace == null) return;
-  final choice = await showModalBottomSheet<String>(
+  final choice = await showAppSheet<String>(
     context: context,
-    backgroundColor: AppColors.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-    ),
-    builder: (context) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Add employee',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+    builder: (context) => Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.xs,
+        AppSpacing.md,
+        AppSpacing.md,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Add employee',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Choose how you want to invite them.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Choose how you want to invite them.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.textSecondary,
             ),
-            const SizedBox(height: 16),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.person_add_outlined),
-              title: const Text('New person (not registered)'),
-              subtitle: const Text('CNIC, phone and email'),
-              onTap: () => Navigator.pop(context, 'identity'),
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.badge_outlined),
-              title: const Text('Invite by profile code'),
-              onTap: () => Navigator.pop(context, 'code'),
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.qr_code_scanner),
-              title: const Text('Invite by QR code'),
-              onTap: () => Navigator.pop(context, 'qr'),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _InviteOptionTile(
+            icon: Icons.person_add_outlined,
+            title: 'New person (not registered)',
+            subtitle: 'CNIC, phone and email',
+            onTap: () => Navigator.pop(context, 'identity'),
+          ),
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
+          _InviteOptionTile(
+            icon: Icons.badge_outlined,
+            title: 'Invite by profile code',
+            subtitle: 'Enter their TrimMatrix profile code',
+            onTap: () => Navigator.pop(context, 'code'),
+          ),
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
+          _InviteOptionTile(
+            icon: Icons.qr_code_scanner,
+            title: 'Invite by QR code',
+            subtitle: 'Scan their profile QR',
+            onTap: () => Navigator.pop(context, 'qr'),
+          ),
+        ],
       ),
     ),
   );
@@ -110,6 +111,73 @@ Future<void> showEmployeeInviteOptions(BuildContext context) async {
           );
         }
       }
+  }
+}
+
+class _InviteOptionTile extends StatelessWidget {
+  const _InviteOptionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm + 2),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 20, color: AppColors.textPrimary),
+            ),
+            const SizedBox(width: AppSpacing.sm + 4),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.iconMuted,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

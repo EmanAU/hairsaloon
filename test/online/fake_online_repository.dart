@@ -142,6 +142,33 @@ class FakeOnlineRepository implements OnlineRepository {
   @override
   Future<void> ensureBusinessServices(String businessId) async {}
 
+  BusinessSettings businessSettings = const BusinessSettings(
+    taxRate: 17,
+    currencyCode: 'PKR',
+    expenseTypes: [],
+    paymentAccounts: [],
+  );
+
+  @override
+  Future<BusinessSettings> getBusinessSettings(String businessId) async =>
+      businessSettings;
+
+  @override
+  Future<void> updateBusinessSettings({
+    required String businessId,
+    double? taxRate,
+    String? currencyCode,
+    List<String>? expenseTypes,
+    List<String>? paymentAccounts,
+  }) async {
+    businessSettings = BusinessSettings(
+      taxRate: taxRate ?? businessSettings.taxRate,
+      currencyCode: currencyCode ?? businessSettings.currencyCode,
+      expenseTypes: expenseTypes ?? businessSettings.expenseTypes,
+      paymentAccounts: paymentAccounts ?? businessSettings.paymentAccounts,
+    );
+  }
+
   @override
   Future<List<WorkContract>> contracts({String? employeeId}) async =>
       contractRows;
