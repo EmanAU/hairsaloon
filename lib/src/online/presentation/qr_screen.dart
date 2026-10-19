@@ -62,8 +62,15 @@ class PublicQr extends StatelessWidget {
 }
 
 class ScanQr extends StatefulWidget {
-  const ScanQr({super.key, this.joining = false});
+  const ScanQr({
+    super.key,
+    this.joining = false,
+    this.profileCode = false,
+  });
   final bool joining;
+
+  /// When true, accept a raw profile UUID or any TrimMatrix UUID id.
+  final bool profileCode;
   @override
   State<ScanQr> createState() => _ScanQrState();
 }
@@ -72,9 +79,25 @@ class _ScanQrState extends State<ScanQr> {
   bool _done = false;
   String? _error;
   final _manual = TextEditingController();
+  static final _uuid = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+  );
+
   void _read(String value) {
     if (_done) return;
-    final target = QrDestination.parse(value);
+    final trimmed = value.trim();
+    if (widget.profileCode) {
+      final parsed = QrDestination.parse(trimmed);
+      final id = parsed?.id ?? (_uuid.hasMatch(trimmed) ? trimmed : null);
+      if (id == null) {
+        setState(() => _error = 'Scan a profile code QR.');
+        return;
+      }
+      _done = true;
+      Navigator.pop(context, QrDestination('join', id.toLowerCase()));
+      return;
+    }
+    final target = QrDestination.parse(trimmed);
     if (target == null || (target.kind == 'join') != widget.joining) {
       setState(
         () => _error = widget.joining

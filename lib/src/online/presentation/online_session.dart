@@ -57,20 +57,20 @@ class OnlineSession extends ChangeNotifier {
     try {
       final result = await repository.loadWorkspace();
       if (!_disposed && generation == _generation && repository.userId == id) {
-        // An offline repository response may predate a just-confirmed save.
-        workspace = result.isCached && previous != null
-            ? OnlineWorkspace(
+        // Keep just-registered (or cached) salons if the live fetch is empty/stale.
+        workspace = previous == null
+            ? result
+            : OnlineWorkspace(
                 account: result.account,
                 profile: result.profile ?? previous.profile,
                 businesses: {
-                  for (final business in result.businesses)
-                    business.id: business,
                   for (final business in previous.businesses)
                     business.id: business,
+                  for (final business in result.businesses)
+                    business.id: business,
                 }.values.toList(),
-                isCached: true,
-              )
-            : result;
+                isCached: result.isCached,
+              );
         _workspaceUser = id;
       }
     } catch (failure) {

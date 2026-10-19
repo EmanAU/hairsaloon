@@ -4,10 +4,10 @@ import '../../theme/app_colors.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../data/business_workspace.dart';
 import '../domain/online_models.dart';
-import 'add_employee_screen.dart';
 import 'business_home.dart';
 import 'invite_qr_screen.dart';
-import 'staff_screen.dart';
+import 'join_requests_screen.dart';
+import 'team_contracts_screen.dart';
 import 'widgets/online_widgets.dart';
 
 class OnlineDashboardTools extends StatefulWidget {
@@ -113,10 +113,9 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
                   asset: 'employees',
                   tint: AppColors.homeSage,
                   onTap: () => _open(
-                    StaffScreen(
+                    JoinRequestsScreen(
                       repository: repository,
                       businessId: business.id,
-                      showRequests: true,
                       workspace: workspace,
                     ),
                   ),
@@ -125,25 +124,11 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
             ),
             DashboardShortcut(
               title: 'Contracts',
-              detail: 'Manage employee\nagreements.',
+              detail: 'Employee list and\nagreements.',
               asset: 'employees',
               tint: AppColors.homeSage,
               onTap: () => _open(
-                StaffScreen(
-                  repository: repository,
-                  businessId: business.id,
-                  showRequests: false,
-                  workspace: workspace,
-                ),
-              ),
-            ),
-            DashboardShortcut(
-              title: 'Add employee',
-              detail: 'Invite with their\nprofile code.',
-              asset: 'salon',
-              tint: AppColors.homeLavender,
-              onTap: () => _open(
-                AddEmployeeScreen(
+                TeamContractsScreen(
                   repository: repository,
                   businessId: business.id,
                 ),
@@ -202,47 +187,65 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
                   for (final employee in pending)
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            employee.name,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text('Wants to join your salon'),
-                          Row(
+                      child: Material(
+                        color: AppColors.surface,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          side: const BorderSide(color: AppColors.homeBorder),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: ActionButton(
-                                  label: 'Decline',
-                                  icon: Icons.close,
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: AppColors.background,
-                                    foregroundColor: AppColors.textPrimary,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                  onPressed: () => _review(employee, false),
+                              Text(
+                                employee.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: ActionButton(
-                                  label: 'Accept',
-                                  icon: Icons.check,
-                                  style: FilledButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                              const SizedBox(height: 4),
+                              const Text('Wants to join your salon'),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ActionButton(
+                                      label: 'Decline',
+                                      icon: Icons.close,
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: AppColors.background,
+                                        foregroundColor: AppColors.textPrimary,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                      ),
+                                      onPressed: () =>
+                                          _review(employee, false),
                                     ),
                                   ),
-                                  onPressed: () => _review(employee, true),
-                                ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: ActionButton(
+                                      label: 'Accept',
+                                      icon: Icons.check,
+                                      style: FilledButton.styleFrom(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                      ),
+                                      onPressed: () =>
+                                          _review(employee, true),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                 ],

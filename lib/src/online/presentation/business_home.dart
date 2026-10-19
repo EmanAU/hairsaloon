@@ -8,9 +8,8 @@ import 'business_form.dart';
 import 'business_approval.dart';
 import 'profile_form.dart';
 import 'online_session.dart';
-import 'rate_list_screen.dart';
 import 'contracts_screen.dart';
-import 'staff_screen.dart';
+import 'join_requests_screen.dart';
 import 'widgets/online_widgets.dart';
 import 'widgets/workspace_card.dart';
 import 'widgets/business_photo.dart';
@@ -213,9 +212,8 @@ class _BusinessHomeState extends State<BusinessHome> {
         onClose: () => setState(() => _choosingBusiness = true),
       );
     }
-    final pendingBusinesses = _choosingBusiness
-        ? <SalonBusiness>[]
-        : workspace.businesses.where((b) => !b.isActive).toList();
+    final pendingBusinesses =
+        workspace.businesses.where((b) => !b.isActive).toList();
     final singleBusiness =
         !_choosingBusiness && workspace.businesses.length == 1;
 
@@ -318,7 +316,7 @@ class _BusinessHomeState extends State<BusinessHome> {
                       Navigator.push<void>(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => StaffScreen(
+                          builder: (_) => JoinRequestsScreen(
                             repository: session.repository,
                             businessId: active.id,
                           ),
@@ -343,15 +341,7 @@ class _BusinessHomeState extends State<BusinessHome> {
                     if (saved == true) await session.reload();
                     if (mounted) setState(() {});
                   },
-                  onOpenServices: () => Navigator.push<void>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => OnlineRateList(
-                        repository: session.repository,
-                        businessId: active.id,
-                      ),
-                    ),
-                  ),
+                  onOpenServices: () {},
                   onOpenBilling: () => Navigator.push<void>(
                     context,
                     MaterialPageRoute(
@@ -461,25 +451,21 @@ class _BusinessHomeState extends State<BusinessHome> {
                 ),
                 const SizedBox(height: 24),
               ],
-              // No business yet, or several businesses → show start / join cards.
-              if (!singleBusiness) ...[
-                Text(
-                  workspace.businesses.isEmpty ? 'Get started' : 'More',
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                  ),
+              // Owners with a salon stay on their business list — Join is for staff.
+              if (workspace.businesses.isEmpty) ...[
+                const Text(
+                  'Get started',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
                 WorkspaceCards(
                   children: [
-                    if (workspace.businesses.isEmpty)
-                      WorkspaceCard(
-                        title: 'Start a business',
-                        subtitle: 'Set up your salon and manage your team.',
-                        icon: Icons.storefront_outlined,
-                        onTap: () => _startBusiness(context),
-                      ),
+                    WorkspaceCard(
+                      title: 'Start a business',
+                      subtitle: 'Set up your salon and manage your team.',
+                      icon: Icons.storefront_outlined,
+                      onTap: () => _startBusiness(context),
+                    ),
                     WorkspaceCard(
                       title: 'Join a salon',
                       subtitle:
@@ -581,37 +567,6 @@ class _ActiveSalonHome extends StatelessWidget {
         const SizedBox(height: 12),
         WorkspaceCards(
           children: [
-            WorkspaceCard(
-              title: 'Employees & contracts',
-              subtitle: 'Requests, invite by code, agreements.',
-              leading: FutureBuilder<List<SalonStaff>>(
-                future: team,
-                builder: (context, snapshot) {
-                  final count =
-                      snapshot.data
-                          ?.where((e) => e.joinStatus == 'pending')
-                          .length ??
-                      0;
-                  return Badge(
-                    label: Text('$count'),
-                    isLabelVisible: count > 0,
-                    child: const Icon(
-                      Icons.people_outline,
-                      size: 30,
-                      color: AppColors.homeInk,
-                    ),
-                  );
-                },
-              ),
-              icon: Icons.people_outline,
-              onTap: onOpenStaff,
-            ),
-            WorkspaceCard(
-              title: 'Services & prices',
-              subtitle: 'Rate list and service media.',
-              icon: Icons.list_alt,
-              onTap: onOpenServices,
-            ),
             WorkspaceCard(
               title: 'Billing workspace',
               subtitle: 'Bills, customers, finance — online & offline.',
@@ -827,35 +782,10 @@ class OwnerBusiness extends StatefulWidget {
 
 class _OwnerBusinessState extends State<OwnerBusiness> {
   late Future<OnlineWorkspace> _workspace = widget.repository.loadWorkspace();
-  Future<String>? _invite;
-  Future<List<SalonStaff>>? _team;
-  late final Timer _poll;
   bool _leavingForHome = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _poll = Timer.periodic(const Duration(seconds: 15), (_) {
-      if (mounted &&
-          _team != null &&
-          ModalRoute.of(context)?.isCurrent == true) {
-        setState(() {
-          _team = widget.repository.team(widget.businessId);
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _poll.cancel();
-    super.dispose();
-  }
 
   void _refresh() => setState(() {
     _workspace = widget.repository.loadWorkspace();
-    _invite = null;
-    _team = null;
   });
 
   Future<void> _goHomeAfterApproval() async {
@@ -914,11 +844,7 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
               repository: widget.repository,
               onRefresh: () {
                 final next = widget.repository.loadWorkspace();
-                setState(() {
-                  _workspace = next;
-                  _invite = null;
-                  _team = null;
-                });
+                setState(() => _workspace = next);
                 unawaited(() async {
                   final latest = await next;
                   final current = latest.businesses.where(
@@ -943,7 +869,6 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
               },
             );
           }
-          _team ??= widget.repository.team(business.id);
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -966,83 +891,25 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
                 },
               ),
               const SizedBox(height: 12),
-              WorkspaceCards(
-                children: [
-                  WorkspaceCard(
-                    title: 'Employees & contracts',
-                    subtitle: 'Join requests, employees and agreements.',
-                    icon: Icons.people_outline,
-                    onTap: () => Navigator.push<void>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => StaffScreen(
-                          repository: widget.repository,
-                          businessId: business.id,
-                        ),
-                      ),
-                    ),
-                  ),
-                  WorkspaceCard(
-                    title: 'Services & prices',
-                    subtitle: 'Manage your rate list and service photos.',
-                    icon: Icons.list_alt,
-                    onTap: () => Navigator.push<void>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => OnlineRateList(
-                          repository: widget.repository,
-                          businessId: business.id,
-                        ),
-                      ),
-                    ),
-                  ),
-                  WorkspaceCard(
-                    title: 'Billing workspace',
-                    subtitle: widget.managementOnly
-                        ? 'Managers cannot open billing. Ask the owner if you need access.'
-                        : 'Open your salon’s online and offline workspace.',
-                    icon: Icons.sync,
-                    enabled: !widget.managementOnly,
-                    onTap: widget.managementOnly
-                        ? null
-                        : () => Navigator.push<void>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => WorkspaceScreen(
-                                repository: widget.repository,
-                                business: business,
-                              ),
-                            ),
+              if (!widget.managementOnly)
+                WorkspaceCards(
+                  children: [
+                    WorkspaceCard(
+                      title: 'Billing workspace',
+                      subtitle:
+                          'Open your salon’s online and offline workspace.',
+                      icon: Icons.sync,
+                      onTap: () => Navigator.push<void>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => WorkspaceScreen(
+                            repository: widget.repository,
+                            business: business,
                           ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              ActionButton(
-                label: 'Show employee joining code',
-                icon: Icons.group_add_outlined,
-                onPressed: () async {
-                  final future = widget.repository.businessInvite(business.id);
-                  setState(() => _invite = future);
-                  await future;
-                },
-              ),
-              if (_invite != null)
-                RemoteContent(
-                  future: _invite!,
-                  onRetry: () => setState(
-                    () =>
-                        _invite = widget.repository.businessInvite(business.id),
-                  ),
-                  builder: (code) => Column(
-                    children: [
-                      CopyCode(code: code, label: 'Salon joining code'),
-                      PublicQr(
-                        destination: QrDestination('join', code),
-                        label: 'Employee invitation QR',
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
             ],
           );

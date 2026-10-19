@@ -147,12 +147,9 @@ class AppDrawer extends StatelessWidget {
                     title: 'Currency Change',
                     showDivider: true,
                     onTap: () async {
-                      final rootNavigator = Navigator.of(
-                        context,
-                        rootNavigator: true,
-                      );
-                      Navigator.pop(context);
-                      await _showCurrencyDialog(rootNavigator.context);
+                      final navigator = Navigator.of(context);
+                      navigator.pop();
+                      await _showCurrencyDialog(navigator.context);
                     },
                   ),
                   _Item(
@@ -161,12 +158,9 @@ class AppDrawer extends StatelessWidget {
                     showDivider: false,
                     trailing: const _TaxBadge(),
                     onTap: () async {
-                      final rootNavigator = Navigator.of(
-                        context,
-                        rootNavigator: true,
-                      );
-                      Navigator.pop(context);
-                      await _showTaxRateDialog(rootNavigator.context);
+                      final navigator = Navigator.of(context);
+                      navigator.pop();
+                      await _showTaxRateDialog(navigator.context);
                     },
                   ),
                 ],

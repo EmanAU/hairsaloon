@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:hairsaloon/src/core/layout/adaptive_page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -14,10 +15,12 @@ class DashboardShell extends StatefulWidget {
     super.key,
     this.homeExtras,
     this.onExit,
+    this.onLogOut,
     this.onManageRateList,
   });
   final WidgetBuilder? homeExtras;
   final VoidCallback? onExit;
+  final Future<void> Function()? onLogOut;
   final VoidCallback? onManageRateList;
 
   @override
@@ -91,11 +94,46 @@ class _DashboardShellState extends State<DashboardShell> {
       setState(() => _currentIndex = 0);
       return;
     }
-    if (widget.onExit != null) {
-      widget.onExit!();
+    if (widget.onExit != null || widget.onLogOut != null) {
+      unawaited(_showHostedExitDialog());
       return;
     }
-    _showExitDialog();
+    unawaited(_showExitDialog());
+  }
+
+  Future<void> _showHostedExitDialog() async {
+    if (_isExitDialogOpen) return;
+    _isExitDialogOpen = true;
+    final action = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Leave salon?'),
+        content: const Text('Exit the salon workspace, or sign out of TrimMatrix.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          if (widget.onLogOut != null)
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'logout'),
+              child: const Text('Log out'),
+            ),
+          if (widget.onExit != null)
+            FilledButton(
+              onPressed: () => Navigator.pop(context, 'exit'),
+              child: const Text('Exit'),
+            ),
+        ],
+      ),
+    );
+    _isExitDialogOpen = false;
+    if (!mounted || action == null) return;
+    if (action == 'exit') {
+      widget.onExit?.call();
+    } else if (action == 'logout') {
+      await widget.onLogOut?.call();
+    }
   }
 
   Future<void> _showExitDialog() async {

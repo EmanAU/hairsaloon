@@ -14,6 +14,8 @@ import 'package:hairsaloon/src/features/employees/presentation/employee_agreemen
 import 'package:hairsaloon/src/features/employees/presentation/employee_details_screen.dart';
 import 'package:hairsaloon/src/features/employees/presentation/employee_history_screen.dart';
 import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
+import 'package:hairsaloon/src/online/data/business_workspace.dart';
+import 'package:hairsaloon/src/online/presentation/employee_invite_flows.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
@@ -87,7 +89,14 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         ),
         actions: [
           IconButton(
-            onPressed: () => setState(() => _showAddForm = !_showAddForm),
+            onPressed: () async {
+              final online = context.read<BusinessWorkspace?>();
+              if (online != null) {
+                await showEmployeeInviteOptions(context);
+                return;
+              }
+              setState(() => _showAddForm = !_showAddForm);
+            },
             icon: Icon(
               _showAddForm ? CupertinoIcons.xmark : CupertinoIcons.add,
               color: AppColors.onPrimary,

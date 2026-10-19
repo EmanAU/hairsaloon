@@ -72,12 +72,14 @@ class BusinessCombApp extends StatefulWidget {
     this.workspace,
     this.dashboardExtras,
     this.onCloseWorkspace,
+    this.onLogOut,
     this.onManageRateList,
     this.hosted = false,
   });
   final BusinessWorkspace? workspace;
   final WidgetBuilder? dashboardExtras;
   final VoidCallback? onCloseWorkspace;
+  final Future<void> Function()? onLogOut;
   final VoidCallback? onManageRateList;
 
   /// When true, this app is nested under [OnlineApp] and must not claim
@@ -134,6 +136,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                 ChangeNotifierProvider<AuthStore>.value(
                   value: bootstrap.authStore,
                 ),
+                Provider<BusinessWorkspace?>.value(value: widget.workspace),
                 // Created on first use (lazy) so splash stays light.
                 ChangeNotifierProvider<BillingStore>(
                   create: (_) => BillingStore(
@@ -212,6 +215,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                             ? DashboardShell(
                                 homeExtras: widget.dashboardExtras,
                                 onExit: widget.onCloseWorkspace,
+                                onLogOut: widget.onLogOut,
                                 onManageRateList: widget.onManageRateList,
                               )
                             : SplashScreen(
@@ -228,6 +232,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                         AppRoutes.homeShell: (_) => DashboardShell(
                           homeExtras: widget.dashboardExtras,
                           onExit: widget.onCloseWorkspace,
+                          onLogOut: widget.onLogOut,
                           onManageRateList: widget.onManageRateList,
                         ),
                         AppRoutes.appointments: (_) =>

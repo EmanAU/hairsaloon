@@ -110,6 +110,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         hosted: true,
         onCloseWorkspace:
             widget.onClose ?? () => Navigator.of(context).maybePop(),
+        onLogOut: widget.repository.signOut,
         onManageRateList: () {
           Navigator.of(context).push<void>(
             MaterialPageRoute(
