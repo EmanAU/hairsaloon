@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/services/toast_service.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
 import 'widgets/online_widgets.dart';
@@ -19,8 +20,19 @@ class OnlineRateList extends StatefulWidget {
 
 class _OnlineRateListState extends State<OnlineRateList> {
   late Future<List<SalonService>> _services = _load();
-  Future<List<SalonService>> _load() =>
-      widget.repository.services(widget.businessId, includeInactive: true);
+
+  Future<List<SalonService>> _load() async {
+    try {
+      await widget.repository.ensureBusinessServices(widget.businessId);
+    } catch (_) {
+      // Seeding is best-effort; still show whatever services exist.
+    }
+    return widget.repository.services(
+      widget.businessId,
+      includeInactive: true,
+    );
+  }
+
   void _refresh() => setState(() => _services = _load());
 
   Future<void> _edit([SalonService? service]) async {
@@ -53,7 +65,9 @@ class _OnlineRateListState extends State<OnlineRateList> {
             if (services.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(24),
-                child: Text('No services yet. Add your first service.'),
+                child: Text(
+                  'Default services will appear after the salon is created. Pull to refresh or add your own.',
+                ),
               ),
             for (final service in services)
               Card(
@@ -118,7 +132,10 @@ class _ServiceFormState extends State<_ServiceForm> {
       price: double.parse(_price.text.trim()),
       isActive: _active,
     );
-    if (mounted) Navigator.pop(context, true);
+    if (mounted) {
+      ToastService.success('Service saved', context);
+      Navigator.pop(context, true);
+    }
   }
 
   @override

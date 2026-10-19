@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_breakpoints.dart';
 
 /// Keeps forms readable on tablets while allowing workspace pages more room.
 /// Also clears the Android system navigation bar so content is never hidden.
@@ -9,7 +10,7 @@ class AdaptivePage extends StatelessWidget {
   final bool form;
 
   static bool isTablet(BuildContext context) =>
-      MediaQuery.sizeOf(context).shortestSide >= 600;
+      MediaQuery.sizeOf(context).shortestSide >= AppBreakpoints.tablet;
 
   @override
   Widget build(BuildContext context) {

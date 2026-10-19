@@ -62,24 +62,15 @@ class _ContractsScreenState extends State<ContractsScreen> {
             ),
           if (contract.releaseReason != null)
             Text('Released: ${contract.releaseReason}'),
-          if (widget.employee == null && contract.status == 'draft') ...[
-            ActionButton(
-              label: 'Accept contract',
-              icon: Icons.check,
-              onPressed: () async {
-                await widget.repository.respondToContract(contract.id, true);
-                if (mounted) _refresh();
-              },
+          if (widget.employee == null &&
+              (contract.status == 'accepted' || contract.status == 'draft'))
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                'Your owner set these terms. Contact them if anything looks wrong.',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
             ),
-            ActionButton(
-              label: 'Decline contract',
-              icon: Icons.close,
-              onPressed: () async {
-                await widget.repository.respondToContract(contract.id, false);
-                if (mounted) _refresh();
-              },
-            ),
-          ],
           if (widget.employee != null && contract.canRelease)
             ActionButton(
               label: 'Release employee',
@@ -272,7 +263,7 @@ class _ContractFormState extends State<_ContractForm> {
     title: 'Propose contract',
     children: [
       Text(
-        'For ${widget.employee.name}. The employee must accept these terms before the contract takes effect.',
+        'For ${widget.employee.name}. Terms take effect immediately. The employee is notified only.',
       ),
       Form(
         key: _form,
@@ -328,7 +319,7 @@ class _ContractFormState extends State<_ContractForm> {
               minLines: 3,
               maxLines: 6,
             ),
-            ActionButton(label: 'Send proposal', onPressed: _save),
+            ActionButton(label: 'Save contract', onPressed: _save),
           ],
         ),
       ),

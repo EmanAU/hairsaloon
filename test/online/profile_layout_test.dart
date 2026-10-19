@@ -299,7 +299,9 @@ void main() {
       await tester.tap(find.text('Switch business'));
       await tester.pumpAndSettle();
       expect(find.text('Your workspace'), findsOneWidget);
-      expect(find.text('Start a business'), findsOneWidget);
+      // One owner → one shop: do not offer starting another business.
+      expect(find.text('Start a business'), findsNothing);
+      expect(find.text('Join a salon'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       await closeOnlineWorkspace(tester);
     });

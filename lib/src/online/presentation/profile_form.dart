@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/services/toast_service.dart';
 import '../../core/utils/pk_phone.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
@@ -95,10 +96,32 @@ class _ProfileFormState extends State<ProfileForm> {
         dateOfBirth: _birth!,
         workStartedOn: _started!,
       );
+      var photoFailed = false;
       if (_photo != null) {
-        await widget.repository.uploadProfilePhoto(_photo!, _extension!);
+        try {
+          await widget.repository.uploadProfilePhoto(_photo!, _extension!);
+        } on PhotoUploadFailure catch (error) {
+          photoFailed = true;
+          if (mounted) ToastService.error(error.message, context);
+        } on OnlineFailure catch (error) {
+          photoFailed = true;
+          if (mounted) ToastService.error(error.message, context);
+        } catch (_) {
+          photoFailed = true;
+          if (mounted) {
+            ToastService.error(
+              'Details were saved, but the photo could not be uploaded. Try again.',
+              context,
+            );
+          }
+        }
       }
       if (!mounted) return;
+      if (photoFailed) {
+        // Profile row is saved; stay so the user can retry the photo.
+        return;
+      }
+      ToastService.success('Profile saved', context);
       if (widget.onSaved != null) {
         await widget.onSaved!();
       } else {

@@ -83,6 +83,14 @@ class _BusinessHomeState extends State<BusinessHome> {
   }
 
   Future<void> _startBusiness(BuildContext context) async {
+    if (session.workspace!.businesses.isNotEmpty) {
+      showMessage(
+        context,
+        'You already have a business. One owner can register one shop.',
+        error: true,
+      );
+      return;
+    }
     final saved = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -264,13 +272,8 @@ class _BusinessHomeState extends State<BusinessHome> {
               }
             },
             itemBuilder: (_) => [
-              if (singleBusiness) ...const [
-                PopupMenuItem(value: 'join', child: Text('Join a salon')),
-                PopupMenuItem(
-                  value: 'start',
-                  child: Text('Start another business'),
-                ),
-              ],
+              if (singleBusiness)
+                const PopupMenuItem(value: 'join', child: Text('Join a salon')),
               const PopupMenuItem(
                 value: 'offline',
                 child: Text('Open offline business app'),
@@ -472,14 +475,13 @@ class _BusinessHomeState extends State<BusinessHome> {
                 const SizedBox(height: 12),
                 WorkspaceCards(
                   children: [
-                    WorkspaceCard(
-                      title: 'Start a business',
-                      subtitle: active == null
-                          ? 'Set up your salon and manage your team.'
-                          : 'Register another salon location.',
-                      icon: Icons.storefront_outlined,
-                      onTap: () => _startBusiness(context),
-                    ),
+                    if (workspace.businesses.isEmpty)
+                      WorkspaceCard(
+                        title: 'Start a business',
+                        subtitle: 'Set up your salon and manage your team.',
+                        icon: Icons.storefront_outlined,
+                        onTap: () => _startBusiness(context),
+                      ),
                     WorkspaceCard(
                       title: 'Join a salon',
                       subtitle:
@@ -1090,6 +1092,7 @@ class _JoinSalonState extends State<JoinSalon> {
     try {
       await widget.repository.requestJoin(_code.text.trim());
       if (mounted) {
+        showMessage(context, 'Join request sent. Waiting for owner approval.');
         setState(() {
           _requested = true;
           _joinRequests = widget.repository.joinRequests();

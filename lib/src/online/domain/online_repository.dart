@@ -38,6 +38,23 @@ abstract interface class OnlineRepository {
   Future<List<SalonStaff>> team(String businessId);
   Future<void> reviewJoin(String employeeId, bool accept);
   Future<void> inviteEmployee(String businessId, String profileCode);
+  Future<String> inviteEmployeeByIdentity({
+    required String businessId,
+    required String cnic,
+    required String phone,
+    required String email,
+    String name = '',
+  });
+  Future<List<PendingEmployeeInvite>> pendingInvitesForMe();
+  Future<void> respondToEmployeeInvite(String inviteId, bool accept);
+  Future<void> setEmployeeManager({
+    required String employeeId,
+    required bool isManager,
+    String? pin,
+  });
+  Future<bool> verifyManagerPin(String businessId, String pin);
+  Future<List<ManagerBusiness>> myManagerBusinesses();
+  Future<void> ensureBusinessServices(String businessId);
   Future<List<WorkContract>> contracts({String? employeeId});
   Future<EmployeeDashboardData> employeeDashboard();
   Future<void> proposeContract({

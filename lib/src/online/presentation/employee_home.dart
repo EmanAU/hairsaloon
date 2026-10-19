@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../domain/online_models.dart';
-import '../domain/online_repository.dart';
 import 'contracts_screen.dart';
 import 'business_form.dart';
 import 'business_home.dart';
@@ -26,6 +25,12 @@ class EmployeeHome extends StatefulWidget {
 class _EmployeeHomeState extends State<EmployeeHome> {
   late Future<EmployeeDashboardData> _data = widget.session.repository
       .employeeDashboard();
+  late Future<List<PendingEmployeeInvite>> _invites = widget.session.repository
+      .pendingInvitesForMe();
+  late Future<List<ManagerBusiness>> _managerSalons = widget
+      .session
+      .repository
+      .myManagerBusinesses();
   late final Timer _poll;
   var _period = _WorkPeriod.daily;
   late DateTime _anchor = DateTime.now();
@@ -48,7 +53,77 @@ class _EmployeeHomeState extends State<EmployeeHome> {
 
   void _refresh() => setState(() {
     _data = widget.session.repository.employeeDashboard();
+    _invites = widget.session.repository.pendingInvitesForMe();
+    _managerSalons = widget.session.repository.myManagerBusinesses();
   });
+
+  Future<void> _openManagerDashboard(ManagerBusiness salon) async {
+    final pin = TextEditingController();
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Manager PIN · ${salon.businessName}'),
+        content: TextField(
+          controller: pin,
+          keyboardType: TextInputType.number,
+          maxLength: 4,
+          obscureText: true,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: '4-digit PIN',
+            counterText: '',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Open'),
+          ),
+        ],
+      ),
+    );
+    if (submitted != true || !mounted) {
+      pin.dispose();
+      return;
+    }
+    try {
+      final ok = await widget.session.repository.verifyManagerPin(
+        salon.businessId,
+        pin.text.trim(),
+      );
+      if (!ok) {
+        showMessage(context, 'Incorrect manager PIN', error: true);
+        return;
+      }
+      if (!mounted) return;
+      await Navigator.push<void>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OwnerBusiness(
+            repository: widget.session.repository,
+            businessId: salon.businessId,
+            managementOnly: true,
+          ),
+        ),
+      );
+    } catch (error) {
+      if (mounted) {
+        showMessage(
+          context,
+          error is OnlineFailure
+              ? error.message
+              : 'Could not open manager dashboard.',
+          error: true,
+        );
+      }
+    } finally {
+      pin.dispose();
+    }
+  }
 
   bool _inPeriod(DateTime date) {
     final day = DateTime(date.year, date.month, date.day);
@@ -159,7 +234,7 @@ class _EmployeeHomeState extends State<EmployeeHome> {
               final jobs = days.fold<int>(0, (s, d) => s + d.jobCount);
               final hasSalonWork =
                   data.liveContracts.isNotEmpty ||
-                  data.draftContracts.isNotEmpty ||
+                  data.notifiedContracts.isNotEmpty ||
                   data.joinRequests.isNotEmpty;
               return ListView(
                 padding: const EdgeInsets.all(24),
@@ -171,6 +246,139 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                     photoFuture: widget.session.repository.profilePhoto(),
                   ),
                   const SizedBox(height: 20),
+                  FutureBuilder<List<PendingEmployeeInvite>>(
+                    future: _invites,
+                    builder: (context, snapshot) {
+                      final invites = snapshot.data ?? const [];
+                      if (invites.isEmpty) return const SizedBox.shrink();
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text(
+                            'Salon invites',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          for (final invite in invites)
+                            Card(
+                              elevation: 0,
+                              color: Colors.white,
+                              margin: const EdgeInsets.only(bottom: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: const BorderSide(
+                                  color: Color(0xFFE3E7EC),
+                                ),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Text(
+                                      'Added by ${invite.ownerName}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Join ${invite.businessName}?',
+                                      style: const TextStyle(
+                                        color: Color(0xFF718094),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: ActionButton(
+                                            label: 'Not now',
+                                            style: FilledButton.styleFrom(
+                                              backgroundColor: const Color(
+                                                0xFFF3F5F7,
+                                              ),
+                                              foregroundColor: Colors.black,
+                                            ),
+                                            onPressed: () async {
+                                              await widget.session.repository
+                                                  .respondToEmployeeInvite(
+                                                    invite.id,
+                                                    false,
+                                                  );
+                                              if (mounted) {
+                                                showMessage(
+                                                  context,
+                                                  'Invite declined',
+                                                );
+                                                _refresh();
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: ActionButton(
+                                            label: 'Join salon',
+                                            onPressed: () async {
+                                              await widget.session.repository
+                                                  .respondToEmployeeInvite(
+                                                    invite.id,
+                                                    true,
+                                                  );
+                                              if (mounted) {
+                                                showMessage(
+                                                  context,
+                                                  'Joined ${invite.businessName}',
+                                                );
+                                                _refresh();
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          const SizedBox(height: 16),
+                        ],
+                      );
+                    },
+                  ),
+                  FutureBuilder<List<ManagerBusiness>>(
+                    future: _managerSalons,
+                    builder: (context, snapshot) {
+                      final salons = snapshot.data ?? const [];
+                      if (salons.isEmpty) return const SizedBox.shrink();
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text(
+                            'Manager access',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          for (final salon in salons)
+                            ActionButton(
+                              label: 'Open ${salon.businessName}',
+                              icon: Icons.admin_panel_settings_outlined,
+                              onPressed: () => _openManagerDashboard(salon),
+                            ),
+                          const SizedBox(height: 16),
+                        ],
+                      );
+                    },
+                  ),
                   if (!hasSalonWork) ...[
                     const Text(
                       'Get started',
@@ -189,6 +397,8 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                           MaterialPageRoute(
                             builder: (_) => BusinessForm(
                               repository: widget.session.repository,
+                              onRegistered:
+                                  widget.session.rememberRegisteredBusiness,
                             ),
                           ),
                         );
@@ -218,39 +428,22 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                     ),
                     const SizedBox(height: 20),
                   ],
-                  if (data.draftContracts.isNotEmpty) ...[
+                  if (data.notifiedContracts.isNotEmpty) ...[
                     const Text(
-                      'Contract offers',
+                      'Your contracts',
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    for (final contract in data.draftContracts)
-                      _ContractOffer(
-                        contract: contract,
-                        onRespond: (accept) async {
-                          await widget.session.repository.respondToContract(
-                            contract.id,
-                            accept,
-                          );
-                          if (mounted) {
-                            showMessage(
-                              context,
-                              accept
-                                  ? 'Contract accepted. Your daily work will show here.'
-                                  : 'Contract declined',
-                            );
-                            _refresh();
-                          }
-                        },
-                      ),
+                    for (final contract in data.notifiedContracts)
+                      _ContractNotice(contract: contract),
                     const SizedBox(height: 16),
                   ],
                   if (hasSalonWork &&
                       data.liveContracts.isEmpty &&
-                      data.draftContracts.isEmpty) ...[
+                      data.notifiedContracts.isEmpty) ...[
                     const Card(
                       elevation: 0,
                       color: Colors.white,
@@ -558,10 +751,9 @@ class _StatTile extends StatelessWidget {
   );
 }
 
-class _ContractOffer extends StatelessWidget {
-  const _ContractOffer({required this.contract, required this.onRespond});
+class _ContractNotice extends StatelessWidget {
+  const _ContractNotice({required this.contract});
   final WorkContract contract;
-  final Future<void> Function(bool accept) onRespond;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -583,30 +775,19 @@ class _ContractOffer extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${contract.kind.toUpperCase()} · salary ${contract.salary.toStringAsFixed(0)} · ${contract.commission.toStringAsFixed(0)}% commission',
+            '${contract.kind.toUpperCase()} · ${contract.displayStatus} · '
+            'salary ${contract.salary.toStringAsFixed(0)} · '
+            '${contract.commission.toStringAsFixed(0)}% commission',
             style: const TextStyle(color: Color(0xFF718094)),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: ActionButton(
-                  label: 'Decline',
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFF3F5F7),
-                    foregroundColor: Colors.black,
-                  ),
-                  onPressed: () => onRespond(false),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ActionButton(
-                  label: 'Accept & start',
-                  onPressed: () => onRespond(true),
-                ),
-              ),
-            ],
+          if (contract.terms.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(contract.terms),
+          ],
+          const SizedBox(height: 8),
+          const Text(
+            'Your salon owner set these terms. No action is required from you.',
+            style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
           ),
         ],
       ),

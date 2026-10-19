@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/services/toast_service.dart';
 import '../../core/utils/pk_phone.dart';
 import '../../features/business_profile/domain/business_options.dart';
 import '../domain/online_models.dart';
@@ -106,30 +107,51 @@ class _BusinessFormState extends State<BusinessForm> {
         area: _area.text,
         address: _address.text,
       );
+      var photoFailed = false;
       if (_photo != null) {
-        await widget.repository.uploadBusinessPhoto(
-          _savedId!,
-          _photo!,
-          _extension!,
+        try {
+          await widget.repository.uploadBusinessPhoto(
+            _savedId!,
+            _photo!,
+            _extension!,
+          );
+        } on PhotoUploadFailure catch (error) {
+          photoFailed = true;
+          if (mounted) ToastService.error(error.message, context);
+        } on OnlineFailure catch (error) {
+          photoFailed = true;
+          if (mounted) ToastService.error(error.message, context);
+        } catch (_) {
+          photoFailed = true;
+          if (mounted) {
+            ToastService.error(
+              'Business was saved, but the photo could not be uploaded. Try again.',
+              context,
+            );
+          }
+        }
+      }
+      if (!mounted) return;
+      if (widget.business == null) {
+        widget.onRegistered?.call(
+          SalonBusiness(
+            id: _savedId!,
+            name: _name.text.trim(),
+            phone: PkPhone.normalize(_phone.text),
+            type: _type,
+            city: _city!,
+            area: _area.text.trim(),
+            address: _address.text.trim(),
+            isActive: false,
+          ),
         );
       }
-      if (mounted) {
-        if (widget.business == null) {
-          widget.onRegistered?.call(
-            SalonBusiness(
-              id: _savedId!,
-              name: _name.text.trim(),
-              phone: PkPhone.normalize(_phone.text),
-              type: _type,
-              city: _city!,
-              area: _area.text.trim(),
-              address: _address.text.trim(),
-              isActive: false,
-            ),
-          );
-        }
-        Navigator.pop(context, true);
+      if (photoFailed) {
+        // Keep the form open so the owner can retry the photo upload.
+        return;
       }
+      ToastService.success('Business saved', context);
+      Navigator.pop(context, true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }

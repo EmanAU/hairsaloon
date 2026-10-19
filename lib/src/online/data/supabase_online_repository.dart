@@ -208,29 +208,40 @@ class SupabaseOnlineRepository implements OnlineRepository {
         bytes.length > 2 * 1024 * 1024) {
       throw const OnlineFailure('Choose a JPG, PNG or WebP photo up to 2 MB.');
     }
-    final old = await _client
-        .from('profiles')
-        .select('photo_path')
-        .eq('user_id', _requiredUserId)
-        .single();
-    final path = '$_requiredUserId/${const Uuid().v4()}.$extension';
-    final bucket = _client.storage.from('profile-photos');
-    await bucket.uploadBinary(
-      path,
-      bytes,
-      fileOptions: FileOptions(contentType: mime),
-    );
     try {
-      await _client
+      final old = await _client
           .from('profiles')
-          .update({'photo_path': path})
-          .eq('user_id', _requiredUserId);
-    } catch (_) {
-      await bucket.remove([path]);
+          .select('photo_path')
+          .eq('user_id', _requiredUserId)
+          .single();
+      final path = '$_requiredUserId/${const Uuid().v4()}.$extension';
+      final bucket = _client.storage.from('profile-photos');
+      await bucket.uploadBinary(
+        path,
+        bytes,
+        fileOptions: FileOptions(contentType: mime),
+      );
+      try {
+        await _client
+            .from('profiles')
+            .update({'photo_path': path})
+            .eq('user_id', _requiredUserId);
+      } catch (_) {
+        await bucket.remove([path]);
+        rethrow;
+      }
+      if (old['photo_path'] != null) {
+        await bucket.remove([old['photo_path'] as String]);
+      }
+    } on OnlineFailure {
       rethrow;
-    }
-    if (old['photo_path'] != null) {
-      await bucket.remove([old['photo_path'] as String]);
+    } catch (error) {
+      _throwWriteFailure(
+        error,
+        fallback:
+            'Details were saved, but the photo could not be uploaded. Try again.',
+        asPhoto: true,
+      );
     }
   }
 
@@ -295,6 +306,119 @@ class SupabaseOnlineRepository implements OnlineRepository {
       throw const OnlineFailure(
         'Could not add employee. Check your connection and try again.',
       );
+    }
+  }
+
+  @override
+  Future<String> inviteEmployeeByIdentity({
+    required String businessId,
+    required String cnic,
+    required String phone,
+    required String email,
+    String name = '',
+  }) async {
+    try {
+      final id = await _client.rpc(
+        'invite_employee_by_identity',
+        params: {
+          'business': businessId,
+          'employee_cnic': cnic.replaceAll('-', '').trim(),
+          'employee_phone': PkPhone.normalize(phone),
+          'employee_email': email.trim().toLowerCase(),
+          'employee_name': name.trim(),
+        },
+      );
+      return id as String;
+    } catch (error) {
+      _throwJoinFailure(error);
+    }
+  }
+
+  @override
+  Future<List<PendingEmployeeInvite>> pendingInvitesForMe() async {
+    try {
+      final rows = await _client.rpc('pending_invites_for_me') as List;
+      return rows
+          .map(
+            (row) => PendingEmployeeInvite.fromJson(
+              Map<String, dynamic>.from(row as Map),
+            ),
+          )
+          .toList();
+    } catch (error) {
+      _throwWriteFailure(error, fallback: 'Could not load salon invites.');
+    }
+  }
+
+  @override
+  Future<void> respondToEmployeeInvite(String inviteId, bool accept) async {
+    try {
+      await _client.rpc(
+        'respond_to_employee_invite',
+        params: {'invite': inviteId, 'accept': accept},
+      );
+    } catch (error) {
+      _throwJoinFailure(error);
+    }
+  }
+
+  @override
+  Future<void> setEmployeeManager({
+    required String employeeId,
+    required bool isManager,
+    String? pin,
+  }) async {
+    try {
+      await _client.rpc(
+        'set_employee_manager',
+        params: {
+          'employee': employeeId,
+          'make_manager': isManager,
+          'pin': pin,
+        },
+      );
+    } catch (error) {
+      _throwWriteFailure(error, fallback: 'Could not update manager access.');
+    }
+  }
+
+  @override
+  Future<bool> verifyManagerPin(String businessId, String pin) async {
+    try {
+      final ok = await _client.rpc(
+        'verify_manager_pin',
+        params: {'business': businessId, 'pin': pin},
+      );
+      return ok == true;
+    } catch (error) {
+      _throwWriteFailure(error, fallback: 'Could not verify manager PIN.');
+    }
+  }
+
+  @override
+  Future<List<ManagerBusiness>> myManagerBusinesses() async {
+    try {
+      final rows = await _client.rpc('my_manager_businesses') as List;
+      return rows
+          .map(
+            (row) =>
+                ManagerBusiness.fromJson(Map<String, dynamic>.from(row as Map)),
+          )
+          .toList();
+    } catch (error) {
+      _throwWriteFailure(error, fallback: 'Could not load manager access.');
+    }
+  }
+
+  @override
+  Future<void> ensureBusinessServices(String businessId) async {
+    try {
+      await _client.rpc(
+        'ensure_business_services',
+        params: {'business': businessId},
+      );
+    } catch (error) {
+      _throwWriteFailure(error, fallback: 'Could not load default services.');
     }
   }
 
@@ -446,19 +570,9 @@ class SupabaseOnlineRepository implements OnlineRepository {
 
   @override
   Future<void> respondToContract(String id, bool accept) async {
-    try {
-      await _client.rpc(
-        'respond_to_contract',
-        params: {'contract': id, 'accept': accept},
-      );
-    } on PostgrestException catch (error) {
-      if (error.code == '23P01') {
-        throw const OnlineFailure(
-          'This period overlaps another accepted contract. Request release or ask the owner to revise the dates.',
-        );
-      }
-      rethrow;
-    }
+    throw const OnlineFailure(
+      'Contracts are set by the salon owner. Contact them for changes.',
+    );
   }
 
   @override
@@ -627,20 +741,30 @@ class SupabaseOnlineRepository implements OnlineRepository {
       'date_of_birth': dateOfBirth.toIso8601String().substring(0, 10),
       'work_started_on': workStartedOn.toIso8601String().substring(0, 10),
     };
-    final existing = await _client
-        .from('profiles')
-        .select('user_id')
-        .eq('user_id', id)
-        .maybeSingle();
-    if (existing == null) {
-      await _client.from('profiles').insert({'user_id': id, ...values});
-    } else {
-      await _client.from('profiles').update(values).eq('user_id', id);
+    try {
+      final existing = await _client
+          .from('profiles')
+          .select('user_id')
+          .eq('user_id', id)
+          .maybeSingle();
+      if (existing == null) {
+        await _client.from('profiles').insert({'user_id': id, ...values});
+      } else {
+        await _client.from('profiles').update(values).eq('user_id', id);
+      }
+      try {
+        await _client
+            .from('users')
+            .update({'display_name': name.trim()})
+            .eq('id', id);
+      } catch (_) {
+        // Profile row is already saved; display name is best-effort.
+      }
+    } on OnlineFailure {
+      rethrow;
+    } catch (error) {
+      _throwWriteFailure(error, fallback: 'Could not save your profile.');
     }
-    await _client
-        .from('users')
-        .update({'display_name': name.trim()})
-        .eq('id', id);
   }
 
   @override
@@ -661,20 +785,36 @@ class SupabaseOnlineRepository implements OnlineRepository {
       'area': area.trim(),
       'address': address.trim(),
     };
-    if (id == null) {
-      final created = await _client
-          .from('businesses')
-          .insert({'owner_id': _requiredUserId, ...values})
-          .select('id')
-          .single();
-      return created['id'] as String;
-    } else {
-      await _client
-          .from('businesses')
-          .update(values)
-          .eq('id', id)
-          .eq('owner_id', _requiredUserId);
-      return id;
+    try {
+      if (id == null) {
+        final existing = await _client
+            .from('businesses')
+            .select('id')
+            .eq('owner_id', _requiredUserId)
+            .maybeSingle();
+        if (existing != null) {
+          throw const OnlineFailure(
+            'You already have a business. One owner can register one shop.',
+          );
+        }
+        final created = await _client
+            .from('businesses')
+            .insert({'owner_id': _requiredUserId, ...values})
+            .select('id')
+            .single();
+        return created['id'] as String;
+      } else {
+        await _client
+            .from('businesses')
+            .update(values)
+            .eq('id', id)
+            .eq('owner_id', _requiredUserId);
+        return id;
+      }
+    } on OnlineFailure {
+      rethrow;
+    } catch (error) {
+      _throwWriteFailure(error, fallback: 'Could not save the business.');
     }
   }
 
@@ -698,34 +838,80 @@ class SupabaseOnlineRepository implements OnlineRepository {
         bytes.length > 2 * 1024 * 1024) {
       throw const OnlineFailure('Choose a JPG, PNG or WebP photo up to 2 MB.');
     }
-    final old = await _client
-        .from('businesses')
-        .select('logo_path')
-        .eq('id', businessId)
-        .eq('owner_id', _requiredUserId)
-        .single();
-    final bucket = _client.storage.from('business-photos');
-    final path = '$businessId/${const Uuid().v4()}.$extension';
-    await bucket.uploadBinary(
-      path,
-      bytes,
-      fileOptions: FileOptions(contentType: mime),
-    );
     try {
-      await _client
+      final old = await _client
           .from('businesses')
-          .update({'logo_path': path})
+          .select('logo_path')
           .eq('id', businessId)
           .eq('owner_id', _requiredUserId)
-          .select('id')
           .single();
-    } catch (_) {
-      await bucket.remove([path]);
+      final bucket = _client.storage.from('business-photos');
+      final path = '$businessId/${const Uuid().v4()}.$extension';
+      await bucket.uploadBinary(
+        path,
+        bytes,
+        fileOptions: FileOptions(contentType: mime),
+      );
+      try {
+        await _client
+            .from('businesses')
+            .update({'logo_path': path})
+            .eq('id', businessId)
+            .eq('owner_id', _requiredUserId)
+            .select('id')
+            .single();
+      } catch (_) {
+        await bucket.remove([path]);
+        rethrow;
+      }
+      if (old['logo_path'] != null) {
+        await bucket.remove([old['logo_path'] as String]);
+      }
+    } on OnlineFailure {
       rethrow;
+    } catch (error) {
+      _throwWriteFailure(
+        error,
+        fallback:
+            'Business was saved, but the photo could not be uploaded. Try again.',
+        asPhoto: true,
+      );
     }
-    if (old['logo_path'] != null) {
-      await bucket.remove([old['logo_path'] as String]);
+  }
+
+  Never _throwWriteFailure(
+    Object error, {
+    required String fallback,
+    bool asPhoto = false,
+  }) {
+    if (error is OnlineFailure) throw error;
+    if (error is ClientException) {
+      throw OnlineFailure(
+        asPhoto
+            ? fallback
+            : 'Could not reach the server. Check your connection and try again.',
+      );
     }
+    if (error is PostgrestException) {
+      final text =
+          '${error.message} ${error.details ?? ''} ${error.hint ?? ''}'
+              .toLowerCase();
+      if (text.contains('duplicate') || error.code == '23505') {
+        if (text.contains('cnic')) {
+          throw const OnlineFailure('This CNIC is already registered.');
+        }
+        if (text.contains('owner') || text.contains('businesses_owner')) {
+          throw const OnlineFailure(
+            'You already have a business. One owner can register one shop.',
+          );
+        }
+        throw const OnlineFailure('This record already exists.');
+      }
+      final message = error.message.trim();
+      throw OnlineFailure(message.isEmpty ? fallback : message);
+    }
+    if (asPhoto) throw PhotoUploadFailure(fallback);
+    throw OnlineFailure(fallback);
   }
 
   Never _throwJoinFailure(Object error) {
@@ -876,17 +1062,23 @@ class SupabaseOnlineRepository implements OnlineRepository {
       'price': price,
       'is_active': isActive,
     };
-    if (id == null) {
-      await _client.from('services').insert({
-        'business_id': businessId,
-        ...values,
-      });
-    } else {
-      await _client
-          .from('services')
-          .update(values)
-          .eq('id', id)
-          .eq('business_id', businessId);
+    try {
+      if (id == null) {
+        await _client.from('services').insert({
+          'business_id': businessId,
+          ...values,
+        });
+      } else {
+        await _client
+            .from('services')
+            .update(values)
+            .eq('id', id)
+            .eq('business_id', businessId);
+      }
+    } on OnlineFailure {
+      rethrow;
+    } catch (error) {
+      _throwWriteFailure(error, fallback: 'Could not save the service.');
     }
   }
 }

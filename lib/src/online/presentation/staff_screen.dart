@@ -31,6 +31,10 @@ class _StaffScreenState extends State<StaffScreen> {
     widget.businessId,
   );
   final _code = TextEditingController();
+  final _name = TextEditingController();
+  final _cnic = TextEditingController();
+  final _phone = TextEditingController();
+  final _email = TextEditingController();
   late bool? _requests = widget.showRequests;
   String? _reviewing;
   late final Timer _poll;
@@ -55,6 +59,10 @@ class _StaffScreenState extends State<StaffScreen> {
   void dispose() {
     _poll.cancel();
     _code.dispose();
+    _name.dispose();
+    _cnic.dispose();
+    _phone.dispose();
+    _email.dispose();
     super.dispose();
   }
 
@@ -145,14 +153,85 @@ class _StaffScreenState extends State<StaffScreen> {
     ),
   );
 
+  Future<void> _setManager(SalonStaff employee) async {
+    if (employee.isManager) {
+      await widget.repository.setEmployeeManager(
+        employeeId: employee.id,
+        isManager: false,
+      );
+      if (mounted) {
+        showMessage(context, 'Manager access removed');
+        _refresh();
+      }
+      return;
+    }
+    final pin = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Make ${employee.name} manager'),
+        content: TextField(
+          controller: pin,
+          keyboardType: TextInputType.number,
+          maxLength: 4,
+          obscureText: true,
+          decoration: const InputDecoration(
+            labelText: '4-digit manager PIN',
+            counterText: '',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    if (!RegExp(r'^\d{4}$').hasMatch(pin.text.trim())) {
+      showMessage(context, 'Enter a 4-digit PIN', error: true);
+      return;
+    }
+    try {
+      await widget.repository.setEmployeeManager(
+        employeeId: employee.id,
+        isManager: true,
+        pin: pin.text.trim(),
+      );
+      if (mounted) {
+        showMessage(context, '${employee.name} is now a manager');
+        _refresh();
+      }
+    } catch (error) {
+      if (mounted) {
+        showMessage(
+          context,
+          error is OnlineFailure
+              ? error.message
+              : 'Could not update manager access.',
+          error: true,
+        );
+      }
+    } finally {
+      pin.dispose();
+    }
+  }
+
   Widget _employee(SalonStaff employee) => ListTile(
     contentPadding: const EdgeInsets.symmetric(vertical: 8),
-    leading: const CircleAvatar(
-      backgroundColor: Color(0xFFF0F5DE),
-      child: Icon(Icons.person_outline),
+    leading: CircleAvatar(
+      backgroundColor: const Color(0xFFF0F5DE),
+      child: Icon(
+        employee.isManager ? Icons.admin_panel_settings_outlined : Icons.person_outline,
+      ),
     ),
     title: Text(
-      employee.name,
+      employee.isManager ? '${employee.name} · Manager' : employee.name,
       style: const TextStyle(fontWeight: FontWeight.w600),
     ),
     subtitle: Text(
@@ -160,22 +239,46 @@ class _StaffScreenState extends State<StaffScreen> {
           ? 'Working · active contract'
           : 'Joined · contract not set',
     ),
-    trailing: employee.isWorking
-        ? IconButton(
-            tooltip: 'Barber customer QR',
-            icon: const Icon(Icons.qr_code),
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (_) => AlertDialog(
-                title: Text(employee.name),
-                content: PublicQr(
-                  destination: QrDestination('barber', employee.id),
-                  label: 'Customer barber QR',
-                ),
+    trailing: PopupMenuButton<String>(
+      onSelected: (value) async {
+        if (value == 'contract') {
+          await Navigator.push<void>(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ContractsScreen(
+                repository: widget.repository,
+                employee: employee,
               ),
             ),
-          )
-        : const Icon(Icons.chevron_right),
+          );
+          if (mounted) _refresh();
+        } else if (value == 'manager') {
+          await _setManager(employee);
+        } else if (value == 'qr' && employee.isWorking) {
+          await showDialog<void>(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: Text(employee.name),
+              content: PublicQr(
+                destination: QrDestination('barber', employee.id),
+                label: 'Customer barber QR',
+              ),
+            ),
+          );
+        }
+      },
+      itemBuilder: (_) => [
+        const PopupMenuItem(value: 'contract', child: Text('Contracts')),
+        PopupMenuItem(
+          value: 'manager',
+          child: Text(
+            employee.isManager ? 'Remove manager' : 'Make manager',
+          ),
+        ),
+        if (employee.isWorking)
+          const PopupMenuItem(value: 'qr', child: Text('Barber QR')),
+      ],
+    ),
     onTap: () async {
       await Navigator.push<void>(
         context,
@@ -244,11 +347,64 @@ class _StaffScreenState extends State<StaffScreen> {
                   ...pending.map(_requestCard),
                 ] else ...[
                   const SizedBox(height: 24),
+                  const Text(
+                    'Add employee',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'If they are not on TrimMatrix yet, add CNIC, phone and email. '
+                    'They will see a join offer after installing the business app and completing their profile.',
+                    style: TextStyle(color: Color(0xFF718094), fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
                   TextField(
-                    controller: _code,
-                    autocorrect: false,
+                    controller: _name,
+                    textCapitalization: TextCapitalization.words,
                     decoration: InputDecoration(
-                      labelText: 'Employee profile code',
+                      labelText: 'Full name (optional)',
+                      filled: true,
+                      fillColor: const Color(0xFFF7F8FA),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _cnic,
+                    keyboardType: TextInputType.number,
+                    maxLength: 13,
+                    decoration: InputDecoration(
+                      labelText: 'CNIC (13 digits)',
+                      counterText: '',
+                      filled: true,
+                      fillColor: const Color(0xFFF7F8FA),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _phone,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: 'Mobile number',
+                      hintText: '03127712502',
+                      filled: true,
+                      fillColor: const Color(0xFFF7F8FA),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _email,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'Email',
                       filled: true,
                       fillColor: const Color(0xFFF7F8FA),
                       border: OutlineInputBorder(
@@ -258,14 +414,81 @@ class _StaffScreenState extends State<StaffScreen> {
                   ),
                   const SizedBox(height: 8),
                   ActionButton(
-                    label: 'Invite employee',
+                    label: 'Invite by CNIC & email',
                     icon: Icons.person_add_outlined,
+                    style: FilledButton.styleFrom(shape: _shape),
+                    onPressed: () async {
+                      if (!RegExp(r'^\d{13}$').hasMatch(_cnic.text.trim())) {
+                        showMessage(
+                          context,
+                          'Enter a valid 13-digit CNIC',
+                          error: true,
+                        );
+                        return;
+                      }
+                      if (!_email.text.contains('@')) {
+                        showMessage(context, 'Enter a valid email', error: true);
+                        return;
+                      }
+                      try {
+                        await widget.repository.inviteEmployeeByIdentity(
+                          businessId: widget.businessId,
+                          cnic: _cnic.text,
+                          phone: _phone.text,
+                          email: _email.text,
+                          name: _name.text,
+                        );
+                        await _syncLocalBillingStaff();
+                        if (mounted) {
+                          for (final c in [_name, _cnic, _phone, _email]) {
+                            c.clear();
+                          }
+                          showMessage(
+                            context,
+                            'Invite saved. They can join after completing their profile.',
+                          );
+                          _refresh();
+                        }
+                      } catch (error) {
+                        if (mounted) {
+                          showMessage(
+                            context,
+                            error is OnlineFailure
+                                ? error.message
+                                : 'Could not add this employee. Try again.',
+                            error: true,
+                          );
+                        }
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _code,
+                    autocorrect: false,
+                    decoration: InputDecoration(
+                      labelText: 'Or paste existing profile code',
+                      filled: true,
+                      fillColor: const Color(0xFFF7F8FA),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ActionButton(
+                    label: 'Invite by profile code',
+                    icon: Icons.badge_outlined,
                     style: FilledButton.styleFrom(shape: _shape),
                     onPressed: () async {
                       if (!RegExp(
                         r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
                       ).hasMatch(_code.text.trim())) {
-                        showMessage(context, 'Paste a valid profile code');
+                        showMessage(
+                          context,
+                          'Paste a valid profile code',
+                          error: true,
+                        );
                         return;
                       }
                       try {
@@ -286,6 +509,7 @@ class _StaffScreenState extends State<StaffScreen> {
                             error is OnlineFailure
                                 ? error.message
                                 : 'Could not add this employee. Try again.',
+                            error: true,
                           );
                         }
                       }

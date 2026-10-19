@@ -7,15 +7,22 @@ class ToastService {
   static final navigatorKey = GlobalKey<NavigatorState>();
   static final messengerKey = GlobalKey<ScaffoldMessengerState>();
 
-  static void success(String message) =>
-      _show(message, AppColors.success, Icons.check_circle_outline_rounded);
-  static void error(String message) =>
-      _show(message, AppColors.danger, Icons.error_outline_rounded);
-  static void info(String message) =>
-      _show(message, AppColors.primary, Icons.info_outline_rounded);
+  static void success(String message, [BuildContext? context]) =>
+      _show(message, AppColors.success, Icons.check_circle_outline_rounded, context);
+  static void error(String message, [BuildContext? context]) =>
+      _show(message, AppColors.danger, Icons.error_outline_rounded, context);
+  static void info(String message, [BuildContext? context]) =>
+      _show(message, AppColors.primary, Icons.info_outline_rounded, context);
 
-  static void _show(String message, Color accent, IconData icon) {
-    final messenger = messengerKey.currentState;
+  static void _show(
+    String message,
+    Color accent,
+    IconData icon, [
+    BuildContext? context,
+  ]) {
+    final messenger =
+        messengerKey.currentState ??
+        (context != null ? ScaffoldMessenger.maybeOf(context) : null);
     if (messenger == null) return;
     final theme = Theme.of(messenger.context);
     final colors = theme.colorScheme;

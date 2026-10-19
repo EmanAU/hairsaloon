@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
+import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/business_options.dart';
 import 'package:hairsaloon/src/online/presentation/business_form.dart';
 import 'fake_online_repository.dart';
@@ -28,6 +29,7 @@ void main() {
       addTearDown(repository.events.close);
       await tester.pumpWidget(
         MaterialApp(
+          scaffoldMessengerKey: ToastService.messengerKey,
           home: Builder(
             builder: (context) => Scaffold(
               body: TextButton(
@@ -100,6 +102,9 @@ void main() {
       expect(repository.workspace.businesses.single.type, 'Beauty Parlour');
       expect(repository.workspace.businesses.single.city, 'Lahore');
       repository.failBusinessPhoto = false;
+      await tester.tap(find.byTooltip('Dismiss notification'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(save);
       await tester.tap(save);
       await tester.pumpAndSettle();
       expect(repository.businessPhotoUploads, 2);

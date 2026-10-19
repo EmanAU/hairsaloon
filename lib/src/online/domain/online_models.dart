@@ -5,23 +5,82 @@ class OnlineFailure implements Exception {
   final String message;
 }
 
+/// Primary data was saved, but a photo upload failed afterward.
+class PhotoUploadFailure extends OnlineFailure {
+  const PhotoUploadFailure([
+    super.message =
+        'Details were saved, but the photo could not be uploaded. Try again.',
+  ]);
+}
+
 class SalonStaff {
   const SalonStaff({
     required this.id,
     required this.name,
     required this.isWorking,
     this.joinStatus = 'accepted',
+    this.isManager = false,
   });
   final String id;
   final String name;
   final bool isWorking;
   final String joinStatus;
+  final bool isManager;
   factory SalonStaff.fromJson(Map<String, dynamic> json) => SalonStaff(
     id: json['membership_id'] as String,
     name: json['display_name'] as String,
     isWorking: json['is_working'] as bool,
     joinStatus: json['join_status'] as String? ?? 'accepted',
+    isManager: json['is_manager'] as bool? ?? false,
   );
+}
+
+class PendingEmployeeInvite {
+  const PendingEmployeeInvite({
+    required this.id,
+    required this.businessId,
+    required this.businessName,
+    required this.ownerName,
+    required this.cnic,
+    required this.phone,
+    required this.email,
+  });
+  final String id;
+  final String businessId;
+  final String businessName;
+  final String ownerName;
+  final String cnic;
+  final String phone;
+  final String email;
+
+  factory PendingEmployeeInvite.fromJson(Map<String, dynamic> json) =>
+      PendingEmployeeInvite(
+        id: json['invite_id'] as String,
+        businessId: json['business_id'] as String,
+        businessName: json['business_name'] as String? ?? 'Salon',
+        ownerName: json['owner_name'] as String? ?? 'Owner',
+        cnic: json['cnic'] as String? ?? '',
+        phone: json['phone'] as String? ?? '',
+        email: json['email'] as String? ?? '',
+      );
+}
+
+class ManagerBusiness {
+  const ManagerBusiness({
+    required this.businessId,
+    required this.businessName,
+    required this.membershipId,
+  });
+  final String businessId;
+  final String businessName;
+  final String membershipId;
+
+  factory ManagerBusiness.fromJson(Map<String, dynamic> json) =>
+      ManagerBusiness(
+        businessId: json['business_id'] as String,
+        businessName: json['business_name'] as String? ?? 'Salon',
+        membershipId: json['membership_id'] as String,
+      );
 }
 
 class SalonJoinRequest {
@@ -153,8 +212,14 @@ class EmployeeDashboardData {
 
   List<WorkContract> get liveContracts =>
       contracts.where((c) => c.isLive).toList();
-  List<WorkContract> get draftContracts =>
-      contracts.where((c) => c.status == 'draft').toList();
+
+  /// Contracts set by the owner that have not started yet (notify-only).
+  List<WorkContract> get notifiedContracts => contracts
+      .where((c) => c.status == 'accepted' && c.displayStatus == 'scheduled')
+      .toList();
+
+  @Deprecated('Owner sets contracts; employees no longer accept drafts')
+  List<WorkContract> get draftContracts => const [];
 }
 
 class OnlineAccount {

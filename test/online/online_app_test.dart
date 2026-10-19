@@ -167,7 +167,7 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text('Contracts'));
         await tester.pumpAndSettle();
-        expect(find.text('Invite employee'), findsOneWidget);
+        expect(find.text('Invite by CNIC & email'), findsOneWidget);
         await tester.pumpWidget(const SizedBox());
         await closeOnlineWorkspace(tester);
       },
@@ -257,19 +257,18 @@ void main() {
       isFalse,
     );
   });
-  testWidgets('contract conflict stays visible without claiming acceptance', (
+  testWidgets('employee sees owner-set contracts as notify-only', (
     tester,
   ) async {
     final repository = FakeOnlineRepository()
-      ..rejectAcceptance = true
       ..contractRows = [
         WorkContract(
           id: 'contract',
           employeeId: 'employee',
           kind: 'permanent',
-          startsAt: DateTime.now(),
+          startsAt: DateTime.now().add(const Duration(days: 1)),
           endsAt: null,
-          status: 'draft',
+          status: 'accepted',
           salary: 1000,
           commission: 10,
           terms: 'Monthly',
@@ -281,10 +280,13 @@ void main() {
       MaterialApp(home: ContractsScreen(repository: repository)),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Accept contract'));
-    await tester.pumpAndSettle();
-    expect(find.text('Contract overlaps another salon.'), findsOneWidget);
-    expect(find.text('PERMANENT · draft'), findsOneWidget);
+    expect(find.text('Accept contract'), findsNothing);
+    expect(find.text('Decline contract'), findsNothing);
+    expect(
+      find.textContaining('Your owner set these terms'),
+      findsOneWidget,
+    );
+    expect(find.text('PERMANENT · scheduled'), findsOneWidget);
   });
   testWidgets('unconfigured business app preserves an offline entry', (
     tester,

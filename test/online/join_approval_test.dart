@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:hairsaloon/src/online/domain/online_models.dart';
 import 'package:hairsaloon/src/online/presentation/staff_screen.dart';
 import 'package:hairsaloon/src/online/presentation/business_home.dart';
-import 'package:hairsaloon/src/online/presentation/contracts_screen.dart';
 import 'package:hairsaloon/src/online/presentation/online_session.dart';
 import 'fake_online_repository.dart';
 import 'workspace_test_environment.dart';
@@ -92,6 +92,7 @@ void main() {
       addTearDown(repository.events.close);
       await tester.pumpWidget(
         MaterialApp(
+          scaffoldMessengerKey: ToastService.messengerKey,
           home: StaffScreen(repository: repository, businessId: 'salon'),
         ),
       );
@@ -114,15 +115,17 @@ void main() {
       await tester.tap(find.text('Decline'));
       await tester.pumpAndSettle();
       expect(find.text('Requests (0)'), findsOneWidget);
+      await tester.tap(find.text('Employees (1)'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Ali'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('Ali'), findsOneWidget);
       expect(find.text('Bilal'), findsNothing);
-      await tester.tap(find.text('Ali'));
-      await tester.pumpAndSettle();
       expect(
-        tester
-            .widget<ContractsScreen>(find.byType(ContractsScreen))
-            .employee
-            ?.id,
+        repository.teamRows.where((e) => e.joinStatus == 'accepted').single.id,
         'ali',
       );
       await tester.pumpWidget(const SizedBox());

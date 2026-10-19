@@ -1,9 +1,11 @@
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
+import 'app_breakpoints.dart';
 
+/// Business app: phones and tablets stay portrait (per responsive-layout rule).
 List<DeviceOrientation> businessOrientations(double shortestSide) =>
-    shortestSide >= 600
-    ? const [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]
+    shortestSide >= AppBreakpoints.tablet
+    ? const [DeviceOrientation.portraitUp]
     : const [DeviceOrientation.portraitUp];
 
 Future<void> configureAppOrientation({bool business = true}) {

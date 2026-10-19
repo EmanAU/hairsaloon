@@ -86,6 +86,62 @@ class FakeOnlineRepository implements OnlineRepository {
 
   @override
   Future<void> inviteEmployee(String businessId, String profileCode) async {}
+
+  List<PendingEmployeeInvite> pendingInviteRows = [];
+  List<ManagerBusiness> managerBusinessRows = [];
+
+  @override
+  Future<String> inviteEmployeeByIdentity({
+    required String businessId,
+    required String cnic,
+    required String phone,
+    required String email,
+    String name = '',
+  }) async => 'invite-id';
+
+  @override
+  Future<List<PendingEmployeeInvite>> pendingInvitesForMe() async =>
+      pendingInviteRows;
+
+  @override
+  Future<void> respondToEmployeeInvite(String inviteId, bool accept) async {
+    pendingInviteRows = pendingInviteRows
+        .where((invite) => invite.id != inviteId)
+        .toList();
+  }
+
+  @override
+  Future<void> setEmployeeManager({
+    required String employeeId,
+    required bool isManager,
+    String? pin,
+  }) async {
+    teamRows = teamRows
+        .map(
+          (e) => e.id != employeeId
+              ? e
+              : SalonStaff(
+                  id: e.id,
+                  name: e.name,
+                  isWorking: e.isWorking,
+                  joinStatus: e.joinStatus,
+                  isManager: isManager,
+                ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<bool> verifyManagerPin(String businessId, String pin) async =>
+      pin == '1234';
+
+  @override
+  Future<List<ManagerBusiness>> myManagerBusinesses() async =>
+      managerBusinessRows;
+
+  @override
+  Future<void> ensureBusinessServices(String businessId) async {}
+
   @override
   Future<List<WorkContract>> contracts({String? employeeId}) async =>
       contractRows;
@@ -219,7 +275,9 @@ class FakeOnlineRepository implements OnlineRepository {
   ) async {
     businessPhotoUploads++;
     if (failBusinessPhoto) {
-      throw const OnlineFailure('Could not upload photo. Please retry.');
+      throw const PhotoUploadFailure(
+        'Could not upload photo. Please retry.',
+      );
     }
   }
 

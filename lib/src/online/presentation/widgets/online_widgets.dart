@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/layout/app_breakpoints.dart';
+import '../../../core/services/toast_service.dart';
 import '../../domain/online_models.dart';
 
 class OnlinePage extends StatelessWidget {
@@ -19,12 +21,22 @@ class OnlinePage extends StatelessWidget {
       title: Text(title, style: const TextStyle(fontFamily: 'Roboto')),
       actions: actions,
     ),
-    body: Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 640),
-        child: ListView(padding: const EdgeInsets.all(24), children: children),
-      ),
+    body: LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = AppBreakpoints.isTabletWidth(constraints.maxWidth)
+            ? 720.0
+            : 640.0;
+        return Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: children,
+            ),
+          ),
+        );
+      },
     ),
   );
 }
@@ -53,13 +65,13 @@ class _ActionButtonState extends State<ActionButton> {
     setState(() => _busy = true);
     try {
       await widget.onPressed();
-    } catch (error) {
+    } on OnlineFailure catch (error) {
+      if (mounted) ToastService.error(error.message, context);
+    } catch (_) {
       if (mounted) {
-        showMessage(
+        ToastService.error(
+          'Could not complete this action. Check your connection and try again.',
           context,
-          error is OnlineFailure
-              ? error.message
-              : 'Could not complete this action. Check your connection and try again.',
         );
       }
     } finally {
@@ -85,8 +97,13 @@ class _ActionButtonState extends State<ActionButton> {
   );
 }
 
-void showMessage(BuildContext context, String text) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+/// Routes feedback through [ToastService] (branded floating snackbars).
+void showMessage(BuildContext context, String text, {bool error = false}) {
+  if (error) {
+    ToastService.error(text, context);
+  } else {
+    ToastService.info(text, context);
+  }
 }
 
 class CopyCode extends StatelessWidget {
