@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/services/toast_service.dart';
@@ -161,16 +162,16 @@ class _BusinessFormState extends State<BusinessForm> {
       InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: Icon(icon, size: 21, color: const Color(0xFF718094)),
+        prefixIcon: Icon(icon, size: 21, color: AppColors.textSecondary),
         filled: true,
-        fillColor: const Color(0xFFF7F8FA),
+        fillColor: AppColors.homeCanvas,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE1E5EA)),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE1E5EA)),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
@@ -210,7 +211,7 @@ class _BusinessFormState extends State<BusinessForm> {
               width: 88,
               child: image == null
                   ? const ColoredBox(
-                      color: Color(0xFFF0F5DE),
+                      color: AppColors.homeSage,
                       child: Icon(Icons.storefront_outlined, size: 36),
                     )
                   : Image(
@@ -234,7 +235,7 @@ class _BusinessFormState extends State<BusinessForm> {
       ),
       const Text(
         'Up to 2 MB',
-        style: TextStyle(color: Color(0xFF718094), fontSize: 11),
+        style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
       ),
     ],
   );
@@ -243,12 +244,11 @@ class _BusinessFormState extends State<BusinessForm> {
   Widget build(BuildContext context) => PopScope(
     canPop: !_saving,
     child: Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.surface,
         title: Text(
           widget.business == null ? 'Register business' : 'Edit business',
-          style: const TextStyle(fontFamily: 'Roboto'),
         ),
       ),
       body: Align(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 
 import '../../core/services/toast_service.dart';
@@ -96,13 +97,10 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Colors.white,
+    backgroundColor: AppColors.surface,
     appBar: AppBar(
-      backgroundColor: Colors.white,
-      title: Text(
-        'Customer view · ${widget.service.name}',
-        style: const TextStyle(fontFamily: 'Roboto'),
-      ),
+      backgroundColor: AppColors.surface,
+      title: Text('Customer view · ${widget.service.name}'),
       actions: [
         TextButton(
           onPressed: _saving ? null : _save,
@@ -141,13 +139,13 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
             children: [
               const Text(
                 'Describe this service for customers. Add before & after photos below.',
-                style: TextStyle(color: Color(0xFF718094)),
+                style: TextStyle(color: AppColors.textSecondary),
               ),
               const SizedBox(height: 12),
               Container(
                 height: 280,
                 decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFE1E5EA)),
+                  border: Border.all(color: AppColors.border),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.all(12),

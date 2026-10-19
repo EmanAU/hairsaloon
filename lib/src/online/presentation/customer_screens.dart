@@ -9,7 +9,6 @@ import 'widgets/before_after_slider.dart';
 import 'widgets/service_rich_content.dart';
 import 'qr_screen.dart';
 import 'reviews_panel.dart';
-import 'service_media.dart';
 import '../domain/qr_destination.dart';
 
 class CustomerDirectory extends StatefulWidget {
@@ -590,6 +589,26 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
               FutureBuilder<List<Map<String, dynamic>>>(
                 future: _media,
                 builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.md,
+                      ),
+                      child: Text(
+                        'Could not load photos. Pull back and try again.',
+                        style: text.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  }
                   final rows = snapshot.data ?? const <Map<String, dynamic>>[];
                   final pair = _pair(rows);
                   if (pair.before != null && pair.after != null) {
@@ -598,9 +617,19 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                       afterUrl: pair.after!,
                     );
                   }
-                  return ServiceMedia(
-                    repository: widget.repository,
-                    serviceId: service.id,
+                  if (rows.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.sm,
+                    ),
+                    child: Text(
+                      'Photos for this service are not ready yet.',
+                      style: text.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   );
                 },
               ),

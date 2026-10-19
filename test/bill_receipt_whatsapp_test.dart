@@ -11,6 +11,10 @@ void main() {
       BillReceiptShare.whatsAppPhoneDigits('03001234567'),
       '923001234567',
     );
+    expect(
+      BillReceiptShare.whatsAppPhoneDigits('3001234567'),
+      '923001234567',
+    );
     expect(BillReceiptShare.whatsAppPhoneDigits(''), isNull);
     expect(BillReceiptShare.whatsAppPhoneDigits('abc'), isNull);
   });

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter/services.dart';
+import '../../theme/app_colors.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
 import 'business_form.dart';
@@ -219,13 +220,10 @@ class _BusinessHomeState extends State<BusinessHome> {
         !_choosingBusiness && workspace.businesses.length == 1;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: AppColors.homeCanvas,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F8FA),
-        title: Text(
-          active?.name ?? 'Your workspace',
-          style: const TextStyle(fontFamily: 'Roboto'),
-        ),
+        backgroundColor: AppColors.homeCanvas,
+        title: Text(active?.name ?? 'Your workspace'),
         actions: [
           IconButton(
             tooltip: 'Edit personal profile',
@@ -402,7 +400,7 @@ class _BusinessHomeState extends State<BusinessHome> {
                 const SizedBox(height: 8),
                 const Text(
                   'Pick a salon to check approval status.',
-                  style: TextStyle(color: Color(0xFF718094), height: 1.45),
+                  style: TextStyle(color: AppColors.textSecondary, height: 1.45),
                 ),
                 const SizedBox(height: 16),
                 WorkspaceCards(
@@ -564,11 +562,11 @@ class _ActiveSalonHome extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     'Approved · ${business.city}',
-                    style: const TextStyle(color: Color(0xFF668400)),
+                    style: const TextStyle(color: AppColors.homeOlive),
                   ),
                   Text(
                     '${business.area} · ${business.phone}',
-                    style: const TextStyle(color: Color(0xFF718094)),
+                    style: const TextStyle(color: AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -600,7 +598,7 @@ class _ActiveSalonHome extends StatelessWidget {
                     child: const Icon(
                       Icons.people_outline,
                       size: 30,
-                      color: Color(0xFF34441D),
+                      color: AppColors.homeInk,
                     ),
                   );
                 },
@@ -658,7 +656,7 @@ class _ActiveSalonHome extends StatelessWidget {
                   padding: EdgeInsets.symmetric(vertical: 12),
                   child: Text(
                     'No pending join requests right now.',
-                    style: TextStyle(color: Color(0xFF718094)),
+                    style: TextStyle(color: AppColors.textSecondary),
                   ),
                 );
               }
@@ -667,11 +665,11 @@ class _ActiveSalonHome extends StatelessWidget {
                   for (final employee in pending.take(5))
                     Card(
                       elevation: 0,
-                      color: Colors.white,
+                      color: AppColors.surface,
                       margin: const EdgeInsets.only(bottom: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
-                        side: const BorderSide(color: Color(0xFFE3E7EC)),
+                        side: const BorderSide(color: AppColors.homeBorder),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
@@ -688,7 +686,7 @@ class _ActiveSalonHome extends StatelessWidget {
                             const SizedBox(height: 4),
                             const Text(
                               'Wants to join your salon',
-                              style: TextStyle(color: Color(0xFF718094)),
+                              style: TextStyle(color: AppColors.textSecondary),
                             ),
                             const SizedBox(height: 12),
                             Row(
@@ -698,8 +696,8 @@ class _ActiveSalonHome extends StatelessWidget {
                                     label: 'Decline',
                                     icon: Icons.close,
                                     style: FilledButton.styleFrom(
-                                      backgroundColor: const Color(0xFFF3F5F7),
-                                      foregroundColor: Colors.black,
+                                      backgroundColor: AppColors.background,
+                                      foregroundColor: AppColors.textPrimary,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -746,7 +744,7 @@ class _ActiveSalonHome extends StatelessWidget {
         const SizedBox(height: 8),
         const Text(
           'If a barber already has a profile code, invite them directly.',
-          style: TextStyle(color: Color(0xFF718094)),
+          style: TextStyle(color: AppColors.textSecondary),
         ),
         const SizedBox(height: 12),
         TextField(
@@ -755,7 +753,7 @@ class _ActiveSalonHome extends StatelessWidget {
           decoration: InputDecoration(
             labelText: 'Employee profile code',
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppColors.surface,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
         ),
@@ -777,7 +775,7 @@ class _ActiveSalonHome extends StatelessWidget {
         const SizedBox(height: 8),
         const Text(
           'Share this code or QR so staff can request to join after their profile.',
-          style: TextStyle(color: Color(0xFF718094)),
+          style: TextStyle(color: AppColors.textSecondary),
         ),
         const SizedBox(height: 12),
         if (invite == null)
@@ -956,7 +954,7 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
               const SizedBox(height: 8),
               const Text(
                 'Approved. Manage this salon from Home for requests, joining code and billing.',
-                style: TextStyle(color: Color(0xFF718094)),
+                style: TextStyle(color: AppColors.textSecondary),
               ),
               const SizedBox(height: 16),
               ActionButton(
@@ -1000,23 +998,22 @@ class _OwnerBusinessState extends State<OwnerBusiness> {
                   ),
                   WorkspaceCard(
                     title: 'Billing workspace',
-                    subtitle: 'Open your salon’s online and offline workspace.',
+                    subtitle: widget.managementOnly
+                        ? 'Managers cannot open billing. Ask the owner if you need access.'
+                        : 'Open your salon’s online and offline workspace.',
                     icon: Icons.sync,
-                    onTap: () {
-                      if (widget.managementOnly) {
-                        Navigator.of(context).pop();
-                        return;
-                      }
-                      Navigator.push<void>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => WorkspaceScreen(
-                            repository: widget.repository,
-                            business: business,
+                    enabled: !widget.managementOnly,
+                    onTap: widget.managementOnly
+                        ? null
+                        : () => Navigator.push<void>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => WorkspaceScreen(
+                                repository: widget.repository,
+                                business: business,
+                              ),
+                            ),
                           ),
-                        ),
-                      );
-                    },
                   ),
                 ],
               ),
@@ -1129,13 +1126,10 @@ class _JoinSalonState extends State<JoinSalon> {
   Widget build(BuildContext context) => PopScope(
     canPop: !_requesting,
     child: Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: const Text(
-          'Join a salon',
-          style: TextStyle(fontFamily: 'Roboto'),
-        ),
+        backgroundColor: AppColors.surface,
+        title: const Text('Join a salon'),
         actions: [
           IconButton(
             tooltip: 'My contracts',
@@ -1158,7 +1152,7 @@ class _JoinSalonState extends State<JoinSalon> {
                     const Icon(
                       Icons.check_circle_outline,
                       size: 56,
-                      color: Color(0xFF668400),
+                      color: AppColors.homeOlive,
                     ),
                     const SizedBox(height: 20),
                     const Text(
@@ -1172,7 +1166,7 @@ class _JoinSalonState extends State<JoinSalon> {
                     const Text(
                       'Check your request status below.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Color(0xFF718094)),
+                      style: TextStyle(color: AppColors.textSecondary),
                     ),
                     const SizedBox(height: 24),
                     ActionButton(
@@ -1194,13 +1188,13 @@ class _JoinSalonState extends State<JoinSalon> {
                       const Icon(
                         Icons.group_add_outlined,
                         size: 48,
-                        color: Color(0xFF34441D),
+                        color: AppColors.homeInk,
                       ),
                       const SizedBox(height: 20),
                       const Text(
                         'Enter your salon’s code or scan its QR.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Color(0xFF718094)),
+                        style: TextStyle(color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 28),
                       SizedBox(
@@ -1226,7 +1220,7 @@ class _JoinSalonState extends State<JoinSalon> {
                               padding: EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
                                 'or',
-                                style: TextStyle(color: Color(0xFF718094)),
+                                style: TextStyle(color: AppColors.textSecondary),
                               ),
                             ),
                             Expanded(child: Divider()),
@@ -1240,14 +1234,14 @@ class _JoinSalonState extends State<JoinSalon> {
                           labelText: 'Salon joining code',
                           hintText: 'Paste salon code',
                           filled: true,
-                          fillColor: const Color(0xFFF7F8FA),
+                          fillColor: AppColors.homeCanvas,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(
-                              color: Color(0xFFE1E5EA),
+                              color: AppColors.border,
                             ),
                           ),
                           suffixIcon: IconButton(

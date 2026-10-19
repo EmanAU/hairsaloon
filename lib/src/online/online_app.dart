@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import '../core/services/toast_service.dart';
 import 'domain/qr_destination.dart';
 import '../app.dart';
 import '../theme/app_theme.dart';
@@ -156,7 +157,9 @@ class _OnlineAppState extends State<OnlineApp> {
   void _openOffline(BuildContext context) {
     Navigator.push<void>(
       context,
-      MaterialPageRoute(builder: (_) => const BusinessCombApp()),
+      MaterialPageRoute(
+        builder: (_) => const BusinessCombApp(hosted: true),
+      ),
     );
   }
 
@@ -173,6 +176,7 @@ class _OnlineAppState extends State<OnlineApp> {
     // Reset all private routes when the signed-in account changes.
     key: ValueKey(widget.repository?.userId),
     navigatorKey: _navigator,
+    scaffoldMessengerKey: ToastService.messengerKey,
     title: widget.audience == AppAudience.business
         ? 'TrimMatrix Business'
         : 'TrimMatrix Customer',
@@ -215,12 +219,7 @@ class _OnlineAppState extends State<OnlineApp> {
                 Padding(
                   padding: const EdgeInsets.only(top: 16),
                   child: OutlinedButton.icon(
-                    onPressed: () => Navigator.push<void>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const BusinessCombApp(),
-                      ),
-                    ),
+                    onPressed: () => _openOffline(context),
                     icon: const Icon(Icons.offline_bolt_outlined),
                     label: const Text('Open offline business app'),
                   ),

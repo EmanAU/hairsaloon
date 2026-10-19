@@ -246,10 +246,11 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                     photoFuture: widget.session.repository.profilePhoto(),
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  FutureBuilder<List<PendingEmployeeInvite>>(
+                  _AsyncSection<List<PendingEmployeeInvite>>(
                     future: _invites,
-                    builder: (context, snapshot) {
-                      final invites = snapshot.data ?? const [];
+                    onRetry: _refresh,
+                    errorLabel: 'Could not load salon invites.',
+                    builder: (invites) {
                       if (invites.isEmpty) return const SizedBox.shrink();
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -313,10 +314,11 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                       );
                     },
                   ),
-                  FutureBuilder<List<ManagerBusiness>>(
+                  _AsyncSection<List<ManagerBusiness>>(
                     future: _managerSalons,
-                    builder: (context, snapshot) {
-                      final salons = snapshot.data ?? const [];
+                    onRetry: _refresh,
+                    errorLabel: 'Could not load manager access.',
+                    builder: (salons) {
                       if (salons.isEmpty) return const SizedBox.shrink();
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -550,6 +552,43 @@ class _EmployeeHomeState extends State<EmployeeHome> {
 }
 
 enum _WorkPeriod { daily, weekly, monthly }
+
+class _AsyncSection<T> extends StatelessWidget {
+  const _AsyncSection({
+    required this.future,
+    required this.onRetry,
+    required this.errorLabel,
+    required this.builder,
+  });
+  final Future<T> future;
+  final VoidCallback onRetry;
+  final String errorLabel;
+  final Widget Function(T data) builder;
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<T>(
+    future: future,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Padding(
+          padding: EdgeInsets.only(bottom: AppSpacing.md),
+          child: LinearProgressIndicator(minHeight: 2),
+        );
+      }
+      if (snapshot.hasError || !snapshot.hasData) {
+        return _BannerPanel(
+          title: 'Something went wrong',
+          subtitle: errorLabel,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(onPressed: onRetry, child: const Text('Retry')),
+          ),
+        );
+      }
+      return builder(snapshot.data as T);
+    },
+  );
+}
 
 class _BannerPanel extends StatelessWidget {
   const _BannerPanel({

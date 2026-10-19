@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../../features/employees/presentation/state/employees_store.dart';
 import '../data/business_workspace.dart';
@@ -102,10 +103,10 @@ class _StaffScreenState extends State<StaffScreen> {
 
   Widget _requestCard(SalonStaff employee) => Card(
     elevation: 0,
-    color: Colors.white,
+    color: AppColors.surface,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(8),
-      side: const BorderSide(color: Color(0xFFE3E7EC)),
+      side: const BorderSide(color: AppColors.homeBorder),
     ),
     margin: const EdgeInsets.only(top: 16),
     child: Padding(
@@ -120,7 +121,7 @@ class _StaffScreenState extends State<StaffScreen> {
           const SizedBox(height: 6),
           const Text(
             'Wants to join your salon',
-            style: TextStyle(color: Color(0xFF718094)),
+            style: TextStyle(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 14),
           Row(
@@ -130,8 +131,8 @@ class _StaffScreenState extends State<StaffScreen> {
                   label: 'Decline',
                   icon: Icons.close,
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFF3F5F7),
-                    foregroundColor: Colors.black,
+                    backgroundColor: AppColors.background,
+                    foregroundColor: AppColors.textPrimary,
                     shape: _shape,
                   ),
                   onPressed: () => _review(employee, false),
@@ -225,7 +226,7 @@ class _StaffScreenState extends State<StaffScreen> {
   Widget _employee(SalonStaff employee) => ListTile(
     contentPadding: const EdgeInsets.symmetric(vertical: 8),
     leading: CircleAvatar(
-      backgroundColor: const Color(0xFFF0F5DE),
+      backgroundColor: AppColors.homeSage,
       child: Icon(
         employee.isManager ? Icons.admin_panel_settings_outlined : Icons.person_outline,
       ),
@@ -355,7 +356,7 @@ class _StaffScreenState extends State<StaffScreen> {
                   const Text(
                     'If they are not on TrimMatrix yet, add CNIC, phone and email. '
                     'They will see a join offer after installing the business app and completing their profile.',
-                    style: TextStyle(color: Color(0xFF718094), fontSize: 13),
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -364,7 +365,7 @@ class _StaffScreenState extends State<StaffScreen> {
                     decoration: InputDecoration(
                       labelText: 'Full name (optional)',
                       filled: true,
-                      fillColor: const Color(0xFFF7F8FA),
+                      fillColor: AppColors.homeCanvas,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -379,7 +380,7 @@ class _StaffScreenState extends State<StaffScreen> {
                       labelText: 'CNIC (13 digits)',
                       counterText: '',
                       filled: true,
-                      fillColor: const Color(0xFFF7F8FA),
+                      fillColor: AppColors.homeCanvas,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -393,7 +394,7 @@ class _StaffScreenState extends State<StaffScreen> {
                       labelText: 'Mobile number',
                       hintText: '03127712502',
                       filled: true,
-                      fillColor: const Color(0xFFF7F8FA),
+                      fillColor: AppColors.homeCanvas,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -406,7 +407,7 @@ class _StaffScreenState extends State<StaffScreen> {
                     decoration: InputDecoration(
                       labelText: 'Email',
                       filled: true,
-                      fillColor: const Color(0xFFF7F8FA),
+                      fillColor: AppColors.homeCanvas,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -469,7 +470,7 @@ class _StaffScreenState extends State<StaffScreen> {
                     decoration: InputDecoration(
                       labelText: 'Or paste existing profile code',
                       filled: true,
-                      fillColor: const Color(0xFFF7F8FA),
+                      fillColor: AppColors.homeCanvas,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),

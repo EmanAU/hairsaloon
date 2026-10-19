@@ -72,10 +72,15 @@ class BusinessCombApp extends StatefulWidget {
     this.workspace,
     this.dashboardExtras,
     this.onCloseWorkspace,
+    this.hosted = false,
   });
   final BusinessWorkspace? workspace;
   final WidgetBuilder? dashboardExtras;
   final VoidCallback? onCloseWorkspace;
+
+  /// When true, this app is nested under [OnlineApp] and must not claim
+  /// [ToastService] global keys (the host owns the messenger).
+  final bool hosted;
 
   @override
   State<BusinessCombApp> createState() => _BusinessCombAppState();
@@ -191,8 +196,12 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                   },
                   title: 'TrimMatrix',
                   debugShowCheckedModeBanner: false,
-                  navigatorKey: ToastService.navigatorKey,
-                  scaffoldMessengerKey: ToastService.messengerKey,
+                  navigatorKey: widget.hosted || widget.workspace != null
+                      ? null
+                      : ToastService.navigatorKey,
+                  scaffoldMessengerKey: widget.hosted || widget.workspace != null
+                      ? null
+                      : ToastService.messengerKey,
                   theme: AppTheme.light(),
                   initialRoute: AppRoutes.splash,
                   routes:

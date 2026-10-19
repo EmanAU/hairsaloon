@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
 import 'package:flutter/services.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
@@ -48,7 +49,7 @@ class _BusinessApprovalState extends State<BusinessApproval> {
       const Icon(
         Icons.hourglass_top_rounded,
         size: 56,
-        color: Color(0xFF718094),
+        color: AppColors.textSecondary,
       ),
       const SizedBox(height: 24),
       const Text(
@@ -64,7 +65,7 @@ class _BusinessApprovalState extends State<BusinessApproval> {
       const Text(
         'Your business will open after admin approval.',
         textAlign: TextAlign.center,
-        style: TextStyle(color: Color(0xFF718094), height: 1.5),
+        style: TextStyle(color: AppColors.textSecondary, height: 1.5),
       ),
       const SizedBox(height: 28),
       FutureBuilder<String>(
@@ -75,13 +76,13 @@ class _BusinessApprovalState extends State<BusinessApproval> {
                     ? 'Business code could not load. Check approval to retry.'
                     : 'Loading business code…',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF718094)),
+                style: const TextStyle(color: AppColors.textSecondary),
               )
             : ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text(
                   'Business code',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF718094)),
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
                 subtitle: SelectableText(
                   snapshot.data!,
@@ -121,8 +122,8 @@ class _BusinessApprovalState extends State<BusinessApproval> {
         icon: Icons.edit_outlined,
         onPressed: widget.onEdit,
         style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFFF3F5F7),
-          foregroundColor: const Color(0xFF14202D),
+          backgroundColor: AppColors.background,
+          foregroundColor: AppColors.homeInk,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),

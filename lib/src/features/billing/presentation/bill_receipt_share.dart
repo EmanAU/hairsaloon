@@ -36,8 +36,14 @@ class BillReceiptShare {
     if (PkPhone.isValid(normalized)) {
       return normalized.substring(1);
     }
-    final digits = (raw ?? '').replaceAll(RegExp(r'\D'), '');
-    if (digits.length >= 10 && digits.length <= 15) return digits;
+    var digits = (raw ?? '').replaceAll(RegExp(r'\D'), '');
+    // Local PK mobile without country code → same jid as a saved +92 contact.
+    if (RegExp(r'^03\d{9}$').hasMatch(digits)) {
+      digits = '92${digits.substring(1)}';
+    } else if (RegExp(r'^3\d{9}$').hasMatch(digits)) {
+      digits = '92$digits';
+    }
+    if (digits.length >= 11 && digits.length <= 15) return digits;
     return null;
   }
 

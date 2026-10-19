@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
 import 'package:flutter/services.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../data/business_workspace.dart';
@@ -115,7 +116,7 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
                       ? 'Loading requests…'
                       : '$count pending\njoin requests.',
                   asset: 'employees',
-                  tint: const Color(0xFFF0FBDD),
+                  tint: AppColors.homeSage,
                   onTap: () => _open(
                     StaffScreen(
                       repository: repository,
@@ -131,7 +132,7 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
               title: 'Contracts',
               detail: 'Manage employee\nagreements.',
               asset: 'employees',
-              tint: const Color(0xFFE1FBEC),
+              tint: AppColors.homeSage,
               onTap: () => _open(
                 StaffScreen(
                   repository: repository,
@@ -145,7 +146,7 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
               title: 'Online services',
               detail: 'Photos, videos\nand service prices.',
               asset: 'rates',
-              tint: const Color(0xFFFFF4DB),
+              tint: AppColors.homeSand,
               onTap: () => _open(
                 OnlineRateList(repository: repository, businessId: business.id),
               ),
@@ -154,7 +155,7 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
               title: 'Business details',
               detail: 'Business profile,\njoining code and QR.',
               asset: 'shop',
-              tint: const Color(0xFFEAF0FF),
+              tint: AppColors.homeLavender,
               onTap: () async {
                 await _open(
                   OwnerBusiness(
@@ -191,7 +192,7 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
                   for (final employee in pending)
                     Card(
                       elevation: 0,
-                      color: Colors.white,
+                      color: AppColors.surface,
                       margin: const EdgeInsets.only(top: 12),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
@@ -213,8 +214,8 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
                                     label: 'Decline',
                                     icon: Icons.close,
                                     style: FilledButton.styleFrom(
-                                      backgroundColor: const Color(0xFFF3F5F7),
-                                      foregroundColor: Colors.black,
+                                      backgroundColor: AppColors.background,
+                                      foregroundColor: AppColors.textPrimary,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -252,7 +253,7 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
           decoration: InputDecoration(
             labelText: 'Employee profile code',
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppColors.surface,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
         ),

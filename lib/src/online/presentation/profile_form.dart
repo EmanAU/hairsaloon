@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/services/toast_service.dart';
@@ -26,8 +27,8 @@ class ProfileForm extends StatefulWidget {
 }
 
 class _ProfileFormState extends State<ProfileForm> {
-  static const _ink = Color(0xFF14202D);
-  static const _muted = Color(0xFF718094);
+  static const _ink = AppColors.homeInk;
+  static const _muted = AppColors.textSecondary;
   final _form = GlobalKey<FormState>();
   late final _name = TextEditingController(text: widget.name);
   late final _phone = TextEditingController(
@@ -138,14 +139,14 @@ class _ProfileFormState extends State<ProfileForm> {
         hintText: hint,
         prefixIcon: Icon(icon, size: 21, color: _muted),
         filled: true,
-        fillColor: const Color(0xFFF7F8FA),
+        fillColor: AppColors.homeCanvas,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFE1E5EA)),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFE1E5EA)),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
@@ -196,7 +197,7 @@ class _ProfileFormState extends State<ProfileForm> {
               : null;
           return CircleAvatar(
             radius: 38,
-            backgroundColor: const Color(0xFFF0F5DE),
+            backgroundColor: AppColors.homeSage,
             foregroundImage: image,
             onForegroundImageError: image == null ? null : (_, stack) {},
             child: const Icon(Icons.person_outline, color: _ink, size: 32),
@@ -338,13 +339,10 @@ class _ProfileFormState extends State<ProfileForm> {
   Widget build(BuildContext context) => PopScope(
     canPop: !_saving,
     child: Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: const Text(
-          'Personal profile',
-          style: TextStyle(fontFamily: 'Roboto'),
-        ),
+        backgroundColor: AppColors.surface,
+        title: const Text('Personal profile'),
         actions: [
           if (widget.onboarding)
             IconButton(

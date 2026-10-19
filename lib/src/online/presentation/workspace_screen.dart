@@ -106,6 +106,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       if (_showSync) return _syncPage(workspace);
       return BusinessCombApp(
         workspace: workspace,
+        hosted: true,
         onCloseWorkspace:
             widget.onClose ?? () => Navigator.of(context).maybePop(),
         dashboardExtras: (_) => OnlineDashboardTools(
