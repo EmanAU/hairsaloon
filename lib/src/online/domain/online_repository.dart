@@ -131,5 +131,6 @@ abstract interface class OnlineRepository {
     required String serviceId,
     required List<dynamic> contentJson,
     required String description,
+    String? name,
   });
 }

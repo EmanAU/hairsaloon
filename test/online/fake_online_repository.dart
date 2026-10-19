@@ -416,27 +416,19 @@ class FakeOnlineRepository implements OnlineRepository {
     required String serviceId,
     required List<dynamic> contentJson,
     required String description,
+    String? name,
   }) {
+    final existing = serviceRows.where((s) => s.id == serviceId).firstOrNull;
     return saveService(
       businessId: 'biz',
       id: serviceId,
-      name: serviceRows
-              .where((s) => s.id == serviceId)
-              .map((s) => s.name)
-              .firstOrNull ??
-          'Service',
-      category: serviceRows
-              .where((s) => s.id == serviceId)
-              .map((s) => s.category)
-              .firstOrNull ??
-          '',
+      name: (name != null && name.trim().isNotEmpty)
+          ? name.trim()
+          : (existing?.name ?? 'Service'),
+      category: existing?.category ?? '',
       description: description,
-      price: serviceRows
-              .where((s) => s.id == serviceId)
-              .map((s) => s.price)
-              .firstOrNull ??
-          0,
-      isActive: true,
+      price: existing?.price ?? 0,
+      isActive: existing?.isActive ?? true,
       contentJson: contentJson,
     );
   }

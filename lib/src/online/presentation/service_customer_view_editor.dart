@@ -30,6 +30,7 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
   QuillController? _controller;
   final _editorScroll = ScrollController();
   final _focus = FocusNode();
+  late final TextEditingController _titleCtrl;
   bool _saving = false;
   bool _showPhotos = false;
   bool _loading = true;
@@ -40,6 +41,7 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
   void initState() {
     super.initState();
     _service = widget.service;
+    _titleCtrl = TextEditingController(text: widget.service.name);
     _resumeFromSupabase();
   }
 
@@ -52,6 +54,7 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
       final fresh = await widget.repository.serviceById(widget.service.id);
       if (!mounted) return;
       _service = fresh ?? widget.service;
+      _titleCtrl.text = _service.name;
       _controller?.dispose();
       _controller = QuillController(
         document: _documentFromJson(_service.contentJson),
@@ -110,6 +113,7 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
   @override
   void dispose() {
     _controller?.dispose();
+    _titleCtrl.dispose();
     _editorScroll.dispose();
     _focus.dispose();
     super.dispose();
@@ -125,6 +129,11 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
   Future<void> _save() async {
     final controller = _controller;
     if (_saving || controller == null) return;
+    final title = _titleCtrl.text.trim();
+    if (title.isEmpty) {
+      ToastService.error('Enter a service title.', context);
+      return;
+    }
     setState(() => _saving = true);
     try {
       final delta = controller.document.toDelta().toJson();
@@ -132,6 +141,7 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
         serviceId: _service.id,
         contentJson: delta,
         description: _plainExcerpt(),
+        name: title,
       );
       if (!mounted) return;
       _service = saved;
@@ -209,12 +219,29 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
       backgroundColor: AppColors.surface,
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        title: Text(_service.name),
+        backgroundColor: AppColors.primary,
+        surfaceTintColor: const Color(0x00000000),
+        elevation: 0,
+        foregroundColor: AppColors.onPrimary,
+        iconTheme: const IconThemeData(color: AppColors.onPrimary),
+        title: const Text(
+          'Edit customer view',
+          style: TextStyle(
+            color: AppColors.onPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: _saving || _loading || controller == null ? null : _save,
-            child: Text(_saving ? 'Saving…' : 'Save'),
+            child: Text(
+              _saving ? 'Saving…' : 'Save',
+              style: const TextStyle(
+                color: AppColors.onPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -230,19 +257,57 @@ class _ServiceCustomerViewEditorState extends State<ServiceCustomerViewEditor> {
                       style: const TextStyle(color: AppColors.danger),
                     ),
                   ),
+                if (!_showPhotos)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          controller: _titleCtrl,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                            height: 1.25,
+                          ),
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            hintText: 'Service title',
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _service.category.trim().isEmpty
+                              ? 'Service'
+                              : _service.category,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Divider(height: 1, color: AppColors.border),
+                      ],
+                    ),
+                  ),
                 Expanded(
                   child: _showPhotos
                       ? ListView(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                           children: [
                             Text(
-                              'Before & after photos',
+                              'Before & after',
                               style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             const SizedBox(height: AppSpacing.sm),
                             Text(
-                              'These appear on the customer service page.',
+                              'Two sections: add a Before photo and an After photo.',
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(color: AppColors.textSecondary),
                             ),

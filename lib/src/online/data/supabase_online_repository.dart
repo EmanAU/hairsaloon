@@ -1307,7 +1307,26 @@ class SupabaseOnlineRepository implements OnlineRepository {
     required String serviceId,
     required List<dynamic> contentJson,
     required String description,
+    String? name,
   }) async {
+    final trimmedName = name?.trim();
+    try {
+      final row = await _client.rpc(
+        'update_service_content',
+        params: {
+          'service': serviceId,
+          'content': contentJson,
+          'plain_description': description,
+          'service_name': trimmedName,
+        },
+      );
+      if (row is Map) {
+        return SalonService.fromJson(Map<String, dynamic>.from(row));
+      }
+    } catch (_) {
+      // Older DBs may not have service_name yet.
+    }
+
     try {
       final row = await _client.rpc(
         'update_service_content',
@@ -1318,15 +1337,41 @@ class SupabaseOnlineRepository implements OnlineRepository {
         },
       );
       if (row is Map) {
-        return SalonService.fromJson(Map<String, dynamic>.from(row));
+        final saved = SalonService.fromJson(Map<String, dynamic>.from(row));
+        if (trimmedName == null ||
+            trimmedName.isEmpty ||
+            saved.name == trimmedName) {
+          return saved;
+        }
+        final biz = await _client
+            .from('services')
+            .select('business_id')
+            .eq('id', serviceId)
+            .single();
+        return saveService(
+          businessId: biz['business_id'] as String,
+          id: serviceId,
+          name: trimmedName,
+          category: saved.category,
+          description: description,
+          price: saved.price,
+          isActive: saved.isActive,
+          contentJson: contentJson,
+        );
       }
-      // Fallback: direct update (needs content_json column grant).
+    } catch (_) {}
+
+    try {
+      final values = <String, dynamic>{
+        'content_json': contentJson,
+        'description': description,
+      };
+      if (trimmedName != null && trimmedName.isNotEmpty) {
+        values['name'] = trimmedName;
+      }
       final updated = await _client
           .from('services')
-          .update({
-            'content_json': contentJson,
-            'description': description,
-          })
+          .update(values)
           .eq('id', serviceId)
           .select()
           .single();

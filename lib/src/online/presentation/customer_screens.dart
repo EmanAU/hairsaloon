@@ -544,11 +544,24 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final category =
+        service.category.trim().isEmpty ? 'Service' : service.category;
     return Scaffold(
       backgroundColor: AppColors.homeCanvas,
       appBar: AppBar(
-        backgroundColor: AppColors.homeCanvas,
-        title: Text(service.name, style: text.titleLarge),
+        backgroundColor: AppColors.primary,
+        surfaceTintColor: const Color(0x00000000),
+        elevation: 0,
+        foregroundColor: AppColors.onPrimary,
+        iconTheme: const IconThemeData(color: AppColors.onPrimary),
+        title: Text(
+          service.name,
+          style: const TextStyle(
+            color: AppColors.onPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
       body: Align(
         alignment: Alignment.topCenter,
@@ -557,7 +570,7 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.lg,
-              AppSpacing.md,
+              AppSpacing.lg,
               AppSpacing.lg,
               AppSpacing.xl,
             ),
@@ -566,19 +579,46 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                 widget.business.name,
                 style: text.bodyMedium?.copyWith(
                   color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(service.name, style: text.headlineSmall),
-              const SizedBox(height: AppSpacing.xs),
+              const SizedBox(height: AppSpacing.sm),
               Text(
-                service.category.trim().isEmpty ? 'Service' : service.category,
-                style: text.labelLarge?.copyWith(color: AppColors.homeOlive),
+                service.name,
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  height: 1.2,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                category,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.homeOlive,
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
-              Text(
-                'Rs ${service.price.toStringAsFixed(0)}',
-                style: text.headlineMedium,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Rs ${service.price.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
               ServiceRichContent(
@@ -612,9 +652,23 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                   final rows = snapshot.data ?? const <Map<String, dynamic>>[];
                   final pair = _pair(rows);
                   if (pair.before != null && pair.after != null) {
-                    return BeforeAfterSlider(
-                      beforeUrl: pair.before!,
-                      afterUrl: pair.after!,
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Before & after',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        BeforeAfterSlider(
+                          beforeUrl: pair.before!,
+                          afterUrl: pair.after!,
+                        ),
+                      ],
                     );
                   }
                   if (rows.isEmpty) {
