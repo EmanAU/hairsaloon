@@ -17,8 +17,11 @@ import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key, this.extraShortcuts});
+  const DashboardScreen({super.key, this.extraShortcuts, this.onOpenRateList});
   final Widget? extraShortcuts;
+
+  /// When set (hosted online), Rate List opens the customer catalogue.
+  final VoidCallback? onOpenRateList;
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
@@ -171,7 +174,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                               detail: 'View services\nand pricing.',
                               asset: 'rates',
                               tint: const Color(0xFFFFF4DB),
-                              onTap: () => open(AppRoutes.serviceList),
+                              onTap: () {
+                                final online = widget.onOpenRateList;
+                                if (online != null) {
+                                  online();
+                                } else {
+                                  open(AppRoutes.serviceList);
+                                }
+                              },
                             ),
                             DashboardShortcut(
                               title: 'Customers',

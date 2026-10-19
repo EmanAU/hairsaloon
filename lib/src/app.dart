@@ -73,14 +73,16 @@ class BusinessCombApp extends StatefulWidget {
     this.dashboardExtras,
     this.onCloseWorkspace,
     this.onLogOut,
-    this.onManageRateList,
+    this.onOpenOnlineRateList,
     this.hosted = false,
   });
   final BusinessWorkspace? workspace;
   final WidgetBuilder? dashboardExtras;
   final VoidCallback? onCloseWorkspace;
   final Future<void> Function()? onLogOut;
-  final VoidCallback? onManageRateList;
+
+  /// Hosted: home Rate List opens online customer catalogue.
+  final VoidCallback? onOpenOnlineRateList;
 
   /// When true, this app is nested under [OnlineApp] and must not claim
   /// [ToastService] global keys (the host owns the messenger).
@@ -216,7 +218,8 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                                 homeExtras: widget.dashboardExtras,
                                 onExit: widget.onCloseWorkspace,
                                 onLogOut: widget.onLogOut,
-                                onManageRateList: widget.onManageRateList,
+                                onOpenOnlineRateList:
+                                    widget.onOpenOnlineRateList,
                               )
                             : SplashScreen(
                                 hasBusinessProfile:
@@ -233,7 +236,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                           homeExtras: widget.dashboardExtras,
                           onExit: widget.onCloseWorkspace,
                           onLogOut: widget.onLogOut,
-                          onManageRateList: widget.onManageRateList,
+                          onOpenOnlineRateList: widget.onOpenOnlineRateList,
                         ),
                         AppRoutes.appointments: (_) =>
                             const AppointmentsScreen(),

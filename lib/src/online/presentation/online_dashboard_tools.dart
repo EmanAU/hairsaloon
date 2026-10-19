@@ -4,7 +4,6 @@ import '../../theme/app_colors.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../data/business_workspace.dart';
 import '../domain/online_models.dart';
-import 'business_home.dart';
 import 'invite_qr_screen.dart';
 import 'join_requests_screen.dart';
 import 'team_contracts_screen.dart';
@@ -16,11 +15,9 @@ class OnlineDashboardTools extends StatefulWidget {
     required this.workspace,
     required this.onSync,
     required this.onClose,
-    required this.onBusinessChanged,
   });
   final BusinessWorkspace workspace;
   final VoidCallback onSync, onClose;
-  final Future<void> Function() onBusinessChanged;
   @override
   State<OnlineDashboardTools> createState() => _OnlineDashboardToolsState();
 }
@@ -122,17 +119,34 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
                 );
               },
             ),
-            DashboardShortcut(
-              title: 'Contracts',
-              detail: 'Employee list and\nagreements.',
-              asset: 'employees',
-              tint: AppColors.homeSage,
-              onTap: () => _open(
-                TeamContractsScreen(
-                  repository: repository,
-                  businessId: business.id,
-                ),
-              ),
+            FutureBuilder<List<SalonStaff>>(
+              future: _team,
+              builder: (context, snapshot) {
+                final needsContract = snapshot.data
+                        ?.where(
+                          (e) =>
+                              e.joinStatus == 'accepted' && !e.isWorking,
+                        )
+                        .length ??
+                    0;
+                return DashboardShortcut(
+                  title: 'Contracts',
+                  badge: needsContract,
+                  detail: snapshot.hasError
+                      ? 'Employee list and\nagreements.'
+                      : needsContract == 0
+                      ? 'Employee list and\nagreements.'
+                      : '$needsContract without\nactive contract.',
+                  asset: 'employees',
+                  tint: AppColors.homeSage,
+                  onTap: () => _open(
+                    TeamContractsScreen(
+                      repository: repository,
+                      businessId: business.id,
+                    ),
+                  ),
+                );
+              },
             ),
             DashboardShortcut(
               title: 'QR codes',
@@ -145,22 +159,6 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
                   businessId: business.id,
                 ),
               ),
-            ),
-            DashboardShortcut(
-              title: 'Business details',
-              detail: 'Business profile\nand salon info.',
-              asset: 'shop',
-              tint: AppColors.homeLavender,
-              onTap: () async {
-                await _open(
-                  OwnerBusiness(
-                    repository: repository,
-                    businessId: business.id,
-                    managementOnly: true,
-                  ),
-                );
-                if (mounted) await widget.onBusinessChanged();
-              },
             ),
           ],
         ),

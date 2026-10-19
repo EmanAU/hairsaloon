@@ -111,7 +111,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         onCloseWorkspace:
             widget.onClose ?? () => Navigator.of(context).maybePop(),
         onLogOut: widget.repository.signOut,
-        onManageRateList: () {
+        onOpenOnlineRateList: () {
           Navigator.of(context).push<void>(
             MaterialPageRoute(
               builder: (_) => OnlineRateList(
@@ -124,7 +124,6 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         dashboardExtras: (_) => OnlineDashboardTools(
           workspace: workspace,
           onClose: widget.onClose ?? () => Navigator.of(context).maybePop(),
-          onBusinessChanged: _reload,
           onSync: () => setState(() {
             workspace.inPos = false;
             _showSync = true;

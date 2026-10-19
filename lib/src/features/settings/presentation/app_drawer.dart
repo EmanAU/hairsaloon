@@ -15,11 +15,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AppDrawer extends StatelessWidget {
-  const AppDrawer({super.key, this.onManageRateList});
-
-  /// When set (online workspace), opens the online rate list instead of
-  /// offline categories.
-  final VoidCallback? onManageRateList;
+  const AppDrawer({super.key});
 
   static final Uri _intelligementUri = Uri.parse(
     'http://www.intelligement.com/',
@@ -104,12 +100,7 @@ class AppDrawer extends StatelessWidget {
                     showDivider: false,
                     onTap: () {
                       Navigator.pop(context);
-                      final online = onManageRateList;
-                      if (online != null) {
-                        online();
-                      } else {
-                        Navigator.of(context).pushNamed(AppRoutes.categories);
-                      }
+                      Navigator.of(context).pushNamed(AppRoutes.categories);
                     },
                   ),
                   const SizedBox(height: 10),
@@ -147,9 +138,13 @@ class AppDrawer extends StatelessWidget {
                     title: 'Currency Change',
                     showDivider: true,
                     onTap: () async {
+                      final settings = context.read<SettingsStore>();
                       final navigator = Navigator.of(context);
                       navigator.pop();
-                      await _showCurrencyDialog(navigator.context);
+                      await _showCurrencyDialog(
+                        navigator.context,
+                        settings,
+                      );
                     },
                   ),
                   _Item(
@@ -158,9 +153,10 @@ class AppDrawer extends StatelessWidget {
                     showDivider: false,
                     trailing: const _TaxBadge(),
                     onTap: () async {
+                      final settings = context.read<SettingsStore>();
                       final navigator = Navigator.of(context);
                       navigator.pop();
-                      await _showTaxRateDialog(navigator.context);
+                      await _showTaxRateDialog(navigator.context, settings);
                     },
                   ),
                 ],
@@ -177,8 +173,10 @@ class AppDrawer extends StatelessWidget {
     );
   }
 
-  static Future<void> _showTaxRateDialog(BuildContext context) async {
-    final settingsStore = context.read<SettingsStore>();
+  static Future<void> _showTaxRateDialog(
+    BuildContext context,
+    SettingsStore settingsStore,
+  ) async {
     final current = settingsStore.taxRate.toStringAsFixed(0);
 
     final value = await showAppTextInputSheet(
@@ -201,11 +199,15 @@ class AppDrawer extends StatelessWidget {
     );
     if (value == null) return;
     await settingsStore.setTaxRate(double.parse(value));
-    ToastService.success('Tax rate saved');
+    if (context.mounted) {
+      ToastService.success('Tax rate saved', context);
+    }
   }
 
-  static Future<void> _showCurrencyDialog(BuildContext context) async {
-    final settingsStore = context.read<SettingsStore>();
+  static Future<void> _showCurrencyDialog(
+    BuildContext context,
+    SettingsStore settingsStore,
+  ) async {
     final current = settingsStore.currencyCode;
 
     final value = await showAppTextInputSheet(
@@ -222,7 +224,9 @@ class AppDrawer extends StatelessWidget {
     );
     if (value == null) return;
     await settingsStore.setCurrencyCode(value.toUpperCase());
-    ToastService.success('Currency updated');
+    if (context.mounted) {
+      ToastService.success('Currency updated', context);
+    }
   }
 
   static Future<void> _openIntelligementWebsite() async {

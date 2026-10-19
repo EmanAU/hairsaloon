@@ -16,12 +16,12 @@ class DashboardShell extends StatefulWidget {
     this.homeExtras,
     this.onExit,
     this.onLogOut,
-    this.onManageRateList,
+    this.onOpenOnlineRateList,
   });
   final WidgetBuilder? homeExtras;
   final VoidCallback? onExit;
   final Future<void> Function()? onLogOut;
-  final VoidCallback? onManageRateList;
+  final VoidCallback? onOpenOnlineRateList;
 
   @override
   State<DashboardShell> createState() => _DashboardShellState();
@@ -39,10 +39,16 @@ class _DashboardShellState extends State<DashboardShell> {
   @override
   Widget build(BuildContext context) {
     final body = switch (_currentIndex) {
-      0 => DashboardScreen(extraShortcuts: widget.homeExtras?.call(context)),
+      0 => DashboardScreen(
+        extraShortcuts: widget.homeExtras?.call(context),
+        onOpenRateList: widget.onOpenOnlineRateList,
+      ),
       1 => const BillingScreen(),
       2 => const ExpensesScreen(),
-      _ => DashboardScreen(extraShortcuts: widget.homeExtras?.call(context)),
+      _ => DashboardScreen(
+        extraShortcuts: widget.homeExtras?.call(context),
+        onOpenRateList: widget.onOpenOnlineRateList,
+      ),
     };
 
     final tablet = AdaptivePage.isTablet(context);
@@ -67,7 +73,7 @@ class _DashboardShellState extends State<DashboardShell> {
         child: Scaffold(
           backgroundColor: canvas,
           extendBody: !tablet,
-          drawer: AppDrawer(onManageRateList: widget.onManageRateList),
+          drawer: const AppDrawer(),
           body: tablet
               ? Row(
                   children: [
