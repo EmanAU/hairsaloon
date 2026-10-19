@@ -443,6 +443,7 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
         );
         // After save → show customer view; back from there returns here.
         if (saved != null && mounted) {
+          ToastService.success('Customer view saved', context);
           await Navigator.of(context).push<void>(
             MaterialPageRoute(
               builder: (_) => ServiceDetailPage(

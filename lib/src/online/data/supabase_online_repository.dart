@@ -1301,4 +1301,43 @@ class SupabaseOnlineRepository implements OnlineRepository {
       _throwWriteFailure(error, fallback: 'Could not save the service.');
     }
   }
+
+  @override
+  Future<SalonService> saveServiceContent({
+    required String serviceId,
+    required List<dynamic> contentJson,
+    required String description,
+  }) async {
+    try {
+      final row = await _client.rpc(
+        'update_service_content',
+        params: {
+          'service': serviceId,
+          'content': contentJson,
+          'plain_description': description,
+        },
+      );
+      if (row is Map) {
+        return SalonService.fromJson(Map<String, dynamic>.from(row));
+      }
+      // Fallback: direct update (needs content_json column grant).
+      final updated = await _client
+          .from('services')
+          .update({
+            'content_json': contentJson,
+            'description': description,
+          })
+          .eq('id', serviceId)
+          .select()
+          .single();
+      return SalonService.fromJson(updated);
+    } on OnlineFailure {
+      rethrow;
+    } catch (error) {
+      _throwWriteFailure(
+        error,
+        fallback: 'Could not save customer view. Try again.',
+      );
+    }
+  }
 }

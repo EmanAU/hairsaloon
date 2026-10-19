@@ -127,4 +127,9 @@ abstract interface class OnlineRepository {
     required bool isActive,
     List<dynamic>? contentJson,
   });
+  Future<SalonService> saveServiceContent({
+    required String serviceId,
+    required List<dynamic> contentJson,
+    required String description,
+  });
 }

@@ -96,6 +96,7 @@ class BusinessCombApp extends StatefulWidget {
 
 class _BusinessCombAppState extends State<BusinessCombApp> {
   late Future<_AppBootstrap> _bootstrapFuture;
+  final _hostedMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
   @override
   void initState() {
@@ -239,8 +240,9 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                   navigatorKey: widget.hosted || widget.workspace != null
                       ? null
                       : ToastService.navigatorKey,
+                  // Always attach a messenger so toasts work inside hosted POS.
                   scaffoldMessengerKey: widget.hosted || widget.workspace != null
-                      ? null
+                      ? _hostedMessengerKey
                       : ToastService.messengerKey,
                   theme: AppTheme.light(),
                   localizationsDelegates: const [

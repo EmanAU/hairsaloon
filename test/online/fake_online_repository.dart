@@ -410,4 +410,34 @@ class FakeOnlineRepository implements OnlineRepository {
     }
     return saved;
   }
+
+  @override
+  Future<SalonService> saveServiceContent({
+    required String serviceId,
+    required List<dynamic> contentJson,
+    required String description,
+  }) {
+    return saveService(
+      businessId: 'biz',
+      id: serviceId,
+      name: serviceRows
+              .where((s) => s.id == serviceId)
+              .map((s) => s.name)
+              .firstOrNull ??
+          'Service',
+      category: serviceRows
+              .where((s) => s.id == serviceId)
+              .map((s) => s.category)
+              .firstOrNull ??
+          '',
+      description: description,
+      price: serviceRows
+              .where((s) => s.id == serviceId)
+              .map((s) => s.price)
+              .firstOrNull ??
+          0,
+      isActive: true,
+      contentJson: contentJson,
+    );
+  }
 }
