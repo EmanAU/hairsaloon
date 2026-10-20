@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-/// Shared layout breakpoints for phone vs portrait tablet.
+/// Shared layout breakpoints for phone vs tablet (landscape on device).
 class AppBreakpoints {
   AppBreakpoints._();
 

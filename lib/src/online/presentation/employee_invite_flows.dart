@@ -11,6 +11,7 @@ import '../data/business_workspace.dart';
 import '../domain/online_models.dart';
 import '../domain/qr_destination.dart';
 import 'qr_screen.dart';
+import 'contracts_screen.dart';
 import 'widgets/online_widgets.dart';
 
 Future<void> showEmployeeInviteOptions(BuildContext context) async {
@@ -97,12 +98,9 @@ Future<void> showEmployeeInviteOptions(BuildContext context) async {
           workspace.business.id,
           scanned.id,
         );
-        await workspace.syncOnlineTeam();
         if (context.mounted) {
-          try {
-            context.read<EmployeesStore>().refresh();
-          } catch (_) {}
           ToastService.success('Employee added to your salon', context);
+          await _afterInvite(context, workspace);
         }
       } catch (error) {
         if (context.mounted) {
@@ -197,12 +195,35 @@ class _InviteOptionTile extends StatelessWidget {
   }
 }
 
-Future<void> _afterInvite(BuildContext context, BusinessWorkspace workspace) async {
+Future<void> _afterInvite(
+  BuildContext context,
+  BusinessWorkspace workspace,
+) async {
   await workspace.syncOnlineTeam();
   if (!context.mounted) return;
   try {
     context.read<EmployeesStore>().refresh();
   } catch (_) {}
+  if (!context.mounted) return;
+
+  // Profile-code / QR adds join immediately — continue to contract → details.
+  final team = await workspace.repository.team(workspace.business.id);
+  if (!context.mounted) return;
+  SalonStaff? match;
+  for (final member in team) {
+    if (member.joinStatus == 'accepted' && !member.isWorking) {
+      match = member;
+      break;
+    }
+  }
+  if (match == null || !context.mounted) return;
+  await pushProposeContractFlow(
+    context,
+    repository: workspace.repository,
+    business: workspace.business,
+    employee: match,
+    account: workspace.account,
+  );
 }
 
 class _IdentityInvitePage extends StatefulWidget {
@@ -247,10 +268,9 @@ class _IdentityInvitePageState extends State<_IdentityInvitePage> {
       name: _name.text,
     );
     if (!mounted) return;
-    await _afterInvite(context, widget.workspace);
     if (!mounted) return;
     ToastService.success(
-      'Invite saved. They can join after completing their profile.',
+      'Invite sent. They will confirm before joining your salon.',
       context,
     );
     Navigator.pop(context);
@@ -271,102 +291,105 @@ class _IdentityInvitePageState extends State<_IdentityInvitePage> {
           ),
         ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.sm,
-                AppSpacing.lg,
-                AppSpacing.lg,
-              ),
-              children: [
-                const _FieldLabel('Details'),
-                const SizedBox(height: AppSpacing.sm),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: _name,
-                          textCapitalization: TextCapitalization.words,
-                          textInputAction: TextInputAction.next,
-                          decoration: appSheetInputDecoration(
-                            'Full name',
-                            hint: 'Optional',
+      body: OnlineShell.centered(
+        maxWidth: OnlineShell.formMaxWidth,
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                ),
+                children: [
+                  const _FieldLabel('Details'),
+                  const SizedBox(height: AppSpacing.sm),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+                      child: Column(
+                        children: [
+                          TextField(
+                            controller: _name,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            decoration: appSheetInputDecoration(
+                              'Full name',
+                              hint: 'Optional',
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _cnic,
-                          keyboardType: TextInputType.number,
-                          maxLength: 13,
-                          textInputAction: TextInputAction.next,
-                          decoration: appSheetInputDecoration(
-                            'CNIC',
-                            hint: '13 digits',
-                          ).copyWith(counterText: ''),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _phone,
-                          keyboardType: TextInputType.phone,
-                          maxLength: 11,
-                          textInputAction: TextInputAction.next,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(11),
-                          ],
-                          decoration: appSheetInputDecoration(
-                            'Mobile number',
-                            hint: '03124545452',
-                          ).copyWith(counterText: ''),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _email,
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.done,
-                          decoration: appSheetInputDecoration(
-                            'Email',
-                            hint: 'name@example.com',
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _cnic,
+                            keyboardType: TextInputType.number,
+                            maxLength: 13,
+                            textInputAction: TextInputAction.next,
+                            decoration: appSheetInputDecoration(
+                              'CNIC',
+                              hint: '13 digits',
+                            ).copyWith(counterText: ''),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _phone,
+                            keyboardType: TextInputType.phone,
+                            maxLength: 11,
+                            textInputAction: TextInputAction.next,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(11),
+                            ],
+                            decoration: appSheetInputDecoration(
+                              'Mobile number',
+                              hint: '03124545452',
+                            ).copyWith(counterText: ''),
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _email,
+                            keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.done,
+                            decoration: appSheetInputDecoration(
+                              'Email',
+                              hint: 'name@example.com',
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.sm,
-                AppSpacing.lg,
-                AppSpacing.md,
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: ActionButton(
-                  label: 'Send invite',
-                  showIcon: false,
-                  style: appPrimaryButtonStyle(),
-                  onPressed: _submit,
-                ),
+                ],
               ),
             ),
-          ),
-        ],
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ActionButton(
+                    label: 'Send invite',
+                    showIcon: false,
+                    style: appPrimaryButtonStyle(),
+                    onPressed: _submit,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -420,9 +443,10 @@ class _ProfileCodeInvitePageState extends State<_ProfileCodeInvitePage> {
       value,
     );
     if (!mounted) return;
-    await _afterInvite(context, widget.workspace);
     if (!mounted) return;
     ToastService.success('Employee added to your salon', context);
+    await _afterInvite(context, widget.workspace);
+    if (!mounted) return;
     Navigator.pop(context);
   }
 
@@ -440,68 +464,71 @@ class _ProfileCodeInvitePageState extends State<_ProfileCodeInvitePage> {
           style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.sm,
-                AppSpacing.lg,
-                AppSpacing.lg,
-              ),
-              children: [
-                Text(
-                  'Paste their TrimMatrix profile code to add them to this salon.',
-                  style: text.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                    height: 1.4,
-                  ),
+      body: OnlineShell.centered(
+        maxWidth: OnlineShell.formMaxWidth,
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
                 ),
-                const SizedBox(height: AppSpacing.lg),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: AppColors.border),
+                children: [
+                  Text(
+                    'Paste their TrimMatrix profile code to add them to this salon.',
+                    style: text.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
-                    child: TextField(
-                      controller: _code,
-                      autocorrect: false,
-                      textInputAction: TextInputAction.done,
-                      decoration: appSheetInputDecoration(
-                        'Profile code',
-                        hint: 'Paste code here',
+                  const SizedBox(height: AppSpacing.lg),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+                      child: TextField(
+                        controller: _code,
+                        autocorrect: false,
+                        textInputAction: TextInputAction.done,
+                        decoration: appSheetInputDecoration(
+                          'Profile code',
+                          hint: 'Paste code here',
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.sm,
-                AppSpacing.lg,
-                AppSpacing.md,
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: ActionButton(
-                  label: 'Add employee',
-                  icon: Icons.badge_outlined,
-                  style: appPrimaryButtonStyle(),
-                  onPressed: _submit,
-                ),
+                ],
               ),
             ),
-          ),
-        ],
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ActionButton(
+                    label: 'Add employee',
+                    icon: Icons.badge_outlined,
+                    style: appPrimaryButtonStyle(),
+                    onPressed: _submit,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

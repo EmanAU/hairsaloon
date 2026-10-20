@@ -210,7 +210,7 @@ class _ProfileFormState extends State<ProfileForm> {
 
   Widget _fields() => LayoutBuilder(
     builder: (context, constraints) {
-      final width = constraints.maxWidth >= 560
+      final width = constraints.maxWidth >= OnlineShell.twoColMinWidth
           ? (constraints.maxWidth - 16) / 2
           : constraints.maxWidth;
       final experience = PersonalProfile(
@@ -330,11 +330,9 @@ class _ProfileFormState extends State<ProfileForm> {
             ),
         ],
       ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: SingleChildScrollView(
+      body: OnlineShell.centered(
+        maxWidth: OnlineShell.formMaxWidth,
+        child: SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
               24,
               16,
@@ -390,8 +388,7 @@ class _ProfileFormState extends State<ProfileForm> {
           ),
         ),
       ),
-    ),
-  );
+    );
 
   Widget _identifier(String label, String value) => ListTile(
     contentPadding: EdgeInsets.zero,

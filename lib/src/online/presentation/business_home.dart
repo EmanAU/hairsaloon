@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter/services.dart';
 import '../../core/services/toast_service.dart';
@@ -180,14 +180,12 @@ class _BusinessHomeState extends State<BusinessHome> {
       _reviewing = null;
     });
     if (!accept) return;
-    await Navigator.push<bool>(
+    await pushProposeContractFlow(
       context,
-      MaterialPageRoute(
-        builder: (_) => ProposeContractPage(
-          repository: session.repository,
-          employee: employee,
-        ),
-      ),
+      repository: session.repository,
+      business: business,
+      employee: employee,
+      account: session.workspace?.account,
     );
   }
 
@@ -203,11 +201,26 @@ class _BusinessHomeState extends State<BusinessHome> {
       await session.repository.inviteEmployee(business.id, code);
       if (!mounted) return;
       _inviteCode.clear();
-      showMessage(
-        context,
-        'Employee added. Open Billing workspace to see them on bills.',
-      );
+      showMessage(context, 'Employee added.');
       setState(() => _team = session.repository.team(business.id));
+      final team = await session.repository.team(business.id);
+      if (!mounted) return;
+      SalonStaff? match;
+      for (final member in team) {
+        if (member.joinStatus == 'accepted' && !member.isWorking) {
+          match = member;
+          break;
+        }
+      }
+      if (match != null) {
+        await pushProposeContractFlow(
+          context,
+          repository: session.repository,
+          business: business,
+          employee: match,
+          account: session.workspace?.account,
+        );
+      }
     } catch (error) {
       if (!mounted) return;
       showMessage(
@@ -297,11 +310,9 @@ class _BusinessHomeState extends State<BusinessHome> {
           ),
         ],
       ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 960),
-          child: ListView(
+      body: OnlineShell.centered(
+        maxWidth: OnlineShell.pageMaxWidth,
+        child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
               if (workspace.isCached)
@@ -503,7 +514,6 @@ class _BusinessHomeState extends State<BusinessHome> {
             ],
           ),
         ),
-      ),
     );
   }
 }

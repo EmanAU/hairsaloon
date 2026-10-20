@@ -1,12 +1,12 @@
 ---
-description: Responsive Flutter layouts for mobile and portrait tablet
+description: Responsive Flutter layouts for phone portrait and tablet landscape
 globs: lib/**/*.dart
 alwaysApply: false
 ---
 
-# Responsive Layout — Mobile & Portrait Tablet
+# Responsive Layout — Phone Portrait & Tablet Landscape
 
-Target **phones (portrait)** and **tablets in portrait**. Landscape tablet is not a primary target unless asked.
+Target **phones (portrait)** and **tablets in landscape**. Device rotation is locked that way via `app_orientation.dart`. Do not redesign existing POS billing/dashboard layouts unless explicitly asked.
 
 ## Breakpoints
 
@@ -17,7 +17,7 @@ Use shared constants (e.g. `AppBreakpoints`), not magic numbers:
 | mobile | `< 600`      | Single column, full-bleed feel  |
 | tablet | `>= 600`     | Wider content, optional 2-col   |
 
-Prefer `LayoutBuilder` for local decisions; use `MediaQuery.sizeOf(context)` only when the whole screen width matters.
+Prefer `LayoutBuilder` for local decisions; use `MediaQuery.sizeOf(context)` only when the whole screen width matters. On tablets, prefer `shortestSide >= 600` for device class (orientation-independent).
 
 ## Mobile (default)
 
@@ -27,13 +27,13 @@ Prefer `LayoutBuilder` for local decisions; use `MediaQuery.sizeOf(context)` onl
 - Full-width primary buttons
 - Avoid horizontal scroll for core content
 
-## Portrait Tablet
+## Landscape Tablet
 
-- Cap content width with a centered max-width constraint when it improves readability
-- Prefer 2-column for lists+detail or form+preview when space helps
-- Larger tap targets remain; do not stretch tiny phone UI edge-to-edge awkwardly
-- Same navigation model as mobile unless a dedicated tablet pattern exists
-- Keep portrait orientation layouts stable (no landscape-only assumptions)
+- Use width: side rails, two-pane workspaces, or wider content planes
+- Forms may use 2-column field rows and a higher max-width than phone
+- Cap narrow reading content when it helps; do not stretch tiny phone UI awkwardly
+- Same design tokens; only structure/spacing density may change
+- Existing POS (billing two-pane, dashboard side rail) already follows this — leave alone unless asked
 
 ```dart
 // ✅ GOOD
@@ -42,7 +42,7 @@ LayoutBuilder(
     final isTablet = constraints.maxWidth >= AppBreakpoints.tablet;
     return Center(
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: isTablet ? 720 : double.infinity),
+        constraints: BoxConstraints(maxWidth: isTablet ? 960 : double.infinity),
         child: content,
       ),
     );
@@ -57,5 +57,5 @@ if (MediaQuery.of(context).size.width > 500) { ... }
 
 - One responsive decision point per screen (helper or `LayoutBuilder`), not scattered `if (width)` checks
 - Same design tokens on both sizes; only structure/spacing density may change
-- Test both mobile and portrait tablet when building or changing screens
+- Test both mobile portrait and tablet landscape when building or changing screens
 - Safe areas: respect notches / system bars with `SafeArea` where needed

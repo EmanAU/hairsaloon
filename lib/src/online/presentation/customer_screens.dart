@@ -92,7 +92,9 @@ class _CustomerDirectoryState extends State<CustomerDirectory> {
         child: Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
+            constraints: const BoxConstraints(
+              maxWidth: OnlineShell.pageMaxWidth,
+            ),
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
@@ -470,95 +472,65 @@ class _SalonDetailsState extends State<SalonDetails> {
     return {for (final key in keys) key: groups[key]!};
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final business = widget.business;
+  Widget _heroOverlay(BuildContext context, SalonBusiness business) {
     final text = Theme.of(context).textTheme;
-    return Scaffold(
-      backgroundColor: AppColors.homeCanvas,
-      body: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 220,
-            pinned: true,
-            backgroundColor: AppColors.homeCanvas,
-            foregroundColor: AppColors.homeInk,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  BusinessPhoto(
-                    repository: widget.repository,
-                    business: business,
-                    width: double.infinity,
-                    height: 220,
-                    borderRadius: 0,
-                  ),
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0x33000000),
-                          Color(0x99000000),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: 20,
-                    right: 20,
-                    bottom: 20,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          business.name,
-                          style: text.headlineSmall?.copyWith(
-                            color: AppColors.surface,
-                            fontWeight: FontWeight.w900,
-                            height: 1.15,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          business.type.trim().isEmpty
-                              ? 'Salon'
-                              : business.type,
-                          style: text.titleSmall?.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        BusinessPhoto(
+          repository: widget.repository,
+          business: business,
+          width: double.infinity,
+          height: double.infinity,
+          borderRadius: 0,
+        ),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0x22000000), Color(0xB3000000)],
             ),
-            actions: [
-              IconButton(
-                tooltip: 'Refresh',
-                icon: const Icon(Icons.refresh_rounded),
-                onPressed: () => setState(() {
-                  _staff = widget.repository.staff(business.id);
-                  _services = widget.repository.services(business.id);
-                }),
+          ),
+        ),
+        Positioned(
+          left: 24,
+          right: 24,
+          bottom: 28,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                business.name,
+                style: text.headlineMedium?.copyWith(
+                  color: AppColors.surface,
+                  fontWeight: FontWeight.w900,
+                  height: 1.12,
+                  letterSpacing: -0.6,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                business.type.trim().isEmpty ? 'Salon' : business.type,
+                style: text.titleSmall?.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
-          SliverToBoxAdapter(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 720),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+        ),
+      ],
+    );
+  }
+
+  Widget _detailsColumn(BuildContext context, SalonBusiness business) {
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
                       _InfoBlock(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -742,19 +714,122 @@ class _SalonDetailsState extends State<SalonDetails> {
                           );
                         },
                       ),
-                      const SizedBox(height: 16),
-                      ReviewsPanel(
-                        repository: widget.repository,
-                        businessId: business.id,
-                        employeeId: widget.barberId,
+          const SizedBox(height: 28),
+          Text(
+            'Reviews',
+            style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 12),
+          ReviewsPanel(
+            repository: widget.repository,
+            businessId: business.id,
+            employeeId: widget.barberId,
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final business = widget.business;
+    return Scaffold(
+      backgroundColor: AppColors.homeCanvas,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 900;
+          if (wide) {
+            return Row(
+              children: [
+                Expanded(
+                  flex: 5,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _heroOverlay(context, business),
+                      Positioned(
+                        top: MediaQuery.paddingOf(context).top + 4,
+                        left: 8,
+                        child: IconButton(
+                          style: IconButton.styleFrom(
+                            backgroundColor: AppColors.surface.withValues(
+                              alpha: 0.9,
+                            ),
+                          ),
+                          onPressed: () => Navigator.maybePop(context),
+                          icon: const Icon(Icons.arrow_back_rounded),
+                        ),
+                      ),
+                      Positioned(
+                        top: MediaQuery.paddingOf(context).top + 4,
+                        right: 8,
+                        child: IconButton(
+                          style: IconButton.styleFrom(
+                            backgroundColor: AppColors.surface.withValues(
+                              alpha: 0.9,
+                            ),
+                          ),
+                          tooltip: 'Refresh',
+                          onPressed: () => setState(() {
+                            _staff = widget.repository.staff(business.id);
+                            _services =
+                                widget.repository.services(business.id);
+                          }),
+                          icon: const Icon(Icons.refresh_rounded),
+                        ),
                       ),
                     ],
                   ),
                 ),
+                Expanded(
+                  flex: 6,
+                  child: ColoredBox(
+                    color: AppColors.homeCanvas,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [_detailsColumn(context, business)],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+          return CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverAppBar(
+                expandedHeight: 240,
+                pinned: true,
+                backgroundColor: AppColors.homeCanvas,
+                foregroundColor: AppColors.homeInk,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: _heroOverlay(context, business),
+                ),
+                actions: [
+                  IconButton(
+                    tooltip: 'Refresh',
+                    icon: const Icon(Icons.refresh_rounded),
+                    onPressed: () => setState(() {
+                      _staff = widget.repository.staff(business.id);
+                      _services = widget.repository.services(business.id);
+                    }),
+                  ),
+                ],
               ),
-            ),
-          ),
-        ],
+              SliverToBoxAdapter(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: OnlineShell.pageMaxWidth,
+                    ),
+                    child: _detailsColumn(context, business),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -816,151 +891,180 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
           style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
         ),
       ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: [
-              Text(
-                widget.business.name.toUpperCase(),
-                style: text.labelMedium?.copyWith(
-                  color: AppColors.homeOlive,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.1,
-                ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 900;
+          final header = <Widget>[
+            Text(
+              widget.business.name.toUpperCase(),
+              style: text.labelMedium?.copyWith(
+                color: AppColors.homeOlive,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.1,
               ),
-              const SizedBox(height: 10),
-              Text(
-                service.name,
-                style: const TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.homeInk,
-                  height: 1.15,
-                  letterSpacing: -0.6,
-                ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              service.name,
+              style: TextStyle(
+                fontSize: wide ? 34 : 30,
+                fontWeight: FontWeight.w900,
+                color: AppColors.homeInk,
+                height: 1.12,
+                letterSpacing: -0.6,
               ),
-              const SizedBox(height: 8),
-              Text(
-                category,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary,
-                ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              category,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
               ),
-              const SizedBox(height: 18),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.primary.withValues(alpha: 0.75),
-                      AppColors.primary.withValues(alpha: 0.35),
-                    ],
+            ),
+            const SizedBox(height: 18),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 16,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    'From',
+                    style: text.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
+                  const Spacer(),
+                  Text(
+                    'Rs ${service.price.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ];
+          final about = <Widget>[
+            Text(
+              'About this service',
+              style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 10),
+            _InfoBlock(
+              child: ServiceRichContent(
+                contentJson: service.contentJson,
+                fallbackDescription: service.description,
+              ),
+            ),
+          ];
+          final media = FutureBuilder<List<Map<String, dynamic>>>(
+            future: _media,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (snapshot.hasError) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.md,
+                  ),
+                  child: Text(
+                    'Could not load photos.',
+                    style: text.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                );
+              }
+              final rows = snapshot.data ?? const <Map<String, dynamic>>[];
+              final pair = _pair(rows);
+              if (pair.before != null && pair.after != null) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'From',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                    Text(
+                      'Before & after',
+                      style: text.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 6),
                     Text(
-                      'Rs ${service.price.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
+                      'Slide to compare the real result.',
+                      style: text.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: BeforeAfterSlider(
+                        beforeUrl: pair.before!,
+                        afterUrl: pair.after!,
                       ),
                     ),
                   ],
-                ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          );
+
+          if (wide) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(28, 12, 28, 36),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: ListView(
+                      children: [...header, const SizedBox(height: 28), media],
+                    ),
+                  ),
+                  const SizedBox(width: 28),
+                  Expanded(
+                    child: ListView(children: about),
+                  ),
+                ],
               ),
-              const SizedBox(height: 22),
-              Text(
-                'About this service',
-                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            );
+          }
+
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: OnlineShell.formMaxWidth,
               ),
-              const SizedBox(height: 10),
-              _InfoBlock(
-                child: ServiceRichContent(
-                  contentJson: service.contentJson,
-                  fallbackDescription: service.description,
-                ),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  ...header,
+                  const SizedBox(height: 22),
+                  ...about,
+                  const SizedBox(height: 22),
+                  media,
+                ],
               ),
-              const SizedBox(height: 22),
-              FutureBuilder<List<Map<String, dynamic>>>(
-                future: _media,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-                  if (snapshot.hasError) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.md,
-                      ),
-                      child: Text(
-                        'Could not load photos.',
-                        style: text.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    );
-                  }
-                  final rows = snapshot.data ?? const <Map<String, dynamic>>[];
-                  final pair = _pair(rows);
-                  if (pair.before != null && pair.after != null) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Before & after',
-                          style: text.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Slide to compare the real result.',
-                          style: text.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: BeforeAfterSlider(
-                            beforeUrl: pair.before!,
-                            afterUrl: pair.after!,
-                          ),
-                        ),
-                      ],
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

@@ -47,6 +47,7 @@ abstract interface class OnlineRepository {
   });
   Future<List<PendingEmployeeInvite>> pendingInvitesForMe();
   Future<void> respondToEmployeeInvite(String inviteId, bool accept);
+  Future<List<OwnerEmployeeInvite>> ownerEmployeeInvites(String businessId);
   Future<void> setEmployeeManager({
     required String employeeId,
     required bool isManager,

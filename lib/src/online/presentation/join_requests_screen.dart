@@ -101,15 +101,26 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
     _refresh();
     setState(() => _reviewing = null);
     if (!accept) return;
-    await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ProposeContractPage(
-          repository: widget.repository,
-          employee: employee,
+    final business = widget.workspace?.business;
+    if (business != null) {
+      await pushProposeContractFlow(
+        context,
+        repository: widget.repository,
+        business: business,
+        employee: employee,
+        account: widget.workspace?.account,
+      );
+    } else {
+      await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProposeContractPage(
+            repository: widget.repository,
+            employee: employee,
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   Widget _tile(SalonStaff employee) {

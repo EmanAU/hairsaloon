@@ -7,10 +7,15 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:hairsaloon/src/online/domain/online_models.dart';
+import 'package:hairsaloon/src/online/presentation/business_approval.dart';
+import 'package:hairsaloon/src/online/presentation/business_form.dart';
 import 'package:hairsaloon/src/online/presentation/business_home.dart';
+import 'package:hairsaloon/src/online/presentation/contracts_screen.dart';
 import 'package:hairsaloon/src/online/presentation/customer_screens.dart';
 import 'package:hairsaloon/src/online/presentation/employee_home.dart';
+import 'package:hairsaloon/src/online/presentation/online_login_page.dart';
 import 'package:hairsaloon/src/online/presentation/online_session.dart';
+import 'package:hairsaloon/src/online/presentation/profile_form.dart';
 import 'package:hairsaloon/src/online/presentation/rate_list_screen.dart';
 import 'package:hairsaloon/src/online/presentation/staff_screen.dart';
 import 'package:hairsaloon/src/theme/app_theme.dart';
@@ -53,7 +58,7 @@ final _profile = PersonalProfile(
 void main() {
   for (final entry in <String, Size>{
     'mobile': const Size(390, 844),
-    'tablet': const Size(800, 1280),
+    'tablet': const Size(1280, 800),
   }.entries) {
     group('online screenshot audit · ${entry.key}', () {
       late GlobalKey boundaryKey;
@@ -120,19 +125,28 @@ void main() {
 
         await pumpFrame(
           tester,
+          OnlineLoginPage(
+            repository: repository,
+            audience: AppAudience.customer,
+          ),
+        );
+        await capture(tester, 'customer', '00_login');
+
+        await pumpFrame(
+          tester,
           CustomerDirectory(
             repository: repository,
             onSignOut: repository.signOut,
           ),
         );
-        expect(find.text('Find a salon'), findsOneWidget);
+        expect(find.text('Find your next look'), findsOneWidget);
         await capture(tester, 'customer', '01_directory');
 
         await pumpFrame(
           tester,
           SalonDetails(repository: repository, business: _salon),
         );
-        expect(find.text('Rate list'), findsOneWidget);
+        expect(find.text('Services'), findsOneWidget);
         await capture(tester, 'customer', '02_salon_details');
 
         await pumpFrame(
@@ -223,27 +237,37 @@ void main() {
         addTearDown(session.dispose);
         await session.reload();
 
+        // Clear pending invites so the working employee home is shown.
+        repository.pendingInviteRows = const [];
         await pumpFrame(
           tester,
           EmployeeHome(session: session, onSignOut: repository.signOut),
         );
-        expect(find.text('My work'), findsOneWidget);
+        expect(find.text('Daily work'), findsOneWidget);
         await capture(tester, 'business_employee', '01_employee_home');
 
+        repository.pendingInviteRows = [
+          const PendingEmployeeInvite(
+            id: 'inv1',
+            businessId: 'salon',
+            businessName: 'Cut & Co',
+            ownerName: 'Owner',
+            cnic: '1234512345671',
+            phone: '+923001234567',
+            email: 'owner@example.com',
+          ),
+        ];
+        repository.employeeDashboardData = const EmployeeDashboardData(
+          contracts: [],
+          joinRequests: [],
+          days: [],
+        );
         await pumpFrame(
           tester,
-          OwnerBusiness(
-            repository: repository,
-            businessId: 'salon',
-            managementOnly: true,
-          ),
+          EmployeeHome(session: session, onSignOut: repository.signOut),
         );
-        expect(find.text('Billing workspace'), findsOneWidget);
-        expect(
-          find.textContaining('Managers cannot open billing'),
-          findsOneWidget,
-        );
-        await capture(tester, 'business_employee', '02_manager_tools');
+        expect(find.textContaining('Yes, join'), findsOneWidget);
+        await capture(tester, 'business_employee', '02_pending_invite');
         await disposeFrame(tester);
       });
 
@@ -254,14 +278,58 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
 
         final repository = FakeOnlineRepository()..userId = 'owner';
+        addTearDown(repository.events.close);
+
+        await pumpFrame(
+          tester,
+          OnlineLoginPage(
+            repository: repository,
+            audience: AppAudience.business,
+          ),
+        );
+        await capture(tester, 'business_owner', '00_login');
+
+        await pumpFrame(
+          tester,
+          ProfileForm(
+            repository: repository,
+            onboarding: true,
+          ),
+        );
+        expect(find.text('Personal profile'), findsOneWidget);
+        await capture(tester, 'business_owner', '01_profile_onboarding');
+
+        repository.workspace = OnlineWorkspace(
+          account: const OnlineAccount(id: 'owner', name: 'Sara Owner'),
+          profile: _profile,
+          businesses: const [],
+        );
+        final emptySession = OnlineSession(repository);
+        addTearDown(emptySession.dispose);
+        await emptySession.reload();
+        await pumpFrame(
+          tester,
+          EmployeeHome(
+            session: emptySession,
+            onSignOut: repository.signOut,
+          ),
+        );
+        expect(find.text('Get started'), findsOneWidget);
+        await capture(tester, 'business_owner', '02_get_started');
+
+        await pumpFrame(
+          tester,
+          BusinessForm(repository: repository),
+        );
+        expect(find.text('Register business'), findsOneWidget);
+        await capture(tester, 'business_owner', '03_business_form');
+
         // Pending salon keeps BusinessHome on approval chrome (active opens POS).
         repository.workspace = OnlineWorkspace(
           account: const OnlineAccount(id: 'owner', name: 'Sara Owner'),
           profile: _profile,
           businesses: const [_pendingSalon],
         );
-        addTearDown(repository.events.close);
-
         final session = OnlineSession(repository);
         addTearDown(session.dispose);
         await session.reload();
@@ -275,7 +343,38 @@ void main() {
           ),
         );
         expect(find.text('Your workspace'), findsOneWidget);
-        await capture(tester, 'business_owner', '01_business_home');
+        await capture(tester, 'business_owner', '04_business_home');
+
+        await pumpFrame(
+          tester,
+          Scaffold(
+            body: BusinessApproval(
+              business: _pendingSalon,
+              repository: repository,
+              onRefresh: () {},
+              onEdit: () async {},
+            ),
+          ),
+        );
+        expect(find.text('Waiting for approval'), findsOneWidget);
+        await capture(tester, 'business_owner', '05_approval');
+
+        await pumpFrame(
+          tester,
+          ProposeContractPage(
+            repository: repository,
+            employee: const SalonStaff(
+              id: 'e1',
+              name: 'Ali Barber',
+              isWorking: false,
+              phone: '+923001111111',
+              cnic: '1234512345671',
+            ),
+            business: _salon,
+          ),
+        );
+        expect(find.text('Propose contract'), findsOneWidget);
+        await capture(tester, 'business_owner', '06_propose_contract');
         await disposeFrame(tester);
 
         repository.workspace = OnlineWorkspace(
@@ -289,7 +388,7 @@ void main() {
           tester,
           StaffScreen(repository: repository, businessId: _salon.id),
         );
-        await capture(tester, 'business_owner', '02_staff');
+        await capture(tester, 'business_owner', '07_staff');
         await disposeFrame(tester);
 
         await pumpFrame(
@@ -297,7 +396,7 @@ void main() {
           OnlineRateList(repository: repository, businessId: _salon.id),
         );
         expect(find.text('Haircut'), findsOneWidget);
-        await capture(tester, 'business_owner', '03_rate_list');
+        await capture(tester, 'business_owner', '08_rate_list');
         await disposeFrame(tester);
 
         await pumpFrame(
@@ -308,8 +407,8 @@ void main() {
             managementOnly: true,
           ),
         );
-        expect(find.text('Employees & contracts'), findsOneWidget);
-        await capture(tester, 'business_owner', '04_owner_management');
+        expect(find.text('Business details'), findsOneWidget);
+        await capture(tester, 'business_owner', '09_owner_management');
         await disposeFrame(tester);
       });
     });

@@ -6,6 +6,31 @@ import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import '../../domain/online_models.dart';
 
+/// Content width for online shells: phone full-bleed, tablet landscape readable.
+abstract final class OnlineShell {
+  static const double formMaxWidth = 960;
+  static const double pageMaxWidth = 1040;
+  static const double twoColMinWidth = 560;
+
+  static BoxConstraints contentConstraints(double availableWidth) {
+    final tablet = AppBreakpoints.isTabletWidth(availableWidth);
+    return BoxConstraints(
+      maxWidth: tablet ? pageMaxWidth : formMaxWidth.clamp(0, availableWidth),
+    );
+  }
+
+  static Widget centered({
+    required Widget child,
+    double maxWidth = formMaxWidth,
+  }) => Align(
+    alignment: Alignment.topCenter,
+    child: ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: child,
+    ),
+  );
+}
+
 class OnlinePage extends StatelessWidget {
   const OnlinePage({
     super.key,
@@ -30,7 +55,7 @@ class OnlinePage extends StatelessWidget {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final maxWidth = AppBreakpoints.isTabletWidth(constraints.maxWidth)
-              ? 720.0
+              ? OnlineShell.pageMaxWidth
               : 640.0;
           return Align(
             alignment: Alignment.topCenter,

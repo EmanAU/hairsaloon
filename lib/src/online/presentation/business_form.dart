@@ -251,11 +251,9 @@ class _BusinessFormState extends State<BusinessForm> {
           widget.business == null ? 'Register business' : 'Edit business',
         ),
       ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: SingleChildScrollView(
+      body: OnlineShell.centered(
+        maxWidth: OnlineShell.formMaxWidth,
+        child: SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
               24,
               16,
@@ -273,7 +271,7 @@ class _BusinessFormState extends State<BusinessForm> {
                     const SizedBox(height: 24),
                     LayoutBuilder(
                       builder: (context, size) {
-                        final width = size.maxWidth >= 560
+                        final width = size.maxWidth >= OnlineShell.twoColMinWidth
                             ? (size.maxWidth - 16) / 2
                             : size.maxWidth;
                         return Wrap(
@@ -402,6 +400,5 @@ class _BusinessFormState extends State<BusinessForm> {
           ),
         ),
       ),
-    ),
-  );
+    );
 }

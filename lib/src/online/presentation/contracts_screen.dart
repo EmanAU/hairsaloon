@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/toast_service.dart';
 import '../../core/widgets/app_sheet.dart';
+import '../../features/employees/data/repositories/hive_employees_repository.dart';
 import '../../features/employees/domain/entities/employee_item.dart';
 import '../../features/employees/presentation/employee_details_screen.dart';
 import '../../features/employees/presentation/state/employees_store.dart';
@@ -306,16 +307,86 @@ class _ReleaseReasonState extends State<_ReleaseReason> {
   );
 }
 
+/// Opens contract → required employee details, ensuring [EmployeesStore] exists.
+Future<bool?> pushProposeContractFlow(
+  BuildContext context, {
+  required OnlineRepository repository,
+  required SalonBusiness business,
+  required SalonStaff employee,
+  OnlineAccount? account,
+}) async {
+  BusinessWorkspace? ownedWorkspace;
+  try {
+    EmployeesStore? existing;
+    try {
+      existing = context.read<EmployeesStore>();
+    } catch (_) {}
+    if (existing != null) {
+      return Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProposeContractPage(
+            repository: repository,
+            employee: employee,
+            business: business,
+          ),
+        ),
+      );
+    }
+
+    final workspaceAccount =
+        account ?? (await repository.loadWorkspace()).account;
+    final workspace = await BusinessWorkspace.open(
+      repository,
+      business,
+      workspaceAccount,
+    );
+    ownedWorkspace = workspace;
+    await workspace.syncOnlineTeam();
+    if (!context.mounted) {
+      workspace.dispose();
+      return null;
+    }
+    final store = EmployeesStore(
+      repository: HiveEmployeesRepository(
+        box: workspace.maps['employees'],
+        metaBox: workspace.settings,
+      ),
+    );
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider<BusinessWorkspace?>.value(value: workspace),
+            ChangeNotifierProvider<EmployeesStore>.value(value: store),
+          ],
+          child: ProposeContractPage(
+            repository: repository,
+            employee: employee,
+            business: business,
+          ),
+        ),
+      ),
+    );
+    return result;
+  } finally {
+    ownedWorkspace?.dispose();
+  }
+}
+
 /// Owner form to set employment terms for an accepted team member.
 class ProposeContractPage extends StatefulWidget {
   const ProposeContractPage({
     super.key,
     required this.repository,
     required this.employee,
+    this.business,
   });
 
   final OnlineRepository repository;
   final SalonStaff employee;
+  final SalonBusiness? business;
 
   @override
   State<ProposeContractPage> createState() => _ProposeContractPageState();
@@ -480,8 +551,8 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
       id: staff.id,
       firstName: first,
       lastName: last,
-      phoneNumber: '',
-      cnicNumber: '',
+      phoneNumber: staff.phone,
+      cnicNumber: staff.cnic,
       homeAddress: '',
       isActive: true,
       employeeType: 'General',
@@ -494,6 +565,7 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
   Future<void> _openCompleteProfile() async {
     BusinessWorkspace? workspace;
     EmployeesStore? store;
+    BusinessWorkspace? ownedWorkspace;
     try {
       workspace = context.read<BusinessWorkspace?>();
     } catch (_) {}
@@ -501,18 +573,52 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
       store = context.read<EmployeesStore>();
     } catch (_) {}
 
-    final item = _employeeItemFromLocal();
+    var item = _employeeItemFromLocal();
 
     try {
       await workspace?.syncOnlineTeam();
     } catch (_) {}
+
+    if (store == null && widget.business != null) {
+      try {
+        final account = (await widget.repository.loadWorkspace()).account;
+        ownedWorkspace = await BusinessWorkspace.open(
+          widget.repository,
+          widget.business!,
+          account,
+        );
+        workspace = ownedWorkspace;
+        await ownedWorkspace.syncOnlineTeam();
+        store = EmployeesStore(
+          repository: HiveEmployeesRepository(
+            box: ownedWorkspace.maps['employees'],
+            metaBox: ownedWorkspace.settings,
+          ),
+        );
+      } catch (_) {
+        ownedWorkspace?.dispose();
+        ownedWorkspace = null;
+      }
+    }
 
     if (store != null) {
       final known = store.byId(item.id);
       if (known == null) {
         await store.add(item);
       } else {
-        await store.update(item);
+        final merged = known.copyWith(
+          phoneNumber: known.phoneNumber.trim().isEmpty
+              ? item.phoneNumber
+              : known.phoneNumber,
+          cnicNumber: known.cnicNumber.trim().isEmpty
+              ? item.cnicNumber
+              : known.cnicNumber,
+          basicSalary: item.basicSalary,
+          commission: item.commission,
+          agreementDescription: item.agreementDescription,
+        );
+        await store.update(merged);
+        item = merged;
       }
       store.refresh();
     } else if (workspace != null) {
@@ -538,7 +644,10 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
       }
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      ownedWorkspace?.dispose();
+      return;
+    }
 
     if (store == null) {
       ToastService.info(
@@ -546,18 +655,24 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
         context,
       );
       Navigator.pop(context, true);
+      ownedWorkspace?.dispose();
       return;
     }
 
     final fresh = store.byId(item.id) ?? item;
+    final detailsStore = store;
     await Navigator.of(context).pushReplacement(
       MaterialPageRoute<EmployeeItem>(
-        builder: (_) => EmployeeDetailsScreen(
-          item: fresh,
-          requireCompletion: true,
+        builder: (_) => ChangeNotifierProvider<EmployeesStore>.value(
+          value: detailsStore,
+          child: EmployeeDetailsScreen(
+            item: fresh,
+            requireCompletion: true,
+          ),
         ),
       ),
     );
+    ownedWorkspace?.dispose();
   }
 
   @override
@@ -574,79 +689,81 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
           style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.sm,
-                AppSpacing.lg,
-                AppSpacing.lg,
-              ),
-              children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.homeSage,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(14),
+      body: OnlineShell.centered(
+        maxWidth: OnlineShell.formMaxWidth,
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                ),
+                children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppColors.homeSage,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Icon(
+                              Icons.description_outlined,
+                              color: AppColors.homeOlive,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.description_outlined,
-                            color: AppColors.homeOlive,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.employee.name,
-                                style: text.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.homeInk,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.employee.name,
+                                  style: text.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.homeInk,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Set employment terms. They take effect immediately.',
-                                style: text.bodyMedium?.copyWith(
-                                  color: AppColors.homeOlive,
-                                  height: 1.4,
-                                  fontSize: 13,
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Set employment terms. They take effect immediately.',
+                                  style: text.bodyMedium?.copyWith(
+                                    color: AppColors.homeOlive,
+                                    height: 1.4,
+                                    fontSize: 13,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                const Text(
-                  'Terms',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                    letterSpacing: 0.2,
+                  const SizedBox(height: AppSpacing.lg),
+                  const Text(
+                    'Terms',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      letterSpacing: 0.2,
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                DecoratedBox(
+                  const SizedBox(height: AppSpacing.sm),
+                  DecoratedBox(
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(18),
@@ -762,6 +879,7 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

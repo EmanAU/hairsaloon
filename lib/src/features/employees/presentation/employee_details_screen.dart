@@ -479,6 +479,21 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
       return;
     }
 
+    final cnicDigits = cnic.replaceAll(RegExp(r'[^0-9]'), '');
+    for (final other in store.all) {
+      if (other.id == widget.item.id) continue;
+      final otherCnic = other.cnicNumber.replaceAll(RegExp(r'[^0-9]'), '');
+      if (otherCnic.isNotEmpty && otherCnic == cnicDigits) {
+        ToastService.error('Another employee already uses this CNIC.');
+        return;
+      }
+      final otherPhone = PkPhone.normalize(other.phoneNumber);
+      if (otherPhone.isNotEmpty && otherPhone == phone) {
+        ToastService.error('Another employee already uses this phone number.');
+        return;
+      }
+    }
+
     var category = _specialistCategory?.trim();
     if (category == null || category.isEmpty) {
       ToastService.error('Select a specialist category');
