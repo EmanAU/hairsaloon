@@ -2,10 +2,13 @@ import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'app_breakpoints.dart';
 
-/// Business app: phones and tablets stay portrait (per responsive-layout rule).
+/// Phones stay portrait; tablets lock to landscape (matches POS + online shells).
 List<DeviceOrientation> businessOrientations(double shortestSide) =>
     shortestSide >= AppBreakpoints.tablet
-    ? const [DeviceOrientation.portraitUp]
+    ? const [
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]
     : const [DeviceOrientation.portraitUp];
 
 Future<void> configureAppOrientation({bool business = true}) {
@@ -14,9 +17,8 @@ Future<void> configureAppOrientation({bool business = true}) {
   final shortestSide = display == null
       ? 0.0
       : display.size.shortestSide / display.devicePixelRatio;
+  // Customer and business flavors share the same phone/tablet rotation rules.
   return SystemChrome.setPreferredOrientations(
-    business
-        ? businessOrientations(shortestSide)
-        : const [DeviceOrientation.portraitUp],
+    businessOrientations(shortestSide),
   );
 }

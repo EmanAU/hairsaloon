@@ -121,11 +121,9 @@ class _EmployeeHomeState extends State<EmployeeHome> {
       ),
       body: SafeArea(
         top: false,
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: RemoteContent(
+        child: OnlineShell.centered(
+          maxWidth: OnlineShell.pageMaxWidth,
+          child: RemoteContent(
               future: _data,
               onRetry: _refresh,
               builder: (data) {
@@ -445,7 +443,6 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                 },
               );
             },
-            ),
           ),
         ),
       ),

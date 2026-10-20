@@ -431,6 +431,28 @@ class SupabaseOnlineRepository implements OnlineRepository {
   }
 
   @override
+  Future<List<OwnerEmployeeInvite>> ownerEmployeeInvites(
+    String businessId,
+  ) async {
+    try {
+      final rows = await _client
+          .from('employee_invites')
+          .select('id,business_id,display_name,cnic,phone,email,status')
+          .eq('business_id', businessId)
+          .order('created_at', ascending: false);
+      return (rows as List)
+          .map(
+            (row) => OwnerEmployeeInvite.fromJson(
+              Map<String, dynamic>.from(row as Map),
+            ),
+          )
+          .toList();
+    } catch (error) {
+      _throwWriteFailure(error, fallback: 'Could not load invite status.');
+    }
+  }
+
+  @override
   Future<void> setEmployeeManager({
     required String employeeId,
     required bool isManager,

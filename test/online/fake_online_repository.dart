@@ -111,6 +111,12 @@ class FakeOnlineRepository implements OnlineRepository {
   }
 
   @override
+  Future<List<OwnerEmployeeInvite>> ownerEmployeeInvites(
+    String businessId,
+  ) async =>
+      const <OwnerEmployeeInvite>[];
+
+  @override
   Future<void> setEmployeeManager({
     required String employeeId,
     required bool isManager,

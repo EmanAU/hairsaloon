@@ -13,10 +13,12 @@ class TeamContractsScreen extends StatefulWidget {
     super.key,
     required this.repository,
     required this.businessId,
+    this.business,
   });
 
   final OnlineRepository repository;
   final String businessId;
+  final SalonBusiness? business;
 
   @override
   State<TeamContractsScreen> createState() => _TeamContractsScreenState();
@@ -48,15 +50,25 @@ class _TeamContractsScreenState extends State<TeamContractsScreen> {
   void _refresh() => setState(() => _staff = _load());
 
   Future<void> _openContracts(SalonStaff employee) async {
-    await Navigator.push<void>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ContractsScreen(
-          repository: widget.repository,
-          employee: employee,
+    final business = widget.business;
+    if (!employee.isWorking && business != null) {
+      await pushProposeContractFlow(
+        context,
+        repository: widget.repository,
+        business: business,
+        employee: employee,
+      );
+    } else {
+      await Navigator.push<void>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ContractsScreen(
+            repository: widget.repository,
+            employee: employee,
+          ),
         ),
-      ),
-    );
+      );
+    }
     if (mounted) _refresh();
   }
 

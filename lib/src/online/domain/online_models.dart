@@ -22,19 +22,56 @@ class SalonStaff {
     required this.isWorking,
     this.joinStatus = 'accepted',
     this.isManager = false,
+    this.phone = '',
+    this.cnic = '',
   });
   final String id;
   final String name;
   final bool isWorking;
   final String joinStatus;
   final bool isManager;
+  final String phone;
+  final String cnic;
   factory SalonStaff.fromJson(Map<String, dynamic> json) => SalonStaff(
     id: json['membership_id'] as String,
     name: json['display_name'] as String,
     isWorking: json['is_working'] as bool,
     joinStatus: json['join_status'] as String? ?? 'accepted',
     isManager: json['is_manager'] as bool? ?? false,
+    phone: json['phone'] as String? ?? '',
+    cnic: json['cnic'] as String? ?? '',
   );
+}
+
+/// Owner-visible invite row (pending / declined / accepted).
+class OwnerEmployeeInvite {
+  const OwnerEmployeeInvite({
+    required this.id,
+    required this.businessId,
+    required this.displayName,
+    required this.cnic,
+    required this.phone,
+    required this.email,
+    required this.status,
+  });
+  final String id;
+  final String businessId;
+  final String displayName;
+  final String cnic;
+  final String phone;
+  final String email;
+  final String status;
+
+  factory OwnerEmployeeInvite.fromJson(Map<String, dynamic> json) =>
+      OwnerEmployeeInvite(
+        id: json['id'] as String,
+        businessId: json['business_id'] as String,
+        displayName: json['display_name'] as String? ?? '',
+        cnic: json['cnic'] as String? ?? '',
+        phone: json['phone'] as String? ?? '',
+        email: json['email'] as String? ?? '',
+        status: json['status'] as String? ?? 'pending',
+      );
 }
 
 class PendingEmployeeInvite {

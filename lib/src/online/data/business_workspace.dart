@@ -151,16 +151,18 @@ class BusinessWorkspace extends ChangeNotifier {
       final first = parts.isEmpty || parts.first.isEmpty ? 'Staff' : parts.first;
       final last = parts.length <= 1 ? '' : parts.sublist(1).join(' ');
       final existing = box.get(member.id);
+      final phone = member.phone.trim();
+      final cnic = member.cnic.trim();
       if (existing == null) {
         await box.put(member.id, <String, dynamic>{
           'id': member.id,
           'firstName': first,
           'lastName': last,
-          'phoneNumber': '',
-          'cnicNumber': '',
+          'phoneNumber': phone,
+          'cnicNumber': cnic,
           'homeAddress': '',
           'isActive': true,
-          'isManager': false,
+          'isManager': member.isManager,
           'onlineSynced': true,
           'commission': '',
           'basicSalary': '',
@@ -171,7 +173,17 @@ class BusinessWorkspace extends ChangeNotifier {
         map['firstName'] = first;
         map['lastName'] = last;
         map['isActive'] = true;
+        map['isManager'] = member.isManager;
         map['onlineSynced'] = true;
+        // Prefill blanks from online profile; never overwrite owner edits.
+        if ((map['phoneNumber'] as String?)?.trim().isNotEmpty != true &&
+            phone.isNotEmpty) {
+          map['phoneNumber'] = phone;
+        }
+        if ((map['cnicNumber'] as String?)?.trim().isNotEmpty != true &&
+            cnic.isNotEmpty) {
+          map['cnicNumber'] = cnic;
+        }
         await box.put(member.id, map);
       }
     }
