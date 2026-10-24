@@ -296,7 +296,7 @@ class HiveServicesRepository {
           .map((item) => item.toString())
           .toList(growable: true);
     }
-    return LinkedHashMap<String, List<String>>.from(map);
+    return LinkedHashMap<String, List<String>>.of(map);
   }
 }
 
@@ -322,7 +322,7 @@ ServiceItem _serviceFromMap(Map<String, dynamic> map) {
   );
 }
 
-Map<String, dynamic> _treeToMap(LinkedHashMap<String, List<String>> tree) {
+Map<String, dynamic> _treeToMap(Map<String, List<String>> tree) {
   return <String, dynamic>{
     for (final entry in tree.entries) entry.key: List<String>.from(entry.value),
   };
@@ -343,9 +343,10 @@ LinkedHashMap<String, List<String>> _defaultCategoryTree() {
     'Hair Treatments',
     'Packages',
   ];
-  return LinkedHashMap<String, List<String>>.fromEntries(
+  final tree = LinkedHashMap<String, List<String>>.fromEntries(
     categories.map((category) => MapEntry(category, <String>[])),
-  )..addAll(<String, List<String>>{
+  );
+  tree.addAll(<String, List<String>>{
     'Hair Care & Styling': <String>[
       'Simple Cutting',
       'Buzzcuts',
@@ -364,6 +365,7 @@ LinkedHashMap<String, List<String>> _defaultCategoryTree() {
     'Hair Treatments': <String>['Hair Spa', 'Keratin'],
     'Packages': <String>['Groom Package', 'Bridal Package'],
   });
+  return tree;
 }
 
 const List<ServiceItem> _defaultServices = <ServiceItem>[

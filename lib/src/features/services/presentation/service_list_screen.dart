@@ -246,8 +246,9 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
               validator: (value) {
                 final typed = _newServiceNameCtrl.text.trim();
                 if (typed.isNotEmpty) return null;
-                if (value == null || value.trim().isEmpty)
+                if (value == null || value.trim().isEmpty) {
                   return 'Please select subcategory.';
+                }
                 return null;
               },
             ),
@@ -430,10 +431,8 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   Future<void> _openCategoryRates(String category) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => _CategoryRatesScreen(
-          category: category,
-          readOnly: widget.readOnly,
-        ),
+        builder: (_) =>
+            _CategoryRatesScreen(category: category, readOnly: widget.readOnly),
       ),
     );
     if (!mounted) return;
@@ -499,10 +498,7 @@ class _CategoryTile extends StatelessWidget {
 }
 
 class _CategoryRatesScreen extends StatefulWidget {
-  const _CategoryRatesScreen({
-    required this.category,
-    required this.readOnly,
-  });
+  const _CategoryRatesScreen({required this.category, required this.readOnly});
 
   final String category;
   final bool readOnly;
