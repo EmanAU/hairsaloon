@@ -44,11 +44,28 @@ only an explicitly promoted superadmin can open the dashboard.
 - Customer review moderation with superadmin-only deletion.
 - Light-green professional admin UI (sage canvas, lime accents, black text).
 
-## Checks
+## Business review and people directory
+
+Open **Review details** from Businesses to inspect the full address, business
+contact, owner profile/photo, CNIC, joining code and review history before
+activation. The same page lists named team members, join decisions, employment
+status, services and paginated salon/barber reviews with reviewer profile links.
+
+People cards separate account permissions from participation labels: **Owner**
+means a registered business, **Employee** means a currently active accepted
+contract, and **Customer** means the account has written a review. Multiple labels
+can apply. Accounts without this evidence show **Registered user**; the database
+does not currently persist which app audience an account signed in through.
+Pending joins and scheduled/expired contracts do not imply current employment.
+
+No additional migration or service-role key is required for these admin views.
+
+## Validation
 
 ```sh
 npm run test:db
 npm run typecheck
+npm run test:admin
 ```
 
 The database tests execute the actual migrations in PGlite with `btree_gist`.
