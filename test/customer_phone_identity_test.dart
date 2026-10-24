@@ -43,9 +43,12 @@ void main() {
         );
         expect(contacts.length, 1);
         expect(phones.length, 1);
-        expect(repository.searchCustomerContacts('0300').single.name, 'Updated');
-      expect(repository.searchCustomerPhones('0300'), hasLength(1));
-      // Old installations stored raw local keys. They must remain readable/updatable.
+        expect(
+          repository.searchCustomerContacts('0300').single.name,
+          'Updated',
+        );
+        expect(repository.searchCustomerPhones('0300'), hasLength(1));
+        // Old installations stored raw local keys. They must remain readable/updatable.
         await contacts.put('03001234568', {
           'name': 'Legacy',
           'phone': '03001234568',

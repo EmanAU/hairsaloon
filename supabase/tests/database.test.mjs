@@ -126,7 +126,7 @@ test('profiles and permanent codes are private and immutable', async () => {
   assert.equal(await scalar('select count(*)::int from public.profiles'), 1);
 });
 
-test('code joining is idempotent and owners cannot accept for employees', async () => {
+test('code joining is idempotent and accepted contracts are owner managed', async () => {
   await as('owner');
   const invite = await scalar('select code from public.business_invites where business_id=$1', [business]);
   await as('employee');

@@ -7,7 +7,7 @@ Run `flutter run --flavor business` or `flutter run --flavor customer` from the
 root. The business flavor includes an entry to the existing offline app.
 See [Flutter setup](docs/flutter-online.md), [admin setup](web/README.md), and
 [backend setup](supabase/README.md). The existing Supabase project is configured in the Flutter bootstrap.
-See [release handoff](docs/final-release.md) for APK and backend instructions.
+See [release handoff](docs/final-release.md) for code verification and backend instructions.
 
 ## Existing offline workspace
 

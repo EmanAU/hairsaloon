@@ -103,6 +103,25 @@ void main() {
       final temp = (await tester.runAsync(
         () => Directory.systemTemp.createTemp('salon-responsive-'),
       ))!;
+      var cleanedUp = false;
+      Future<void> cleanup() async {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        await tester.pumpWidget(const SizedBox());
+        debugDefaultTargetPlatformOverride = null;
+        var closed = false;
+        Hive.close().then((_) => closed = true);
+        for (var i = 0; i < 100 && !closed; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 10)),
+          );
+        }
+        expect(closed, isTrue);
+        await tester.runAsync(() => temp.delete(recursive: true));
+      }
+
+      addTearDown(cleanup);
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         const MethodChannel('plugins.flutter.io/path_provider'),
         (_) async => temp.path,
@@ -373,7 +392,14 @@ void main() {
 
       Future<void> press(Finder finder) async {
         if (finder.evaluate().isEmpty) {
-          final scrollable = find.byType(Scrollable).last;
+          final scrollable = find
+              .byWidgetPredicate(
+                (widget) =>
+                    widget is Scrollable &&
+                    widget.axisDirection == AxisDirection.down &&
+                    widget.physics is! NeverScrollableScrollPhysics,
+              )
+              .last;
           tester.state<ScrollableState>(scrollable).position.jumpTo(0);
           await tester.pumpAndSettle();
           await tester.scrollUntilVisible(
@@ -516,7 +542,10 @@ void main() {
       await capture('billing_payment_dropdown');
       await press(find.text('Cash').last);
       await capture('billing_ready_to_save');
-      await press(find.text(tablet ? 'Save & show receipt' : 'Save Bill'));
+      final saveBill = find.text(tablet ? 'Save & show receipt' : 'Save Bill');
+      await tester.ensureVisible(saveBill);
+      await tester.tap(saveBill);
+      await tester.pump();
       for (var i = 0; i < 12; i++) {
         await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 40)),
@@ -815,18 +844,7 @@ void main() {
           );
         });
       }
-      await tester.pumpWidget(const SizedBox());
-      debugDefaultTargetPlatformOverride = null;
-      var closed = false;
-      Hive.close().then((_) => closed = true);
-      for (var i = 0; i < 100 && !closed; i++) {
-        await tester.pump(const Duration(milliseconds: 100));
-        await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 10)),
-        );
-      }
-      expect(closed, isTrue, reason: 'local storage closes after rendering');
-      await tester.runAsync(() => temp.delete(recursive: true));
+      await cleanup();
       expect(
         issues,
         isEmpty,
