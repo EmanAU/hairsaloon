@@ -13,7 +13,7 @@ import '../domain/online_repository.dart';
 class BusinessWorkspace extends ChangeNotifier {
   BusinessWorkspace._(
     this.repository,
-    this.business,
+    this._business,
     this.account,
     this.maps,
     this.phones,
@@ -21,7 +21,29 @@ class BusinessWorkspace extends ChangeNotifier {
     this.journal,
   );
   final OnlineRepository repository;
-  final SalonBusiness business;
+  SalonBusiness _business;
+  SalonBusiness get business => _business;
+  Future<void> updateBusiness(SalonBusiness updated) async {
+    if (_disposed) return;
+    if (updated.id != business.id) {
+      throw ArgumentError('Cannot change workspace identity');
+    }
+    final saved = settings.get('business_profile') as Map?;
+    await settings.put('business_profile', {
+      ...?saved,
+      'name': updated.name,
+      'phone': updated.phone,
+      'type': updated.type,
+      'city': updated.city,
+      'area': updated.area,
+      'address': updated.address,
+      if (updated.logoPath != business.logoPath) 'logo': null,
+    });
+    if (_disposed) return;
+    _business = updated;
+    notifyListeners();
+  }
+
   final OnlineAccount account;
   final Map<String, Box<Map>> maps;
   final Box<String> phones;

@@ -10,9 +10,22 @@ import 'package:hairsaloon/src/features/finance/presentation/widgets/finance_wid
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
+import 'widgets/payment_method_tiles.dart';
 
 class SalesScreen extends StatefulWidget {
-  const SalesScreen({super.key});
+  const SalesScreen({
+    super.key,
+    this.suppliedBills,
+    this.title = 'Sales',
+    this.commissionByBill = const {},
+    this.onOpenBill,
+    this.employeeView = false,
+  });
+  final List<Bill>? suppliedBills;
+  final String title;
+  final Map<String, double> commissionByBill;
+  final ValueChanged<Bill>? onOpenBill;
+  final bool employeeView;
 
   @override
   State<SalesScreen> createState() => _SalesScreenState();
@@ -24,16 +37,14 @@ class _SalesScreenState extends State<SalesScreen> {
     'Cash',
     'Card',
     'Online',
-    ...context
-        .read<BillingStore>()
-        .bills
+    ...(widget.suppliedBills ?? context.read<BillingStore>().bills)
         .map((b) => b.paymentType)
         .where((p) => p.isNotEmpty),
   }.toList();
 
   FinancePeriod? _period;
   DateTime? _anchor;
-  String _payment = 'All';
+  Set<String> _paymentsSelected = {};
 
   @override
   void didChangeDependencies() {
@@ -48,16 +59,12 @@ class _SalesScreenState extends State<SalesScreen> {
   Widget build(BuildContext context) {
     final period = _period!;
     final anchor = _anchor!;
-    final bills = context
-        .watch<BillingStore>()
-        .bills
+    final bills = (widget.suppliedBills ?? context.watch<BillingStore>().bills)
         .where(
           (b) => FinanceCalculator.periodContains(b.createdAt, anchor, period),
         )
         .where(
-          (b) =>
-              _payment == 'All' ||
-              b.paymentType.trim().toLowerCase() == _payment.toLowerCase(),
+          (b) => PaymentMethodTiles.matches(b.paymentType, _paymentsSelected),
         )
         .toList(growable: false);
 
@@ -78,7 +85,7 @@ class _SalesScreenState extends State<SalesScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: financeAppBar(context, 'Sales'),
+      appBar: financeAppBar(context, widget.title),
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
@@ -121,15 +128,25 @@ class _SalesScreenState extends State<SalesScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                initialValue: _payment,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Payment method'),
-                items: _payments
-                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
-                    .toList(),
-                onChanged: (p) => setState(() => _payment = p ?? 'All'),
+              PaymentMethodTiles(
+                methods: _payments.where((p) => p != 'All'),
+                selected: _paymentsSelected,
+                onChanged: (value) => setState(() => _paymentsSelected = value),
               ),
+              if (widget.employeeView) ...[
+                const SizedBox(height: 12),
+                FinanceStatCard(
+                  title: 'Your commission',
+                  amount: bills.fold<double>(
+                    0,
+                    (sum, bill) =>
+                        sum + (widget.commissionByBill[bill.id] ?? 0),
+                  ),
+                  icon: CupertinoIcons.money_dollar_circle,
+                  color: AppColors.homeOlive,
+                  subtitle: 'Original service price · tax excluded',
+                ),
+              ],
               const SizedBox(height: 12),
               FinanceSectionTitle(
                 'Recent Sales',
@@ -155,7 +172,12 @@ class _SalesScreenState extends State<SalesScreen> {
                   ...byDay[day]!.map(
                     (b) => Padding(
                       padding: const EdgeInsets.only(bottom: 6),
-                      child: _SaleTile(bill: b),
+                      child: _SaleTile(
+                        bill: b,
+                        onTap: widget.onOpenBill == null
+                            ? null
+                            : () => widget.onOpenBill!(b),
+                      ),
                     ),
                   ),
                 ],
@@ -168,7 +190,8 @@ class _SalesScreenState extends State<SalesScreen> {
 }
 
 class _SaleTile extends StatelessWidget {
-  const _SaleTile({required this.bill});
+  const _SaleTile({required this.bill, this.onTap});
+  final VoidCallback? onTap;
 
   final Bill bill;
 
@@ -188,9 +211,11 @@ class _SaleTile extends StatelessWidget {
 
     return FinanceCard(
       padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
-      onTap: () => Navigator.of(
-        context,
-      ).pushNamed(AppRoutes.billDetails, arguments: bill.id),
+      onTap:
+          onTap ??
+          () => Navigator.of(
+            context,
+          ).pushNamed(AppRoutes.billDetails, arguments: bill.id),
       child: Row(
         children: [
           Expanded(

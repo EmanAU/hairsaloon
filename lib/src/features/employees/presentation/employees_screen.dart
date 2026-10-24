@@ -90,7 +90,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         ),
         title: Text(
           title,
-          style: const TextStyle(
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
             color: AppColors.onPrimary,
             fontSize: 15,
             fontWeight: FontWeight.w700,
@@ -108,48 +108,97 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
           ),
         ],
       ),
-      body: ListView(
-        padding: SafeScrollPadding.of(
-          context,
-          left: 12,
-          top: 12,
-          right: 12,
-          bottom: 24,
-        ),
-        children: [
-          _buildStatusTabs(),
-          const SizedBox(height: 10),
-          if (!_showAddForm)
-            OutlinedButton.icon(
-              onPressed: () => setState(() => _showAddForm = true),
-              icon: const Icon(CupertinoIcons.person_add),
-              label: const Text('Create employee'),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: ListView(
+            padding: SafeScrollPadding.of(
+              context,
+              left: 20,
+              top: 20,
+              right: 20,
+              bottom: 24,
             ),
-          if (context.read<BusinessWorkspace?>() != null)
-            TextButton(
-              onPressed: () => showEmployeeInviteOptions(context),
-              child: const Text('Invite an existing profile or scan QR'),
-            ),
-          const SizedBox(height: 10),
-          if (_showAddForm) ...[_addForm(store), const SizedBox(height: 12)],
-          if (items.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 40),
-              child: Center(
-                child: Text(
-                  'No employees yet.',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
+            children: [
+              _buildStatusTabs(),
+              const SizedBox(height: 10),
+              if (!_showAddForm)
+                OutlinedButton.icon(
+                  onPressed: () => setState(() => _showAddForm = true),
+                  icon: const Icon(CupertinoIcons.person_add, size: 19),
+                  style: _entryButtonStyle(
+                    const Color(0xFFF1F8DA),
+                    const Color(0xFFCFDDB0),
+                  ),
+                  label: const Text('Create employee'),
+                ),
+              if (context.read<BusinessWorkspace?>() != null)
+                OutlinedButton.icon(
+                  onPressed: () => showEmployeeInviteOptions(context),
+                  icon: const Icon(CupertinoIcons.qrcode_viewfinder, size: 19),
+                  style: _entryButtonStyle(
+                    const Color(0xFFF1F4FC),
+                    const Color(0xFFD4DCED),
+                  ),
+                  label: const Text(
+                    'Invite an existing profile or scan QR',
+                    textAlign: TextAlign.center,
                   ),
                 ),
-              ),
-            ),
-          ...items.map((e) => _staffCard(store, e)),
-        ],
+              const SizedBox(height: 10),
+              if (_showAddForm) ...[
+                _addForm(store),
+                const SizedBox(height: 12),
+              ],
+              if (items.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 40),
+                  child: Center(
+                    child: Text(
+                      'No employees yet.',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ...items.map((e) => _staffCard(store, e)),
+            ],
+          ),
+        ),
       ),
     );
   }
+
+  ButtonStyle _entryButtonStyle(Color fill, Color border) =>
+      OutlinedButton.styleFrom(
+        backgroundColor: fill,
+        foregroundColor: AppColors.homeInk,
+        side: BorderSide(color: border),
+        minimumSize: const Size(double.infinity, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      );
+
+  Widget _section(String title) => Padding(
+    padding: const EdgeInsets.only(top: 18, bottom: 10),
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: AppColors.homeInk,
+        ),
+      ),
+    ),
+  );
 
   Widget _staffCard(EmployeesStore store, EmployeeItem e) {
     return InkWell(
@@ -398,7 +447,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     final showOther = _specialistCategory == 'Other';
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -411,7 +460,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Add Employee',
+                'Create employee',
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -421,12 +470,13 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             const SizedBox(height: 10),
             BusinessLogoPicker(
               value: _photoBase64,
-              title: 'Photo',
+              title: 'Add employee photo',
+              placeholderIcon: CupertinoIcons.person_crop_circle,
               emptyHint: 'Optional · camera or gallery',
               filledHint: 'Tap to change or remove',
               onChanged: (value) => setState(() => _photoBase64 = value),
             ),
-            const SizedBox(height: 12),
+            _section('Personal details'),
             _field(_firstNameCtrl, 'First Name'),
             const SizedBox(height: 8),
             _field(_lastNameCtrl, 'Last Name'),
@@ -448,11 +498,13 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                 ),
               ),
             ],
+            const SizedBox(height: 8),
             _dateField(
               'Date of birth',
               _dateOfBirth,
               (date) => _dateOfBirth = date,
             ),
+            const SizedBox(height: 8),
             _dateField(
               'Work started on',
               _workStartedOn,
@@ -481,7 +533,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             ),
             const SizedBox(height: 8),
             _field(_addressCtrl, 'Home Address'),
-            const SizedBox(height: 8),
+            _section('Work & speciality'),
             DropdownButtonFormField<String>(
               initialValue: _specialistCategory,
               isExpanded: true,
@@ -555,8 +607,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                   ),
                 ),
                 onPressed: _savingNew ? null : () => _save(store),
-                child: const Text(
-                  'Save Employee',
+                child: Text(
+                  _savingNew ? 'Saving…' : 'Save Employee',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
               ),
@@ -569,10 +621,11 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
   InputDecoration _dropdownDecoration(String hint) {
     return InputDecoration(
-      hintText: hint,
+      labelText: hint,
+      labelStyle: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
       hintStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
       filled: true,
-      fillColor: AppColors.surface,
+      fillColor: const Color(0xFFFAFBF8),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -599,10 +652,14 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       inputFormatters: inputFormatters,
       onChanged: onChanged,
       decoration: InputDecoration(
-        hintText: hint,
+        labelText: hint,
+        labelStyle: const TextStyle(
+          fontSize: 12,
+          color: AppColors.textSecondary,
+        ),
         hintStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: const Color(0xFFFAFBF8),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
           vertical: 12,
@@ -739,24 +796,32 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     String label,
     DateTime? value,
     ValueChanged<DateTime> change,
-  ) => ListTile(
-    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-    title: Text(label, style: const TextStyle(fontSize: 12)),
-    subtitle: Text(
-      value == null
-          ? 'Select date'
-          : '${value.day}/${value.month}/${value.year}',
+  ) => Container(
+    decoration: BoxDecoration(
+      color: const Color(0xFFFAFBF8),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: AppColors.border),
     ),
-    trailing: const Icon(CupertinoIcons.calendar, size: 20),
-    onTap: () async {
-      final date = await showDatePicker(
-        context: context,
-        initialDate: value ?? DateTime(label == 'Date of birth' ? 2000 : 2020),
-        firstDate: DateTime(1940),
-        lastDate: DateTime.now(),
-      );
-      if (date != null && mounted) setState(() => change(date));
-    },
+    child: ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+      title: Text(label, style: const TextStyle(fontSize: 12)),
+      subtitle: Text(
+        value == null
+            ? 'Select date'
+            : '${value.day}/${value.month}/${value.year}',
+      ),
+      trailing: const Icon(CupertinoIcons.calendar, size: 20),
+      onTap: () async {
+        final date = await showDatePicker(
+          context: context,
+          initialDate:
+              value ?? DateTime(label == 'Date of birth' ? 2000 : 2020),
+          firstDate: DateTime(1940),
+          lastDate: DateTime.now(),
+        );
+        if (date != null && mounted) setState(() => change(date));
+      },
+    ),
   );
 
   void _resetFormFields() {

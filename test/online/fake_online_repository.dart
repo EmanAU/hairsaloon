@@ -332,7 +332,9 @@ class FakeOnlineRepository implements OnlineRepository {
       city: city,
       area: area,
       address: address,
-      isActive: false,
+      isActive:
+          workspace.businesses.where((b) => b.id == id).firstOrNull?.isActive ??
+          false,
       logoPath: workspace.businesses
           .where((b) => b.id == id)
           .firstOrNull

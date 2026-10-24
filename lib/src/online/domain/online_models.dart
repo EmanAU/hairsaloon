@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../features/billing/domain/entities/bill.dart';
 
 enum AppAudience { business, customer }
 
@@ -225,6 +226,7 @@ class EmployeeWorkJob {
     required this.services,
     required this.businessName,
     required this.commissionPercent,
+    this.bill,
   });
   final String id;
   final DateTime createdAt;
@@ -233,9 +235,13 @@ class EmployeeWorkJob {
   final List<String> services;
   final String businessName;
   final double commissionPercent;
+  final Bill? bill;
+  double get commissionBase => bill?.commissionBase ?? total;
+  String get paymentType => bill?.paymentType ?? 'Unspecified';
 
-  double get earning =>
-      double.parse((total * commissionPercent / 100).toStringAsFixed(2));
+  double get earning => double.parse(
+    (commissionBase * commissionPercent / 100).toStringAsFixed(2),
+  );
 }
 
 class EmployeeDayWork {

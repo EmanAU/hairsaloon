@@ -43,7 +43,11 @@ class EmployeeWorkingsScreen extends StatelessWidget {
     expenses.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     final salesTotal = bills.fold<double>(0, (sum, b) => sum + b.grandTotal);
-    final earningTotal = (salesTotal * commissionPercent) / 100;
+    final commissionBase = bills.fold<double>(
+      0,
+      (sum, b) => sum + b.commissionBase,
+    );
+    final earningTotal = (commissionBase * commissionPercent) / 100;
     final expenseTotal = expenses.fold<double>(0, (sum, e) => sum + e.amount);
     final unpaidExpenseTotal = expenses
         .where((e) => e.status.trim().toLowerCase() == 'unpaid')

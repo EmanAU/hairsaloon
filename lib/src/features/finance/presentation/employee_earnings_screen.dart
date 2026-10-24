@@ -36,7 +36,14 @@ class _EmployeeEarningsScreenState extends State<EmployeeEarningsScreen> {
           .fold<double>(0, (sum, bill) => sum + bill.grandTotal);
       final salary = _toDouble(employee.basicSalary);
       final commissionPercent = _toDouble(employee.commission);
-      final commissionAmount = (employeeSales * commissionPercent) / 100;
+      final commissionBase = bills
+          .where(
+            (bill) =>
+                bill.employeeName == employee.fullName &&
+                _isInPeriod(bill.createdAt),
+          )
+          .fold<double>(0, (sum, bill) => sum + bill.commissionBase);
+      final commissionAmount = (commissionBase * commissionPercent) / 100;
       final totalPayout = salary + commissionAmount;
       return _EmployeeEarning(
         employee: employee,

@@ -76,6 +76,7 @@ class BusinessLogoPicker extends StatefulWidget {
     this.filledHint = 'Tap the camera to change or remove',
     this.addLabel = 'Add photo',
     this.changeLabel = 'Change photo',
+    this.placeholderIcon = Icons.storefront_rounded,
   });
 
   final String? value;
@@ -88,6 +89,7 @@ class BusinessLogoPicker extends StatefulWidget {
   final String filledHint;
   final String addLabel;
   final String changeLabel;
+  final IconData placeholderIcon;
 
   @override
   State<BusinessLogoPicker> createState() => _BusinessLogoPickerState();
@@ -293,14 +295,14 @@ class _BusinessLogoPickerState extends State<BusinessLogoPicker> {
                           fit: BoxFit.cover,
                           gaplessPlayback: true,
                           filterQuality: FilterQuality.medium,
-                          errorBuilder: (_, _, _) => const Icon(
-                            Icons.storefront_rounded,
+                          errorBuilder: (_, _, _) => Icon(
+                            widget.placeholderIcon,
                             size: 34,
                             color: AppColors.textSecondary,
                           ),
                         )
-                      : const Icon(
-                          Icons.storefront_rounded,
+                      : Icon(
+                          widget.placeholderIcon,
                           size: 34,
                           color: AppColors.textSecondary,
                         ),
@@ -362,7 +364,7 @@ class _BusinessLogoPickerState extends State<BusinessLogoPicker> {
                     padding: EdgeInsets.zero,
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    textStyle: const TextStyle(
+                    textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),

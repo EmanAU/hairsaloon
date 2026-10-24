@@ -113,6 +113,7 @@ class FinanceCalculator {
     final percent = commissionPercent(employee.commission);
 
     final salesByDay = <DateTime, double>{};
+    final commissionByDay = <DateTime, double>{};
     for (final bill in bills) {
       if (norm(bill.employeeName) != name || !include(bill.createdAt)) {
         continue;
@@ -121,6 +122,11 @@ class FinanceCalculator {
         dayOf(bill.createdAt),
         (v) => v + bill.grandTotal,
         ifAbsent: () => bill.grandTotal,
+      );
+      commissionByDay.update(
+        dayOf(bill.createdAt),
+        (v) => v + bill.commissionBase,
+        ifAbsent: () => bill.commissionBase,
       );
     }
 
@@ -134,7 +140,7 @@ class FinanceCalculator {
     return days
         .map((day) {
           final sales = salesByDay[day] ?? 0;
-          final earning = sales * percent / 100;
+          final earning = (commissionByDay[day] ?? 0) * percent / 100;
 
           return EmployeeDayIncome(
             date: day,

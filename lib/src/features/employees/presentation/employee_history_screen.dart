@@ -70,7 +70,10 @@ class _EmployeeHistoryScreenState extends State<EmployeeHistoryScreen> {
   double get _totalSales =>
       _filteredBills.fold(0, (sum, bill) => sum + bill.grandTotal);
   double get _commissionPercent => _toDouble(widget.employee.commission);
-  double get _totalEarning => (_totalSales * _commissionPercent) / 100;
+  double get _totalEarning =>
+      _filteredBills.fold<double>(0, (sum, bill) => sum + bill.commissionBase) *
+      _commissionPercent /
+      100;
 
   Future<void> _pickCustomRange() async {
     final now = DateTime.now();

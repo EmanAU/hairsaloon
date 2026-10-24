@@ -11,6 +11,12 @@ import 'online_session.dart';
 import 'profile_form.dart';
 import 'widgets/online_widgets.dart';
 import 'widgets/workspace_card.dart';
+import '../../features/finance/presentation/sales_screen.dart';
+import '../../features/finance/presentation/finance_format.dart';
+import '../../features/finance/presentation/widgets/finance_widgets.dart';
+import '../../features/finance/domain/entities/finance_period.dart';
+import '../../features/billing/domain/entities/bill.dart';
+import '../../features/billing/presentation/widgets/pos_receipt_card.dart';
 
 /// Home for staff who joined a salon (not business owners).
 class EmployeeHome extends StatefulWidget {
@@ -33,7 +39,8 @@ class _EmployeeHomeState extends State<EmployeeHome> {
       .employeeDashboard();
   late Future<List<PendingEmployeeInvite>> _invites = widget.session.repository
       .pendingInvitesForMe();
-  var _period = _WorkPeriod.daily;
+  var _period = FinancePeriod.daily;
+  late final _photo = widget.session.repository.profilePhoto();
   late DateTime _anchor = DateTime.now();
 
   void _refresh() => setState(() {
@@ -71,17 +78,93 @@ class _EmployeeHomeState extends State<EmployeeHome> {
     if (mounted) _refresh();
   }
 
+  void _openJob(EmployeeWorkJob job) => Navigator.push<void>(
+    context,
+    MaterialPageRoute(builder: (_) => _JobDetailPage(job: job)),
+  );
+  void _openSales(EmployeeDashboardData data) {
+    final jobs = data.days.expand((day) => day.jobs).toList();
+    final byId = {for (final job in jobs) job.id: job};
+    final bills = jobs
+        .map(
+          (job) =>
+              job.bill ??
+              Bill(
+                id: job.id,
+                createdAt: job.createdAt,
+                customerName: job.customerName,
+                customerPhone: '',
+                employeeName: widget.session.workspace!.account.name,
+                paymentType: job.paymentType,
+                lines: job.services
+                    .map((name) => BillLine(serviceName: name, price: 0))
+                    .toList(),
+                subTotal: job.commissionBase,
+                taxPercent: 0,
+                taxAmount: 0,
+                grandTotal: job.total,
+              ),
+        )
+        .toList();
+    Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        settings: RouteSettings(
+          arguments: FinanceRouteArgs(anchor: _anchor, period: _period),
+        ),
+        builder: (_) => SalesScreen(
+          title: 'My sales',
+          employeeView: true,
+          suppliedBills: bills,
+          commissionByBill: {for (final job in jobs) job.id: job.earning},
+          onOpenBill: (bill) => _openJob(byId[bill.id]!),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showContracts(EmployeeDashboardData data) =>
+      showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        isScrollControlled: true,
+        backgroundColor: Colors.white,
+        builder: (_) => SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'My contracts',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 14),
+                if (data.liveContracts.isEmpty &&
+                    data.notifiedContracts.isEmpty)
+                  const Text('Your owner has not set a contract yet.'),
+                for (final contract in data.liveContracts)
+                  _SalonSummaryCard(contract: contract),
+                for (final contract in data.notifiedContracts)
+                  _ContractNotice(contract: contract),
+              ],
+            ),
+          ),
+        ),
+      );
+
   bool _inPeriod(DateTime date) {
     final day = DateTime(date.year, date.month, date.day);
     final anchor = DateTime(_anchor.year, _anchor.month, _anchor.day);
     switch (_period) {
-      case _WorkPeriod.daily:
+      case FinancePeriod.daily:
         return day == anchor;
-      case _WorkPeriod.weekly:
+      case FinancePeriod.weekly:
         final start = anchor.subtract(Duration(days: anchor.weekday - 1));
         final end = start.add(const Duration(days: 6));
         return !day.isBefore(start) && !day.isAfter(end);
-      case _WorkPeriod.monthly:
+      case FinancePeriod.monthly:
         return day.year == anchor.year && day.month == anchor.month;
     }
   }
@@ -94,49 +177,54 @@ class _EmployeeHomeState extends State<EmployeeHome> {
     final profile = workspace.profile;
     final text = Theme.of(context).textTheme;
     return Scaffold(
-      backgroundColor: AppColors.homeCanvas,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: AppColors.homeCanvas,
-        title: Text('Your workspace', style: text.titleLarge),
+        backgroundColor: AppColors.primary,
+        surfaceTintColor: Colors.transparent,
+        title: Text(
+          'TrimMatrix',
+          style: text.titleLarge?.copyWith(
+            fontSize: 20,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         actions: [
-          if (widget.onSwitchWorkspace != null)
-            IconButton(
-              tooltip: 'Switch workspace',
-              icon: const Icon(Icons.swap_horiz),
-              onPressed: widget.onSwitchWorkspace,
-            ),
-          IconButton(
-            tooltip: 'Edit profile',
-            icon: const Icon(CupertinoIcons.person),
-            onPressed: () async {
-              final saved = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ProfileForm(
-                    repository: widget.session.repository,
-                    profile: profile,
-                    name: workspace.account.name,
-                  ),
-                ),
-              );
-              if (saved == true) {
-                await widget.session.reload();
-                if (mounted) _refresh();
-              }
-            },
-          ),
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: _refresh,
-            icon: const Icon(CupertinoIcons.refresh),
-          ),
           PopupMenuButton<String>(
-            icon: const Icon(CupertinoIcons.ellipsis),
+            tooltip: 'Employee menu',
+            icon: const Icon(CupertinoIcons.ellipsis_circle),
             onSelected: (value) async {
+              if (value == 'refresh') _refresh();
+              if (value == 'switch') widget.onSwitchWorkspace?.call();
+              if (value == 'profile') {
+                final saved = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ProfileForm(
+                      repository: widget.session.repository,
+                      profile: profile,
+                      name: workspace.account.name,
+                    ),
+                  ),
+                );
+                if (saved == true) {
+                  await widget.session.reload();
+                  if (mounted) _refresh();
+                }
+              }
               if (value == 'signout') await widget.onSignOut();
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'signout', child: Text('Sign out')),
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: 'profile',
+                child: Text('Personal profile'),
+              ),
+              if (widget.onSwitchWorkspace != null)
+                const PopupMenuItem(
+                  value: 'switch',
+                  child: Text('Switch workspace'),
+                ),
+              const PopupMenuItem(value: 'refresh', child: Text('Refresh')),
+              const PopupMenuItem(value: 'signout', child: Text('Sign out')),
             ],
           ),
         ],
@@ -152,13 +240,7 @@ class _EmployeeHomeState extends State<EmployeeHome> {
               final filtered = data.days
                   .where((d) => _inPeriod(d.date))
                   .toList();
-              // If today is empty, still show the latest working day so staff
-              // immediately see what they completed after a contract starts.
-              final days = filtered.isNotEmpty
-                  ? filtered
-                  : (_period == _WorkPeriod.daily && data.days.isNotEmpty
-                        ? <EmployeeDayWork>[data.days.first]
-                        : filtered);
+              final days = filtered;
               final sales = days.fold<double>(0, (s, d) => s + d.sales);
               final jobs = days.fold<int>(0, (s, d) => s + d.jobCount);
               final acceptedMemberships = data.joinRequests
@@ -269,204 +351,229 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                   }
 
                   return ListView(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      AppSpacing.md,
-                      AppSpacing.lg,
-                      AppSpacing.xl,
-                    ),
-                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
                     children: [
-                      _ProfileHeader(
-                        name: workspace.account.name,
-                        phone: profile?.phone ?? '',
-                        experience: profile?.experienceAt(DateTime.now()) ?? '',
-                        photoFuture: widget.session.repository.profilePhoto(),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      for (final membership in acceptedMemberships) ...[
-                        _BannerPanel(
-                          title: membership.businessName,
-                          subtitle: membership.isActive
-                              ? 'Active employee'
-                              : 'Inactive employee',
-                          child: ActionButton(
-                            label: 'Leave business',
-                            icon: Icons.logout,
-                            onPressed: () => _leave(membership),
-                          ),
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1FBCF),
+                          borderRadius: BorderRadius.circular(18),
                         ),
-                        const SizedBox(height: AppSpacing.md),
-                      ],
-                      if (invites.isNotEmpty) ...[
-                        Text('Salon invites', style: text.titleMedium),
-                        const SizedBox(height: AppSpacing.sm),
-                        for (final invite in invites)
-                          _BannerPanel(
-                            title: 'Added by ${invite.ownerName}',
-                            subtitle: 'Join ${invite.businessName}?',
-                            child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'EMPLOYEE ACCOUNT',
+                              style: TextStyle(
+                                fontSize: 10,
+                                letterSpacing: 1.2,
+                                color: AppColors.homeOlive,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
                               children: [
-                                Expanded(
-                                  child: ActionButton(
-                                    label: 'No',
-                                    showIcon: false,
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: AppColors.background,
-                                      foregroundColor: AppColors.textPrimary,
+                                FutureBuilder<String?>(
+                                  future: _photo,
+                                  builder: (_, snapshot) => CircleAvatar(
+                                    radius: 25,
+                                    backgroundColor: Colors.white,
+                                    foregroundImage: snapshot.data == null
+                                        ? null
+                                        : NetworkImage(snapshot.data!),
+                                    onForegroundImageError:
+                                        snapshot.data == null
+                                        ? null
+                                        : (_, stack) {},
+                                    child: const Icon(
+                                      CupertinoIcons.person_crop_circle,
+                                      size: 31,
+                                      color: AppColors.homeOlive,
                                     ),
-                                    onPressed: () =>
-                                        _respondToInvite(invite, accept: false),
                                   ),
                                 ),
-                                const SizedBox(width: AppSpacing.sm),
+                                const SizedBox(width: 12),
                                 Expanded(
-                                  child: ActionButton(
-                                    label: 'Yes',
-                                    showIcon: false,
-                                    onPressed: () =>
-                                        _respondToInvite(invite, accept: true),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        workspace.account.name,
+                                        style: const TextStyle(
+                                          fontSize: 19,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: -.4,
+                                          color: AppColors.homeInk,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        PkPhone.localNumber(profile?.phone),
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.homeOlive,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                        const SizedBox(height: AppSpacing.md),
-                      ],
-                      if (data.notifiedContracts.isNotEmpty) ...[
-                        Text('Your contracts', style: text.titleMedium),
-                        const SizedBox(height: AppSpacing.sm),
-                        for (final contract in data.notifiedContracts)
-                          _ContractNotice(contract: contract),
-                        const SizedBox(height: AppSpacing.md),
-                      ],
-                      if (data.liveContracts.isEmpty &&
-                          data.notifiedContracts.isEmpty) ...[
-                        for (final membership in acceptedMemberships) ...[
-                          _JoinedSalonCard(
-                            businessName: membership.businessName,
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                        ],
-                        const _BannerPanel(
-                          title: 'Contract pending',
-                          subtitle:
-                              'Waiting for your contract to start. After it begins, every bill you complete shows here.',
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                      ],
-                      if (data.liveContracts.isNotEmpty) ...[
-                        for (final contract in data.liveContracts) ...[
-                          _SalonSummaryCard(contract: contract),
-                          const SizedBox(height: AppSpacing.sm),
-                        ],
-                        const SizedBox(height: AppSpacing.sm),
-                      ],
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Daily work',
-                              style: text.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w800,
+                            const SizedBox(height: 18),
+                            Text(
+                              acceptedMemberships.firstOrNull?.businessName ??
+                                  data
+                                      .liveContracts
+                                      .firstOrNull
+                                      ?.businessName ??
+                                  data
+                                      .notifiedContracts
+                                      .firstOrNull
+                                      ?.businessName ??
+                                  'Your salon',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.homeInk,
                               ),
                             ),
-                          ),
-                          TextButton(
-                            onPressed: () async {
-                              final picked = await showDatePicker(
-                                context: context,
-                                initialDate: _anchor,
-                                firstDate: DateTime(2020),
-                                lastDate: DateTime.now().add(
-                                  const Duration(days: 1),
-                                ),
-                              );
-                              if (picked != null) {
-                                setState(() => _anchor = picked);
-                              }
-                            },
-                            child: Text(
-                              '${_anchor.day}/${_anchor.month}/${_anchor.year}',
+                            const SizedBox(height: 5),
+                            Text(
+                              acceptedMemberships.firstOrNull?.isActive == false
+                                  ? 'Inactive employee'
+                                  : 'Active employee',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.homeOlive,
+                              ),
                             ),
-                          ),
-                        ],
+                            if (acceptedMemberships.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              ActionButton(
+                                label: 'Leave business',
+                                showIcon: false,
+                                onPressed: () =>
+                                    _leave(acceptedMemberships.first),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: AppColors.homeOlive,
+                                  side: const BorderSide(
+                                    color: AppColors.border,
+                                  ),
+                                  textStyle: Theme.of(context)
+                                      .textTheme
+                                      .labelLarge
+                                      ?.copyWith(fontSize: 11),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      SegmentedButton<_WorkPeriod>(
-                        segments: const [
-                          ButtonSegment(
-                            value: _WorkPeriod.daily,
-                            label: Text('Daily'),
-                          ),
-                          ButtonSegment(
-                            value: _WorkPeriod.weekly,
-                            label: Text('Weekly'),
-                          ),
-                          ButtonSegment(
-                            value: _WorkPeriod.monthly,
-                            label: Text('Monthly'),
-                          ),
-                        ],
-                        selected: {_period},
-                        onSelectionChanged: (value) =>
-                            setState(() => _period = value.first),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: 22),
                       Row(
                         children: [
                           Expanded(
                             child: _StatTile(
                               label: 'Sales',
-                              value: _money(sales),
+                              value: 'Rs ${_money(sales)}',
                             ),
                           ),
-                          const SizedBox(width: AppSpacing.sm),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _StatTile(
+                              label: 'Your share',
+                              value:
+                                  'Rs ${_money(days.fold<double>(0, (sum, day) => sum + day.earning))}',
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: _StatTile(label: 'Jobs', value: '$jobs'),
                           ),
                         ],
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                      if (days.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: AppSpacing.xl,
-                          ),
-                          child: Text(
-                            'No work recorded for this period yet.',
-                            textAlign: TextAlign.center,
-                            style: text.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _EmployeeAction(
+                              label: 'My sales',
+                              subtitle: 'Bills & payment methods',
+                              icon: CupertinoIcons.chart_bar,
+                              onTap: () => _openSales(data),
                             ),
                           ),
-                        )
-                      else
-                        for (final day in days) ...[
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              top: AppSpacing.sm,
-                              bottom: AppSpacing.sm,
-                            ),
-                            child: Text(
-                              '${day.date.day}/${day.date.month}/${day.date.year}',
-                              style: text.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _EmployeeAction(
+                              label: 'My contracts',
+                              subtitle: 'Terms & commission',
+                              icon: CupertinoIcons.doc_text,
+                              onTap: () => _showContracts(data),
                             ),
                           ),
-                          for (final job in day.jobs)
-                            _JobListTile(
-                              job: job,
-                              money: _money,
-                              onTap: () => Navigator.push<void>(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => _JobDetailPage(job: job),
-                                ),
-                              ),
-                            ),
                         ],
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Daily work',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.homeInk,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      FinancePeriodBar(
+                        period: _period,
+                        anchor: _anchor,
+                        onPeriodChanged: (p) => setState(() => _period = p),
+                        onAnchorChanged: (d) => setState(() => _anchor = d),
+                      ),
+                      const SizedBox(height: 16),
+                      if (data.liveContracts.isEmpty &&
+                          data.notifiedContracts.isEmpty)
+                        const _BannerPanel(
+                          title: 'Contract pending',
+                          subtitle:
+                              'Your owner will set your contract. Completed bills will appear after it starts.',
+                        ),
+                      if (days.isEmpty)
+                        const FinanceEmpty(
+                          message: 'No work recorded for this period yet.',
+                        ),
+                      for (final day in days) ...[
+                        FinanceDayHeader(
+                          date: day.date,
+                          trailing: FinanceFormat.money(day.sales),
+                        ),
+                        for (final job in day.jobs)
+                          _JobListTile(
+                            job: job,
+                            money: _money,
+                            onTap: () => _openJob(job),
+                          ),
+                      ],
+                      if (invites.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        const Text('Salon invites'),
+                        for (final invite in invites)
+                          _BannerPanel(
+                            title: 'Added by ${invite.ownerName}',
+                            subtitle: 'Join ${invite.businessName}?',
+                            child: ActionButton(
+                              label: 'Yes, join ${invite.businessName}',
+                              showIcon: false,
+                              onPressed: () =>
+                                  _respondToInvite(invite, accept: true),
+                            ),
+                          ),
+                      ],
                     ],
                   );
                 },
@@ -478,8 +585,6 @@ class _EmployeeHomeState extends State<EmployeeHome> {
     );
   }
 }
-
-enum _WorkPeriod { daily, weekly, monthly }
 
 /// Full-screen gate after profile: accept or decline a pre-registration invite.
 class _PendingInviteDecision extends StatelessWidget {
@@ -534,7 +639,7 @@ class _PendingInviteDecision extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Icon(
-                      Icons.storefront_outlined,
+                      CupertinoIcons.building_2_fill,
                       size: 26,
                       color: AppColors.homeInk,
                     ),
@@ -544,7 +649,7 @@ class _PendingInviteDecision extends StatelessWidget {
                 Text(
                   invite.businessName,
                   style: text.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w600,
                     letterSpacing: -0.4,
                     height: 1.15,
                   ),
@@ -597,43 +702,6 @@ class _PendingInviteDecision extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _JoinedSalonCard extends StatelessWidget {
-  const _JoinedSalonCard({required this.businessName});
-  final String businessName;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.homeBorder),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Your salon',
-              style: Theme.of(
-                context,
-              ).textTheme.labelMedium?.copyWith(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              businessName,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -706,7 +774,7 @@ class _SalonSummaryCard extends StatelessWidget {
               contract.businessName,
               style: Theme.of(
                 context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 10),
             Text(
@@ -739,74 +807,51 @@ class _SalonSummaryCard extends StatelessWidget {
   }
 }
 
-class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({
-    required this.name,
-    required this.phone,
-    required this.experience,
-    required this.photoFuture,
+class _EmployeeAction extends StatelessWidget {
+  const _EmployeeAction({
+    required this.label,
+    required this.subtitle,
+    required this.icon,
+    required this.onTap,
   });
-  final String name;
-  final String phone;
-  final String experience;
-  final Future<String?> photoFuture;
-
+  final String label, subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.homeBorder),
-      ),
-      child: Row(
-        children: [
-          FutureBuilder<String?>(
-            future: photoFuture,
-            builder: (context, snapshot) {
-              final url = snapshot.data;
-              return CircleAvatar(
-                radius: 28,
-                backgroundColor: AppColors.homeSage,
-                backgroundImage: url == null ? null : NetworkImage(url),
-                child: url == null
-                    ? Text(
-                        name.isEmpty ? '?' : name[0].toUpperCase(),
-                        style: text.titleLarge,
-                      )
-                    : null,
-              );
-            },
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: text.titleMedium),
-                if (phone.isNotEmpty)
-                  Text(
-                    PkPhone.localNumber(phone),
-                    style: text.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                if (experience.isNotEmpty)
-                  Text(
-                    'Experience · $experience',
-                    style: text.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-              ],
+  Widget build(BuildContext context) => Material(
+    color: Colors.white,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(13),
+      side: const BorderSide(color: AppColors.border),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 22, color: AppColors.homeOlive),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
             ),
-          ),
-        ],
+            const SizedBox(height: 5),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppColors.textSecondary,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _StatTile extends StatelessWidget {
@@ -832,7 +877,14 @@ class _StatTile extends StatelessWidget {
             style: text.labelMedium?.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text(value, style: text.titleLarge),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: text.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
         ],
       ),
     );
@@ -881,14 +933,14 @@ class _JobListTile extends StatelessWidget {
                               ? 'Customer'
                               : job.customerName,
                           style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
                             color: AppColors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Total ${money(job.total)}',
+                          '${job.paymentType} · Rs ${money(job.total)}',
                           style: const TextStyle(
                             fontSize: 13,
                             color: AppColors.textSecondary,
@@ -898,7 +950,7 @@ class _JobListTile extends StatelessWidget {
                     ),
                   ),
                   const Icon(
-                    Icons.chevron_right_rounded,
+                    CupertinoIcons.chevron_right,
                     color: AppColors.iconMuted,
                   ),
                 ],
@@ -926,14 +978,19 @@ class _JobDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     return Scaffold(
-      backgroundColor: AppColors.homeCanvas,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: AppColors.homeCanvas,
+        backgroundColor: Colors.white,
         surfaceTintColor: const Color(0x00000000),
         elevation: 0,
+        leading: IconButton(
+          tooltip: 'Back',
+          icon: const Icon(CupertinoIcons.back),
+          onPressed: () => Navigator.maybePop(context),
+        ),
         title: Text(
-          'Job detail',
-          style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          'Sale details',
+          style: text.titleLarge?.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
       body: ListView(
@@ -944,6 +1001,13 @@ class _JobDetailPage extends StatelessWidget {
           AppSpacing.xl,
         ),
         children: [
+          if (job.bill != null)
+            PosReceiptCard(
+              bill: job.bill!,
+              businessName: job.businessName,
+              currencyCode: 'PKR',
+            ),
+          const SizedBox(height: 14),
           DecoratedBox(
             decoration: BoxDecoration(
               color: AppColors.surface,
@@ -955,19 +1019,40 @@ class _JobDetailPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (job.bill == null) ...[
+                    _JobField(
+                      label: 'Customer',
+                      value: job.customerName.trim().isEmpty
+                          ? '—'
+                          : job.customerName,
+                    ),
+                    _JobField(label: 'Salon', value: job.businessName),
+                    _JobField(
+                      label: 'Services',
+                      value: job.services.isEmpty
+                          ? '—'
+                          : job.services.join(', '),
+                    ),
+                    _JobField(label: 'Time', value: _time),
+                    _JobField(
+                      label: 'Total to salon',
+                      value: _money(job.total),
+                    ),
+                  ],
                   _JobField(
-                    label: 'Customer',
-                    value: job.customerName.trim().isEmpty
-                        ? '—'
-                        : job.customerName,
+                    label: 'Original service amount',
+                    value: _money(job.commissionBase),
                   ),
-                  _JobField(label: 'Salon', value: job.businessName),
-                  _JobField(
-                    label: 'Services',
-                    value: job.services.isEmpty ? '—' : job.services.join(', '),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      'Shop discounts do not reduce your share. Tax is separate.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ),
-                  _JobField(label: 'Time', value: _time),
-                  _JobField(label: 'Total to salon', value: _money(job.total)),
                   _JobField(
                     label: 'Your commission',
                     value:
@@ -1051,7 +1136,7 @@ class _ContractNotice extends StatelessWidget {
               contract.businessName,
               style: Theme.of(
                 context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 10),
             _JobField(label: 'Employment type', value: _kindLabel),

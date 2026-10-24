@@ -13,6 +13,8 @@ import 'package:hairsaloon/src/online/presentation/workspace_screen.dart';
 import 'package:hairsaloon/src/online/presentation/invite_qr_screen.dart';
 import 'package:hairsaloon/src/online/presentation/join_requests_screen.dart';
 import 'package:hairsaloon/src/online/presentation/business_owner_details_screen.dart';
+import 'package:hairsaloon/src/online/presentation/business_form.dart';
+import 'package:hairsaloon/src/features/dashboard/presentation/business_dashboard_home.dart';
 import 'package:hairsaloon/src/features/finance/presentation/sales_screen.dart';
 import 'package:hairsaloon/src/theme/app_theme.dart';
 import 'fake_online_repository.dart';
@@ -137,12 +139,14 @@ void main() {
       expect(tester.takeException(), isNull);
       if (const bool.fromEnvironment('EXPORT_SCREENSHOTS')) {
         await tester.runAsync(() async {
-          final boundary = boundaryKey.currentContext!.findRenderObject()!
-              as RenderRepaintBoundary;
+          final boundary =
+              boundaryKey.currentContext!.findRenderObject()!
+                  as RenderRepaintBoundary;
           final image = await boundary.toImage(pixelRatio: 2);
           final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-          await File('build/mobile-fix/business-drawer-${size.width.toInt()}.png')
-              .writeAsBytes(bytes!.buffer.asUint8List());
+          await File(
+            'build/mobile-fix/business-drawer-${size.width.toInt()}.png',
+          ).writeAsBytes(bytes!.buffer.asUint8List());
           image.dispose();
         });
       }
@@ -157,6 +161,20 @@ void main() {
       await tester.tap(find.text('Business Details'));
       await tester.pumpAndSettle();
       expect(find.byType(BusinessOwnerDetailsScreen), findsOneWidget);
+      expect(find.byTooltip('Refresh details'), findsNothing);
+      if (const bool.fromEnvironment('EXPORT_SCREENSHOTS')) {
+        await tester.runAsync(() async {
+          final boundary =
+              boundaryKey.currentContext!.findRenderObject()!
+                  as RenderRepaintBoundary;
+          final image = await boundary.toImage(pixelRatio: 2);
+          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+          await File(
+            'build/mobile-fix/business-details-${size.width.toInt()}.png',
+          ).writeAsBytes(bytes!.buffer.asUint8List());
+          image.dispose();
+        });
+      }
       expect(find.text('Business phone'), findsOneWidget);
       final personalPhone = find.text('Personal phone');
       await tester.scrollUntilVisible(
@@ -166,8 +184,58 @@ void main() {
       );
       expect(find.text('03001234567'), findsOneWidget);
       expect(find.text('12345-1234567-1'), findsOneWidget);
+      await tester.ensureVisible(find.text('Edit business'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit business'));
+      await tester.pumpAndSettle();
+      expect(find.byType(BusinessForm), findsOneWidget);
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Business name'),
+        'Ali Hair Studio Updated',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Business phone'),
+        '03211234567',
+      );
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Save business'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save business'));
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 10; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump();
+      }
+      expect(find.byType(BusinessOwnerDetailsScreen), findsOneWidget);
+      expect(find.text('Ali Hair Studio Updated'), findsOneWidget);
+      expect(find.text('03211234567'), findsOneWidget);
       await tester.pageBack();
       await tester.pumpAndSettle();
+      final refreshed = tester
+          .widget<BusinessDashboardHome>(find.byType(BusinessDashboardHome))
+          .workspace;
+      expect(refreshed.business.name, 'Ali Hair Studio Updated');
+      expect(
+        (refreshed.settings.get('business_profile') as Map)['phone'],
+        '03211234567',
+      );
+      expect(find.text('Ali Hair Studio Updated'), findsOneWidget);
+      final ownerWorkspace = repository.workspace;
+      repository.workspace = OnlineWorkspace(
+        account: const OnlineAccount(id: 'manager', name: 'Manager'),
+        profile: ownerWorkspace.profile,
+      );
+      await tester.tap(find.text('Business Details'));
+      await tester.pumpAndSettle();
+      expect(find.text('Edit business'), findsNothing);
+      expect(find.text('Personal phone'), findsNothing);
+      expect(find.text('12345-1234567-1'), findsNothing);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      repository.workspace = ownerWorkspace;
       await tester.tap(find.text('Go Online'));
       await tester.pumpAndSettle();
       expect(find.text('Sync status'), findsOneWidget);

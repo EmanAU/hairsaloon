@@ -34,12 +34,13 @@ PreferredSizeWidget financeAppBar(BuildContext context, String title) {
     backgroundColor: AppColors.primary,
     surfaceTintColor: const Color(0x00000000),
     leading: IconButton(
+      tooltip: 'Back',
       onPressed: () => Navigator.of(context).pop(),
       icon: const Icon(CupertinoIcons.back, color: AppColors.textPrimary),
     ),
     title: Text(
       title,
-      style: const TextStyle(
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(
         color: AppColors.textPrimary,
         fontSize: 16,
         fontWeight: FontWeight.w700,

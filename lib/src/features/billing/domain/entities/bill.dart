@@ -120,6 +120,9 @@ class Bill {
 
   bool get hasDiscount => discountAmount > 0;
 
+  /// Shop discounts and tax never change an employee's service commission.
+  double get commissionBase => subTotal < 0 ? 0 : subTotal;
+
   String get shortNumber => id.length > 6 ? id.substring(id.length - 6) : id;
 
   String get discountLabel => discountType == BillDiscountType.percent

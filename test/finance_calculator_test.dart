@@ -6,6 +6,8 @@ import 'package:hairsaloon/src/features/finance/domain/entities/finance_period.d
 import 'package:hairsaloon/src/features/finance/domain/entities/salary_payout.dart';
 import 'package:hairsaloon/src/features/finance/domain/finance_calculator.dart';
 
+import 'package:hairsaloon/src/online/domain/online_models.dart';
+
 void main() {
   final day = DateTime(2026, 10, 13, 12);
   const employee = EmployeeItem(
@@ -56,6 +58,65 @@ void main() {
     expect(FinanceCalculator.commissionPercent('10'), 10);
     expect(FinanceCalculator.commissionPercent('10%'), 10);
   });
+
+  for (final discount in [
+    (BillDiscountType.none, 0.0, 1170.0),
+    (BillDiscountType.amount, 100.0, 1053.0),
+    (BillDiscountType.percent, 10.0, 1053.0),
+    (BillDiscountType.percent, 100.0, 0.0),
+  ]) {
+    test(
+      'commission excludes tax and shop discount ${discount.$1} ${discount.$2}',
+      () {
+        final totals = BillTotals.compute(
+          subTotal: 1000,
+          taxPercent: 17,
+          discountType: discount.$1,
+          discountValue: discount.$2,
+        );
+        final bill = Bill.fromJson(
+          Bill(
+            id: 'discounted',
+            createdAt: day,
+            customerName: 'Hassan',
+            customerPhone: '',
+            employeeName: 'Ali',
+            paymentType: 'Cash',
+            lines: const [BillLine(serviceName: 'Cut', price: 500, qty: 2)],
+            subTotal: totals.subTotal,
+            taxPercent: 17,
+            taxAmount: totals.taxAmount,
+            grandTotal: totals.grandTotal,
+            discountType: discount.$1,
+            discountValue: discount.$2,
+            discountAmount: totals.discountAmount,
+          ).toJson(),
+        );
+        final days = FinanceCalculator.employeeDays(
+          employee: employee,
+          bills: [bill],
+          expenses: const [],
+          payoutsById: const {},
+          include: (_) => true,
+        );
+        expect(days.single.earning, 400);
+        expect(days.single.sales, closeTo(discount.$3, 0.001));
+        final job = EmployeeWorkJob(
+          id: bill.id,
+          createdAt: day,
+          customerName: bill.customerName,
+          total: bill.grandTotal,
+          services: const ['Cut'],
+          businessName: 'Salon',
+          commissionPercent: 40,
+          bill: bill,
+        );
+        expect(job.earning, 400);
+        expect(job.total, closeTo(discount.$3, 0.001));
+        expect(job.paymentType, 'Cash');
+      },
+    );
+  }
 
   test('shop expenses never reduce employee commission', () {
     final days = FinanceCalculator.employeeDays(

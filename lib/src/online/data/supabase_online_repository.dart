@@ -7,6 +7,7 @@ import 'package:http/http.dart' show ClientException;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/utils/pk_phone.dart';
+import '../../features/billing/domain/entities/bill.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
 
@@ -767,6 +768,7 @@ class SupabaseOnlineRepository implements OnlineRepository {
             services: services,
             businessName: contract.businessName,
             commissionPercent: contract.commission,
+            bill: Bill.fromJson(bill),
           ),
         );
       }
