@@ -222,7 +222,7 @@ Constraints:
 Constraints:
 
 - `CHECK (((photo_path IS NULL) OR (split_part(photo_path, '/'::text, 1) = (user_id)::text)))`
-- `CHECK (((work_started_on IS NULL) OR ((work_started_on <= CURRENT_DATE) AND ((date_of_birth IS NULL) OR (work_started_on >= date_of_birth)))))`
+- `CHECK (((work_started_on IS NULL) OR ((work_started_on <= ((now() AT TIME ZONE 'Asia/Karachi'::text))::date) AND ((date_of_birth IS NULL) OR (work_started_on >= date_of_birth)))))`
 - `CHECK ((cnic ~ '^[0-9]{13}$'::text))`
 - `CHECK ((phone ~ '^\+?[0-9]{10,15}$'::text))`
 - `FOREIGN KEY (user_id) REFERENCES users(id)`
@@ -322,3 +322,5 @@ The latest columns and constraints are in `schema.json` and the full bootstrap S
 ## View
 
 `public.contract_reminders`: `id`, `employee_id`, `profile_id`, `ends_at`.
+
+Profile work-start validation uses the Asia/Karachi calendar date, including the hours after Pakistan midnight while UTC is still on the previous date. Birth and work-start dates may be shared across users; CNIC remains unique.

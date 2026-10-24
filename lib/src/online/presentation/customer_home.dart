@@ -407,10 +407,11 @@ class _SalonDetailsState extends State<SalonDetails> {
     setState(() {
       _services = widget.repository.services(widget.business.id);
       _staff = widget.repository.staff(widget.business.id);
-      if (widget.barberId != null)
+      if (widget.barberId != null) {
         _barberPhoto = widget.repository.profilePhoto(
           barberId: widget.barberId,
         );
+      }
     });
     _reviews.currentState?.refresh();
   }

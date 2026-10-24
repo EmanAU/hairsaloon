@@ -1,5 +1,6 @@
 import '../../core/utils/pk_cnic.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import '../../theme/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -118,20 +119,30 @@ class _ProfileFormState extends State<ProfileForm> {
       InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: Icon(icon, size: 21, color: _muted),
+        labelStyle: const TextStyle(fontSize: 12, color: _muted),
+        hintStyle: const TextStyle(fontSize: 12, color: AppColors.iconMuted),
+        errorStyle: const TextStyle(fontSize: 10.5),
+        errorMaxLines: 2,
+        prefixIcon: Icon(icon, size: 18, color: _muted),
+        prefixIconConstraints: const BoxConstraints(minWidth: 36),
+        isDense: true,
         filled: true,
-        fillColor: AppColors.homeCanvas,
+        fillColor: const Color(0xFFF8F9F6),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.border),
         ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _ink),
+        ),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 18,
+          horizontal: 12,
+          vertical: 16,
         ),
       );
 
@@ -143,6 +154,7 @@ class _ProfileFormState extends State<ProfileForm> {
   }) => InkWell(
     borderRadius: BorderRadius.circular(14),
     onTap: () async {
+      FocusScope.of(context).unfocus();
       final today = DateUtils.dateOnly(DateTime.now());
       final first = firstDate ?? DateTime(1900);
       final initial =
@@ -156,82 +168,124 @@ class _ProfileFormState extends State<ProfileForm> {
       if (date != null && mounted) setState(() => changed(date));
     },
     child: InputDecorator(
-      decoration: _decoration(label, Icons.calendar_month_outlined),
+      decoration: _decoration(label, CupertinoIcons.calendar),
       child: Text(
         value == null
             ? 'Select date'
-            : MaterialLocalizations.of(context).formatMediumDate(value),
-        style: TextStyle(color: value == null ? _muted : _ink),
+            : '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}',
+        style: TextStyle(fontSize: 12, color: value == null ? _muted : _ink),
       ),
     ),
   );
 
-  Widget _photoPicker() => Column(
-    children: [
-      FutureBuilder<String?>(
-        future: _photoUrl,
-        builder: (context, snapshot) {
-          final ImageProvider? image = _photo != null
-              ? MemoryImage(_photo!)
-              : snapshot.data != null
-              ? NetworkImage(snapshot.data!)
-              : null;
-          return CircleAvatar(
-            radius: 38,
-            backgroundColor: AppColors.homeSage,
-            foregroundImage: image,
-            onForegroundImageError: image == null ? null : (_, stack) {},
-            child: const Icon(Icons.person_outline, color: _ink, size: 32),
-          );
-        },
-      ),
-      const SizedBox(height: 8),
-      TextButton(
-        onPressed: () async {
-          try {
-            await _choosePhoto();
-          } catch (error) {
-            if (mounted) {
-              showMessage(
-                context,
-                error is OnlineFailure
-                    ? error.message
-                    : 'Could not open photo. Please retry.',
-              );
-            }
-          }
-        },
-        child: Text(
-          _photo == null && widget.profile?.photoPath == null
-              ? 'Add photo'
-              : 'Change photo',
+  Future<void> _pickPhoto() async {
+    try {
+      await _choosePhoto();
+    } catch (error) {
+      if (mounted) {
+        showMessage(
+          context,
+          error is OnlineFailure
+              ? error.message
+              : 'Could not open photo. Please retry.',
+        );
+      }
+    }
+  }
+
+  Widget _photoPicker() => Material(
+    color: const Color(0xFFF8F9F6),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+      side: const BorderSide(color: AppColors.border),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: _pickPhoto,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            FutureBuilder<String?>(
+              future: _photoUrl,
+              builder: (context, snapshot) {
+                final ImageProvider? image = _photo != null
+                    ? MemoryImage(_photo!)
+                    : snapshot.data != null
+                    ? NetworkImage(snapshot.data!)
+                    : null;
+                return CircleAvatar(
+                  radius: 28,
+                  backgroundColor: const Color(0xFFEBF1DC),
+                  foregroundImage: image,
+                  onForegroundImageError: image == null ? null : (_, stack) {},
+                  child: const Icon(
+                    CupertinoIcons.person_crop_circle,
+                    color: _ink,
+                    size: 34,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _photo == null && widget.profile?.photoPath == null
+                        ? 'Add photo'
+                        : 'Change photo',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _ink,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  const Text(
+                    'A clear photo of you · up to 2 MB',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      height: 1.4,
+                      color: _muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(CupertinoIcons.chevron_right, size: 14, color: _muted),
+          ],
         ),
       ),
-      const Text('Up to 2 MB', style: TextStyle(fontSize: 11, color: _muted)),
-    ],
+    ),
   );
 
   Widget _fields() => LayoutBuilder(
     builder: (context, constraints) {
       final width = constraints.maxWidth >= OnlineShell.twoColMinWidth
-          ? (constraints.maxWidth - 16) / 2
+          ? (constraints.maxWidth - 12) / 2
           : constraints.maxWidth;
+      final dateWidth = (constraints.maxWidth - 12) / 2;
       final experience = PersonalProfile(
         code: '',
         phone: '',
         workStartedOn: _started,
       ).experienceAt(DateTime.now());
       return Wrap(
-        spacing: 16,
-        runSpacing: 18,
+        spacing: 12,
+        runSpacing: 12,
         children: [
           SizedBox(
             width: width,
             child: TextFormField(
               controller: _name,
+              style: const TextStyle(fontSize: 13),
+              textInputAction: TextInputAction.next,
               textCapitalization: TextCapitalization.words,
               autofillHints: const [AutofillHints.name],
-              decoration: _decoration('Full name', Icons.person_outline),
+              decoration: _decoration('Full name', CupertinoIcons.person),
               validator: (value) =>
                   (value?.trim().isEmpty ?? true) || value!.trim().length > 120
                   ? 'Enter your full name (up to 120 characters)'
@@ -242,12 +296,14 @@ class _ProfileFormState extends State<ProfileForm> {
             width: width,
             child: TextFormField(
               controller: _phone,
+              style: const TextStyle(fontSize: 13),
+              textInputAction: TextInputAction.next,
               keyboardType: TextInputType.phone,
               autofillHints: const [AutofillHints.telephoneNumber],
               inputFormatters: [PkPhoneInputFormatter()],
               decoration: _decoration(
                 'Mobile number',
-                Icons.phone_outlined,
+                CupertinoIcons.phone,
                 hint: '03465501748',
               ),
               validator: PkPhone.localValidationError,
@@ -257,11 +313,13 @@ class _ProfileFormState extends State<ProfileForm> {
             width: width,
             child: TextFormField(
               controller: _cnic,
+              style: const TextStyle(fontSize: 13),
+              textInputAction: TextInputAction.done,
               keyboardType: TextInputType.number,
               inputFormatters: [PkCnicInputFormatter()],
               decoration: _decoration(
                 'CNIC',
-                Icons.badge_outlined,
+                CupertinoIcons.person_crop_rectangle,
                 hint: '12345-1234567-1',
               ),
               validator: (value) =>
@@ -269,11 +327,11 @@ class _ProfileFormState extends State<ProfileForm> {
             ),
           ),
           SizedBox(
-            width: width,
+            width: dateWidth,
             child: _date('Date of birth', _birth, (date) => _birth = date),
           ),
           SizedBox(
-            width: width,
+            width: dateWidth,
             child: _date(
               'Working since',
               _started,
@@ -281,27 +339,35 @@ class _ProfileFormState extends State<ProfileForm> {
               firstDate: _birth,
             ),
           ),
-          SizedBox(
-            width: width,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
+          Container(
+            width: constraints.maxWidth,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F9F6),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                const Icon(CupertinoIcons.briefcase, size: 16, color: _muted),
+                const SizedBox(width: 9),
+                const Expanded(
+                  child: Text(
                     'Work experience',
-                    style: TextStyle(fontSize: 12, color: _muted),
+                    style: TextStyle(fontSize: 11, color: _muted),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
+                ),
+                Flexible(
+                  child: Text(
                     experience,
+                    textAlign: TextAlign.end,
                     style: const TextStyle(
-                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
                       color: _ink,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -316,25 +382,37 @@ class _ProfileFormState extends State<ProfileForm> {
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
-        title: const Text('Personal profile'),
+        surfaceTintColor: Colors.transparent,
+        leading: widget.onboarding
+            ? null
+            : IconButton(
+                tooltip: 'Back',
+                onPressed: _saving ? null : () => Navigator.maybePop(context),
+                icon: const Icon(CupertinoIcons.back),
+              ),
+        title: const Text(
+          'Personal profile',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        ),
         actions: [
           if (widget.onboarding)
             IconButton(
               tooltip: 'Sign out',
               onPressed: _saving ? null : widget.repository.signOut,
-              icon: const Icon(Icons.logout),
+              icon: const Icon(CupertinoIcons.square_arrow_right, size: 21),
             ),
         ],
       ),
       body: OnlineShell.centered(
-        maxWidth: OnlineShell.formMaxWidth,
+        maxWidth: 640,
         child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(
-            24,
-            16,
-            24,
-            24 + MediaQuery.paddingOf(context).bottom,
+            20,
+            12,
+            20,
+            20 + MediaQuery.paddingOf(context).bottom,
           ),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: AbsorbPointer(
             absorbing: _saving,
             child: Form(
@@ -342,33 +420,51 @@ class _ProfileFormState extends State<ProfileForm> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Center(child: _photoPicker()),
-                  const SizedBox(height: 24),
-                  if (widget.onboarding) ...[
-                    Text(
-                      'If a salon invited you, enter the same CNIC and sign in with the same email they used — you will be asked to join after this.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: _muted,
-                        height: 1.4,
-                      ),
+                  const Text(
+                    'Your personal details',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -.35,
+                      color: _ink,
                     ),
-                    const SizedBox(height: 20),
-                  ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Add your photo and details to set up your profile.',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      height: 1.5,
+                      color: _muted,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _photoPicker(),
+                  const SizedBox(height: 18),
                   _fields(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
                     child: ActionButton(
                       style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.onPrimary,
+                        iconSize: 18,
+                        textStyle: Theme.of(context).textTheme.labelLarge
+                            ?.copyWith(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                       label: widget.onboarding
                           ? 'Save & continue'
                           : 'Save profile',
                       onPressed: _save,
-                      icon: Icons.arrow_forward_rounded,
+                      icon: CupertinoIcons.arrow_right,
                     ),
                   ),
                   if (!widget.onboarding && widget.profile != null) ...[
@@ -392,7 +488,7 @@ class _ProfileFormState extends State<ProfileForm> {
     subtitle: Text(value, style: const TextStyle(fontSize: 12)),
     trailing: IconButton(
       tooltip: 'Copy $label',
-      icon: const Icon(Icons.copy, size: 18),
+      icon: const Icon(CupertinoIcons.doc_on_doc, size: 17),
       onPressed: () async {
         await Clipboard.setData(ClipboardData(text: value));
         if (mounted) showMessage(context, '$label copied');

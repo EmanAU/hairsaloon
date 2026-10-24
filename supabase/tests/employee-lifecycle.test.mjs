@@ -27,7 +27,11 @@ test('owner-created employee: verified invite before profile, membership status,
   const business=(await db.query("insert into public.businesses(owner_id,name,phone,business_type,city,area,address,is_active) values($1,'Test Salon','03001234567','Salon','Lahore','Area','Address',true) returning id",[owner])).rows[0].id;
   async function as(id){ await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role authenticated'); }
   const record={id:localId,firstName:'Hassan',lastName:'Ali',email:'staff@test.example',phoneNumber:'+923001234568',cnicNumber:'1234512345671',dateOfBirth:'1997-01-01',workStartedOn:'2016-01-01',homeAddress:'Street 1',isActive:true,photoBase64:'cGhvdG8='};
+  const calendar=(await db.query("select (now() at time zone 'Asia/Karachi')::date::text today, ((now() at time zone 'Asia/Karachi')::date+1)::text tomorrow")).rows[0];
+  record.workStartedOn=calendar.today;
+  assert.equal((await db.query("select ('2026-10-24 19:30:00+00'::timestamptz at time zone 'Asia/Karachi')::date::text as date_value")).rows[0].date_value,'2026-10-25');
   await as(owner);
+  await assert.rejects(db.query('select public.save_employee_record($1,$2)',[business,{...record,workStartedOn:calendar.tomorrow}]));
   await db.query('select public.save_employee_record($1,$2)',[business,record]);
   await db.query('select public.save_employee_record($1,$2)',[business,record]);
   assert.equal((await db.query('select count(*)::int n from public.employee_invites')).rows[0].n,1);
@@ -44,6 +48,14 @@ test('owner-created employee: verified invite before profile, membership status,
   assert.equal((await db.query('select phone,cnic from public.profiles')).rows[0].cnic,record.cnicNumber);
   assert.equal((await db.query('select id from public.business_employees')).rows[0].id,localId);
   await db.query('select public.respond_to_employee_invite_profile($1,true)',[invitation]);
+  assert.equal((await db.query('select work_started_on::text as date_value from public.profiles')).rows[0].date_value,calendar.today);
+  await assert.rejects(db.query('update public.profiles set work_started_on=$1 where user_id=$2',[calendar.tomorrow,employee]),e=>e.code==='23514');
+  await assert.rejects(db.query("update public.profiles set work_started_on='1996-01-01' where user_id=$1",[employee]),e=>e.code==='23514');
+  await as(outsider);
+  await db.query('insert into public.profiles(user_id,phone,cnic,date_of_birth,work_started_on) values($1,$2,$3,$4,$5)',[outsider,'03001234569','1234512345672',record.dateOfBirth,record.workStartedOn]);
+  // A different identity may have exactly the same birth/start dates.
+  assert.equal((await db.query('select work_started_on::text as date_value from public.profiles')).rows[0].date_value,calendar.today);
+  await as(employee);
   await assert.rejects(db.query("insert into public.businesses(owner_id,name,phone,business_type,city,area,address) values($1,'Blocked','03001234567','Salon','Lahore','Area','Address')",[employee]),e=>e.code==='42501');
   await as(owner);
   assert.equal((await db.query('select is_active from public.business_team($1)',[business])).rows[0].is_active,true);

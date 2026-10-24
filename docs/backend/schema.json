@@ -1,6 +1,6 @@
 {
   "source": "Live PostgreSQL catalog; public schema + auth.users identity FK",
-  "captured": "2026-10-24",
+  "captured": "2026-10-25",
   "columns": [
     {
       "column_default": "gen_random_uuid()",
@@ -1263,7 +1263,7 @@
       "type": "c"
     },
     {
-      "definition": "CHECK (((work_started_on IS NULL) OR ((work_started_on <= CURRENT_DATE) AND ((date_of_birth IS NULL) OR (work_started_on >= date_of_birth)))))",
+      "definition": "CHECK (((work_started_on IS NULL) OR ((work_started_on <= ((now() AT TIME ZONE 'Asia/Karachi'::text))::date) AND ((date_of_birth IS NULL) OR (work_started_on >= date_of_birth)))))",
       "name": "profile_work_dates",
       "table_name": "profiles",
       "type": "c"

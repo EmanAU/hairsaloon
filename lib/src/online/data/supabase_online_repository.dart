@@ -1232,6 +1232,11 @@ class SupabaseOnlineRepository implements OnlineRepository {
     if (error is PostgrestException) {
       final text = '${error.message} ${error.details ?? ''} ${error.hint ?? ''}'
           .toLowerCase();
+      if (error.code == '23514' && text.contains('profile_work_dates')) {
+        throw const OnlineFailure(
+          'Work start date must be on or before today and not before your date of birth.',
+        );
+      }
       if (text.contains('duplicate') || error.code == '23505') {
         if (text.contains('cnic')) {
           throw const OnlineFailure('This CNIC is already registered.');
