@@ -18,6 +18,7 @@ import 'package:hairsaloon/src/online/data/business_workspace.dart';
 import 'package:hairsaloon/src/online/presentation/employee_invite_flows.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
+import 'employee_photo.dart';
 
 class EmployeesScreen extends StatefulWidget {
   const EmployeesScreen({super.key});
@@ -115,10 +116,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         children: [
           _buildStatusTabs(),
           const SizedBox(height: 10),
-          if (_showAddForm) ...[
-            _addForm(store),
-            const SizedBox(height: 12),
-          ],
+          if (_showAddForm) ...[_addForm(store), const SizedBox(height: 12)],
           if (items.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 40),
@@ -142,12 +140,13 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () {
-        final bills = context
-            .read<BillingStore>()
-            .bills
-            .where((b) => b.employeeName == e.fullName)
-            .toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        final bills =
+            context
+                .read<BillingStore>()
+                .bills
+                .where((b) => b.employeeName == e.fullName)
+                .toList()
+              ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => EmployeeHistoryScreen(employee: e, bills: bills),
@@ -164,7 +163,10 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         ),
         child: Row(
           children: [
-            _StaffAvatar(photoBase64: e.photoBase64, name: e.fullName),
+            if (e.onlineSynced)
+              EmployeePhoto(employee: e)
+            else
+              _StaffAvatar(photoBase64: e.photoBase64, name: e.fullName),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -221,7 +223,10 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                     e.isManager ? 'Remove as manager' : 'Make manager',
                   ),
                 ),
-                const PopupMenuItem(value: 'agreement', child: Text('Agreement')),
+                const PopupMenuItem(
+                  value: 'agreement',
+                  child: Text('Agreement'),
+                ),
                 const PopupMenuItem(value: 'edit', child: Text('Edit')),
                 const PopupMenuItem(value: 'delete', child: Text('Delete')),
               ],
@@ -289,9 +294,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     }
     if (value == 'agreement') {
       final updated = await Navigator.of(context).push<EmployeeItem>(
-        MaterialPageRoute(
-          builder: (_) => EmployeeAgreementScreen(employee: e),
-        ),
+        MaterialPageRoute(builder: (_) => EmployeeAgreementScreen(employee: e)),
       );
       if (updated == null) return;
       await store.update(updated);
@@ -404,10 +407,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             ),
             if (showOther) ...[
               const SizedBox(height: 8),
-              _field(
-                _otherCategoryCtrl,
-                'Other category name',
-              ),
+              _field(_otherCategoryCtrl, 'Other category name'),
             ],
             const SizedBox(height: 8),
             _field(_specialityCtrl, 'Speciality'),
@@ -454,10 +454,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                 onPressed: () => _save(store),
                 child: const Text(
                   'Save Employee',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -569,10 +566,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     final saved = store.byId(employee.id) ?? employee;
     final updated = await Navigator.of(context).push<EmployeeItem>(
       MaterialPageRoute(
-        builder: (_) => EmployeeAgreementScreen(
-          employee: saved,
-          requireCompletion: true,
-        ),
+        builder: (_) =>
+            EmployeeAgreementScreen(employee: saved, requireCompletion: true),
       ),
     );
     if (updated == null || !mounted) return;
@@ -688,4 +683,3 @@ class _CnicFormatter extends TextInputFormatter {
     );
   }
 }
-

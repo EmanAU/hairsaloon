@@ -37,6 +37,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       widget.repository,
       businesses.first,
       account.account,
+      personalProfile: account.profile,
     );
     if (!mounted) {
       workspace.dispose();

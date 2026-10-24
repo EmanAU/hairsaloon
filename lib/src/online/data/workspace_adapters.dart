@@ -15,7 +15,7 @@ class WorkspaceAuth extends AuthRepository {
     id: workspace.account.id,
     name: workspace.account.name,
     username: workspace.account.name,
-    phone: workspace.business.phone,
+    phone: workspace.journal.get('personal_phone') as String? ?? '',
     createdAt: DateTime(2000),
   );
   @override

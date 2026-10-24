@@ -45,6 +45,7 @@ class BusinessWorkspace extends ChangeNotifier {
     SalonBusiness business,
     OnlineAccount account, {
     bool initializeHive = true,
+    PersonalProfile? personalProfile,
   }) async {
     if (initializeHive) {
       await Hive.initFlutter();
@@ -64,6 +65,10 @@ class BusinessWorkspace extends ChangeNotifier {
       await Hive.openBox<dynamic>('${prefix}_sync'),
     );
     final recovery = workspace.journal.get('applying');
+    if (personalProfile != null) {
+      // Account identity stays local and separate from the salon snapshot.
+      await workspace.journal.put('personal_phone', personalProfile.phone);
+    }
     if (recovery != null) {
       await workspace._apply(Map<String, dynamic>.from(recovery as Map));
     }
@@ -105,8 +110,7 @@ class BusinessWorkspace extends ChangeNotifier {
         'online — bank transfer',
         'jazzcash — business',
       };
-      final accountKey =
-          'payment_accounts.v1.${account.id}';
+      final accountKey = 'payment_accounts.v1.${account.id}';
       final expenseKey = 'expense_types.v1.${account.id}';
       await settings.put(
         expenseKey,
@@ -148,7 +152,9 @@ class BusinessWorkspace extends ChangeNotifier {
     final acceptedIds = accepted.map((e) => e.id).toSet();
     for (final member in accepted) {
       final parts = member.name.trim().split(RegExp(r'\s+'));
-      final first = parts.isEmpty || parts.first.isEmpty ? 'Staff' : parts.first;
+      final first = parts.isEmpty || parts.first.isEmpty
+          ? 'Staff'
+          : parts.first;
       final last = parts.length <= 1 ? '' : parts.sublist(1).join(' ');
       final existing = box.get(member.id);
       final phone = member.phone.trim();

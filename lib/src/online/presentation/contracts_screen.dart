@@ -56,7 +56,10 @@ class _ContractsScreenState extends State<ContractsScreen> {
       return;
     } catch (_) {
       if (mounted) {
-        ToastService.error('Could not release this contract. Try again.', context);
+        ToastService.error(
+          'Could not release this contract. Try again.',
+          context,
+        );
       }
       return;
     }
@@ -94,10 +97,7 @@ class _ContractsScreenState extends State<ContractsScreen> {
         builder: (contracts) => contracts.isEmpty
             ? const Padding(
                 padding: EdgeInsets.symmetric(vertical: 40),
-                child: Text(
-                  'No contracts yet.',
-                  textAlign: TextAlign.center,
-                ),
+                child: Text('No contracts yet.', textAlign: TextAlign.center),
               )
             : Column(
                 children: [
@@ -105,8 +105,8 @@ class _ContractsScreenState extends State<ContractsScreen> {
                     if (i > 0) const SizedBox(height: AppSpacing.md),
                     _ContractDetailCard(
                       contract: contracts[i],
-                      onRelease: widget.employee != null &&
-                              contracts[i].canRelease
+                      onRelease:
+                          widget.employee != null && contracts[i].canRelease
                           ? () => _release(contracts[i])
                           : null,
                     ),
@@ -488,10 +488,7 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
       return;
     } catch (_) {
       if (mounted) {
-        ToastService.error(
-          'Could not save the contract. Try again.',
-          context,
-        );
+        ToastService.error('Could not save the contract. Try again.', context);
       }
       return;
     }
@@ -503,8 +500,7 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
   EmployeeItem _employeeItemFromLocal() {
     final staff = widget.employee;
     final parts = staff.name.trim().split(RegExp(r'\s+'));
-    final first =
-        parts.isEmpty || parts.first.isEmpty ? 'Staff' : parts.first;
+    final first = parts.isEmpty || parts.first.isEmpty ? 'Staff' : parts.first;
     final last = parts.length <= 1 ? '' : parts.sublist(1).join(' ');
 
     EmployeesStore? store;
@@ -538,6 +534,7 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
         homeAddress: (map['homeAddress'] as String?) ?? '',
         isActive: map['isActive'] as bool? ?? true,
         isManager: map['isManager'] as bool? ?? false,
+        onlineSynced: true,
         photoBase64: map['photoBase64'] as String?,
         speciality: map['speciality'] as String?,
         employeeType: (map['employeeType'] as String?) ?? 'General',
@@ -555,6 +552,7 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
       cnicNumber: staff.cnic,
       homeAddress: '',
       isActive: true,
+      onlineSynced: true,
       employeeType: 'General',
       basicSalary: _salary.text.trim(),
       commission: _commission.text.trim(),
@@ -581,11 +579,12 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
 
     if (store == null && widget.business != null) {
       try {
-        final account = (await widget.repository.loadWorkspace()).account;
+        final onlineWorkspace = await widget.repository.loadWorkspace();
         ownedWorkspace = await BusinessWorkspace.open(
           widget.repository,
           widget.business!,
-          account,
+          onlineWorkspace.account,
+          personalProfile: onlineWorkspace.profile,
         );
         workspace = ownedWorkspace;
         await ownedWorkspace.syncOnlineTeam();
@@ -661,17 +660,19 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
 
     final fresh = store.byId(item.id) ?? item;
     final detailsStore = store;
-    await Navigator.of(context).pushReplacement(
+    await Navigator.of(context).push(
       MaterialPageRoute<EmployeeItem>(
         builder: (_) => ChangeNotifierProvider<EmployeesStore>.value(
           value: detailsStore,
           child: EmployeeDetailsScreen(
             item: fresh,
             requireCompletion: true,
+            repository: widget.repository,
           ),
         ),
       ),
     );
+    if (mounted) Navigator.of(context).pop(true);
     ownedWorkspace?.dispose();
   }
 
@@ -764,122 +765,122 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
-                    child: Form(
-                      key: _form,
-                      child: Column(
-                        children: [
-                          DropdownButtonFormField<String>(
-                            initialValue: _kind,
-                            decoration: appSheetInputDecoration(
-                              'Contract type',
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+                      child: Form(
+                        key: _form,
+                        child: Column(
+                          children: [
+                            DropdownButtonFormField<String>(
+                              initialValue: _kind,
+                              decoration: appSheetInputDecoration(
+                                'Contract type',
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'permanent',
+                                  child: Text('Permanent'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'daily',
+                                  child: Text('Daily (24 hours)'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'fixed',
+                                  child: Text('Fixed term'),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setState(() => _kind = value);
+                              },
                             ),
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'permanent',
-                                child: Text('Permanent'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'daily',
-                                child: Text('Daily (24 hours)'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'fixed',
-                                child: Text('Fixed term'),
-                              ),
-                            ],
-                            onChanged: (value) {
-                              if (value == null) return;
-                              setState(() => _kind = value);
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          _DateFieldTile(
-                            label: 'Start date',
-                            value: _formatDateTime(_starts),
-                            onTap: () => _pickDate(true),
-                          ),
-                          if (_kind == 'fixed') ...[
                             const SizedBox(height: 12),
                             _DateFieldTile(
-                              label: 'End date',
-                              value: _formatDateTime(_ends),
-                              onTap: () => _pickDate(false),
+                              label: 'Start date',
+                              value: _formatDateTime(_starts),
+                              onTap: () => _pickDate(true),
+                            ),
+                            if (_kind == 'fixed') ...[
+                              const SizedBox(height: 12),
+                              _DateFieldTile(
+                                label: 'End date',
+                                value: _formatDateTime(_ends),
+                                onTap: () => _pickDate(false),
+                              ),
+                            ],
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _salary,
+                              decoration: appSheetInputDecoration(
+                                'Basic salary',
+                                hint: '0',
+                              ),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              validator: (value) =>
+                                  _number(value, 9999999999.99),
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _commission,
+                              decoration: appSheetInputDecoration(
+                                'Commission (%)',
+                                hint: '0',
+                              ),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              validator: (value) => _number(value, 100),
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _terms,
+                              decoration: appSheetInputDecoration(
+                                'Agreement description',
+                                hint: 'Optional notes',
+                              ),
+                              minLines: 3,
+                              maxLines: 6,
                             ),
                           ],
-                          const SizedBox(height: 12),
-                          TextFormField(
-                            controller: _salary,
-                            decoration: appSheetInputDecoration(
-                              'Basic salary',
-                              hint: '0',
-                            ),
-                            keyboardType:
-                                const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            validator: (value) =>
-                                _number(value, 9999999999.99),
-                          ),
-                          const SizedBox(height: 12),
-                          TextFormField(
-                            controller: _commission,
-                            decoration: appSheetInputDecoration(
-                              'Commission (%)',
-                              hint: '0',
-                            ),
-                            keyboardType:
-                                const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            validator: (value) => _number(value, 100),
-                          ),
-                          const SizedBox(height: 12),
-                          TextFormField(
-                            controller: _terms,
-                            decoration: appSheetInputDecoration(
-                              'Agreement description',
-                              hint: 'Optional notes',
-                            ),
-                            minLines: 3,
-                            maxLines: 6,
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.sm,
-                AppSpacing.lg,
-                AppSpacing.md,
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: ActionButton(
-                  label: 'Save contract',
-                  icon: Icons.check_rounded,
-                  style: appPrimaryButtonStyle(),
-                  onPressed: _save,
-                ),
+                ],
               ),
             ),
-          ),
-        ],
-      ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ActionButton(
+                    label: 'Save contract',
+                    icon: Icons.check_rounded,
+                    style: appPrimaryButtonStyle(),
+                    onPressed: _save,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

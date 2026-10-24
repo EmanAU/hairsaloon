@@ -8,6 +8,7 @@ class EmployeeItem {
     required this.homeAddress,
     required this.isActive,
     this.isManager = false,
+    this.onlineSynced = false,
     this.photoBase64,
     this.speciality,
     this.employeeType,
@@ -27,6 +28,9 @@ class EmployeeItem {
   /// Shop manager role. At most one employee should be manager at a time.
   /// A manager can still work as a normal employee.
   final bool isManager;
+
+  /// Linked to this person's online profile, rather than a local-only contact.
+  final bool onlineSynced;
   final String? photoBase64;
   final String? speciality;
   final String? employeeType;
@@ -45,6 +49,7 @@ class EmployeeItem {
     String? homeAddress,
     bool? isActive,
     bool? isManager,
+    bool? onlineSynced,
     String? photoBase64,
     bool clearPhoto = false,
     String? speciality,
@@ -62,13 +67,13 @@ class EmployeeItem {
       homeAddress: homeAddress ?? this.homeAddress,
       isActive: isActive ?? this.isActive,
       isManager: isManager ?? this.isManager,
+      onlineSynced: onlineSynced ?? this.onlineSynced,
       photoBase64: clearPhoto ? null : (photoBase64 ?? this.photoBase64),
       speciality: speciality ?? this.speciality,
       employeeType: employeeType ?? this.employeeType,
       basicSalary: basicSalary ?? this.basicSalary,
       commission: commission ?? this.commission,
-      agreementDescription:
-          agreementDescription ?? this.agreementDescription,
+      agreementDescription: agreementDescription ?? this.agreementDescription,
     );
   }
 }
