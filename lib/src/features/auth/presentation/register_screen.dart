@@ -22,7 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController(text: PkPhone.prefix);
+  final _phoneCtrl = TextEditingController(text: PkPhone.inputPrefix);
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   bool _showPassword = false;
@@ -90,17 +90,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _label(String text) => Padding(
-        padding: EdgeInsets.only(bottom: 8.h),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 0.1,
-          ),
-        ),
-      );
+    padding: EdgeInsets.only(bottom: 8.h),
+    child: Text(
+      text,
+      style: TextStyle(
+        color: AppColors.textSecondary,
+        fontSize: 13.sp,
+        fontWeight: FontWeight.w500,
+        letterSpacing: 0.1,
+      ),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -163,7 +163,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         SizedBox(height: 24.h),
                         if (error != null && error.isNotEmpty) ...[
-                          _ErrorBanner(message: error, onClose: auth.clearError),
+                          _ErrorBanner(
+                            message: error,
+                            onClose: auth.clearError,
+                          ),
                           SizedBox(height: 16.h),
                         ],
                         _label('Name'),
@@ -196,7 +199,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fontSize: 14.sp,
                           ),
                           decoration: _fieldDecoration(
-                            hint: '+923462254477',
+                            hint: '03465501748',
                             prefix: Icon(
                               Icons.phone_rounded,
                               color: AppColors.textSecondary,
@@ -214,27 +217,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             color: AppColors.textPrimary,
                             fontSize: 14.sp,
                           ),
-                          decoration: _fieldDecoration(
-                            hint: 'Create a password',
-                            prefix: Icon(
-                              Icons.lock_rounded,
-                              color: AppColors.textSecondary,
-                              size: 20.r,
-                            ),
-                          ).copyWith(
-                            suffixIcon: IconButton(
-                              onPressed: () => setState(
-                                () => _showPassword = !_showPassword,
+                          decoration:
+                              _fieldDecoration(
+                                hint: 'Create a password',
+                                prefix: Icon(
+                                  Icons.lock_rounded,
+                                  color: AppColors.textSecondary,
+                                  size: 20.r,
+                                ),
+                              ).copyWith(
+                                suffixIcon: IconButton(
+                                  onPressed: () => setState(
+                                    () => _showPassword = !_showPassword,
+                                  ),
+                                  icon: Icon(
+                                    _showPassword
+                                        ? Icons.visibility_off_rounded
+                                        : Icons.visibility_rounded,
+                                    color: AppColors.textSecondary,
+                                    size: 20.r,
+                                  ),
+                                ),
                               ),
-                              icon: Icon(
-                                _showPassword
-                                    ? Icons.visibility_off_rounded
-                                    : Icons.visibility_rounded,
-                                color: AppColors.textSecondary,
-                                size: 20.r,
-                              ),
-                            ),
-                          ),
                           validator: (v) {
                             final val = (v ?? '').trim();
                             if (val.isEmpty) return 'Required';
@@ -251,28 +255,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             color: AppColors.textPrimary,
                             fontSize: 14.sp,
                           ),
-                          decoration: _fieldDecoration(
-                            hint: 'Re-enter password',
-                            prefix: Icon(
-                              Icons.lock_outline_rounded,
-                              color: AppColors.textSecondary,
-                              size: 20.r,
-                            ),
-                          ).copyWith(
-                            suffixIcon: IconButton(
-                              onPressed: () => setState(
-                                () => _showConfirmPassword =
-                                    !_showConfirmPassword,
+                          decoration:
+                              _fieldDecoration(
+                                hint: 'Re-enter password',
+                                prefix: Icon(
+                                  Icons.lock_outline_rounded,
+                                  color: AppColors.textSecondary,
+                                  size: 20.r,
+                                ),
+                              ).copyWith(
+                                suffixIcon: IconButton(
+                                  onPressed: () => setState(
+                                    () => _showConfirmPassword =
+                                        !_showConfirmPassword,
+                                  ),
+                                  icon: Icon(
+                                    _showConfirmPassword
+                                        ? Icons.visibility_off_rounded
+                                        : Icons.visibility_rounded,
+                                    color: AppColors.textSecondary,
+                                    size: 20.r,
+                                  ),
+                                ),
                               ),
-                              icon: Icon(
-                                _showConfirmPassword
-                                    ? Icons.visibility_off_rounded
-                                    : Icons.visibility_rounded,
-                                color: AppColors.textSecondary,
-                                size: 20.r,
-                              ),
-                            ),
-                          ),
                           validator: (v) {
                             final val = (v ?? '').trim();
                             if (val.isEmpty) return 'Required';
@@ -286,22 +291,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         SizedBox(
                           height: 52.h,
                           child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: AppColors.onPrimary,
-                              elevation: 0,
-                              shadowColor: const Color(0x00000000),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(9),
-                              ),
-                            ).copyWith(
-                              overlayColor: WidgetStateProperty.resolveWith(
-                                (states) =>
-                                    states.contains(WidgetState.pressed)
+                            style:
+                                ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: AppColors.onPrimary,
+                                  elevation: 0,
+                                  shadowColor: const Color(0x00000000),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(9),
+                                  ),
+                                ).copyWith(
+                                  overlayColor: WidgetStateProperty.resolveWith(
+                                    (states) =>
+                                        states.contains(WidgetState.pressed)
                                         ? _limeDeep.withValues(alpha: 0.5)
                                         : null,
-                              ),
-                            ),
+                                  ),
+                                ),
                             onPressed: auth.isLoading ? null : _submit,
                             child: auth.isLoading
                                 ? SizedBox(
@@ -333,10 +339,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             ),
                             TextButton(
-                              onPressed: () => Navigator.of(context)
-                                  .pushReplacementNamed(
-                                AppRoutes.phonePasswordLogin,
-                              ),
+                              onPressed: () =>
+                                  Navigator.of(context).pushReplacementNamed(
+                                    AppRoutes.phonePasswordLogin,
+                                  ),
                               style: TextButton.styleFrom(
                                 padding: EdgeInsets.zero,
                                 minimumSize: Size.zero,

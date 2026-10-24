@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
+import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter/services.dart';
 import '../../core/services/toast_service.dart';
@@ -243,8 +244,9 @@ class _BusinessHomeState extends State<BusinessHome> {
         onClose: () => setState(() => _choosingBusiness = true),
       );
     }
-    final pendingBusinesses =
-        workspace.businesses.where((b) => !b.isActive).toList();
+    final pendingBusinesses = workspace.businesses
+        .where((b) => !b.isActive)
+        .toList();
     final singleBusiness =
         !_choosingBusiness && workspace.businesses.length == 1;
 
@@ -313,207 +315,205 @@ class _BusinessHomeState extends State<BusinessHome> {
       body: OnlineShell.centered(
         maxWidth: OnlineShell.pageMaxWidth,
         child: ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              if (workspace.isCached)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 16),
-                  child: Text(
-                    'Offline: showing saved account details. Approval and contract changes require a connection.',
-                  ),
+          padding: const EdgeInsets.all(24),
+          children: [
+            if (workspace.isCached)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: Text(
+                  'Offline: showing saved account details. Approval and contract changes require a connection.',
                 ),
-              // One business → land straight on that salon's home / approval.
-              if (active != null)
-                _ActiveSalonHome(
-                  business: active,
-                  repository: session.repository,
-                  invite: _invite,
-                  team: _team,
-                  inviteCode: _inviteCode,
-                  reviewing: _reviewing,
-                  onRetryInvite: () => setState(
-                    () =>
-                        _invite = session.repository.businessInvite(active.id),
-                  ),
-                  onRetryTeam: () => setState(
-                    () => _team = session.repository.team(active.id),
-                  ),
-                  onReview: (employee, accept) =>
-                      _review(active, employee, accept),
-                  onInviteByProfile: () => _inviteByProfile(active),
-                  onOpenStaff: () =>
-                      Navigator.push<void>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => JoinRequestsScreen(
-                            repository: session.repository,
-                            businessId: active.id,
-                          ),
-                        ),
-                      ).then((_) {
-                        if (mounted) {
-                          setState(
-                            () => _team = session.repository.team(active.id),
-                          );
-                        }
-                      }),
-                  onEditBusiness: () async {
-                    final saved = await Navigator.push<bool>(
+              ),
+            // One business → land straight on that salon's home / approval.
+            if (active != null)
+              _ActiveSalonHome(
+                business: active,
+                repository: session.repository,
+                invite: _invite,
+                team: _team,
+                inviteCode: _inviteCode,
+                reviewing: _reviewing,
+                onRetryInvite: () => setState(
+                  () => _invite = session.repository.businessInvite(active.id),
+                ),
+                onRetryTeam: () =>
+                    setState(() => _team = session.repository.team(active.id)),
+                onReview: (employee, accept) =>
+                    _review(active, employee, accept),
+                onInviteByProfile: () => _inviteByProfile(active),
+                onOpenStaff: () =>
+                    Navigator.push<void>(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => BusinessForm(
+                        builder: (_) => JoinRequestsScreen(
                           repository: session.repository,
-                          business: active,
+                          businessId: active.id,
                         ),
                       ),
-                    );
-                    if (saved == true) await session.reload();
-                    if (mounted) setState(() {});
-                  },
-                  onOpenServices: () {},
-                  onOpenBilling: () => Navigator.push<void>(
+                    ).then((_) {
+                      if (mounted) {
+                        setState(
+                          () => _team = session.repository.team(active.id),
+                        );
+                      }
+                    }),
+                onEditBusiness: () async {
+                  final saved = await Navigator.push<bool>(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => WorkspaceScreen(
+                      builder: (_) => BusinessForm(
                         repository: session.repository,
                         business: active,
                       ),
                     ),
+                  );
+                  if (saved == true) await session.reload();
+                  if (mounted) setState(() {});
+                },
+                onOpenServices: () {},
+                onOpenBilling: () => Navigator.push<void>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => WorkspaceScreen(
+                      repository: session.repository,
+                      business: active,
+                    ),
                   ),
-                  onOpenOffline: widget.onOpenOffline,
-                )
-              else if (pendingBusinesses.length == 1)
-                BusinessApproval(
-                  business: pendingBusinesses.first,
-                  repository: session.repository,
-                  onRefresh: () {
-                    unawaited(() async {
-                      await session.reload();
-                      if (mounted) {
-                        setState(() {
-                          _invite = null;
-                          _team = null;
-                        });
-                      }
-                    }());
-                  },
-                  onEdit: () async {
-                    final saved = await Navigator.push<bool>(
+                ),
+                onOpenOffline: widget.onOpenOffline,
+              )
+            else if (pendingBusinesses.length == 1)
+              BusinessApproval(
+                business: pendingBusinesses.first,
+                repository: session.repository,
+                onRefresh: () {
+                  unawaited(() async {
+                    await session.reload();
+                    if (mounted) {
+                      setState(() {
+                        _invite = null;
+                        _team = null;
+                      });
+                    }
+                  }());
+                },
+                onEdit: () async {
+                  final saved = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BusinessForm(
+                        repository: session.repository,
+                        business: pendingBusinesses.first,
+                      ),
+                    ),
+                  );
+                  if (saved == true) await session.reload();
+                  if (mounted) setState(() {});
+                },
+              )
+            else if (pendingBusinesses.isNotEmpty) ...[
+              const Text(
+                'Waiting for approval',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Pick a salon to check approval status.',
+                style: TextStyle(color: AppColors.textSecondary, height: 1.45),
+              ),
+              const SizedBox(height: 16),
+              WorkspaceCards(
+                children: [
+                  for (final business in pendingBusinesses)
+                    WorkspaceCard(
+                      title: business.name,
+                      leading: BusinessPhoto(
+                        repository: session.repository,
+                        business: business,
+                      ),
+                      subtitle: 'Awaiting approval · ${business.city}',
+                      icon: Icons.hourglass_top_rounded,
+                      onTap: () => _openSalon(business),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 24),
+            ] else if (workspace.businesses.isNotEmpty) ...[
+              const Text(
+                'Your businesses',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 16),
+              WorkspaceCards(
+                children: [
+                  for (final business in workspace.businesses)
+                    WorkspaceCard(
+                      title: business.name,
+                      leading: BusinessPhoto(
+                        repository: session.repository,
+                        business: business,
+                      ),
+                      subtitle: '${business.city} · ${business.area}',
+                      icon: Icons.storefront_outlined,
+                      onTap: () => _openSalon(business),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 24),
+            ],
+            if (active != null && pendingBusinesses.isNotEmpty) ...[
+              const Text(
+                'Pending approval',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              WorkspaceCards(
+                children: [
+                  for (final business in pendingBusinesses)
+                    WorkspaceCard(
+                      title: business.name,
+                      subtitle: 'Awaiting approval · tap for details',
+                      icon: Icons.hourglass_top_rounded,
+                      onTap: () => _openSalon(business),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 24),
+            ],
+            // Owners with a salon stay on their business list — Join is for staff.
+            if (workspace.businesses.isEmpty) ...[
+              const Text(
+                'Get started',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              WorkspaceCards(
+                children: [
+                  WorkspaceCard(
+                    title: 'Start a business',
+                    subtitle: 'Set up your salon and manage your team.',
+                    icon: Icons.storefront_outlined,
+                    onTap: () => _startBusiness(context),
+                  ),
+                  WorkspaceCard(
+                    title: 'Join a salon',
+                    subtitle:
+                        'Barbers: finish your profile, then join with a code or QR.',
+                    icon: Icons.group_add_outlined,
+                    onTap: () => Navigator.push<void>(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => BusinessForm(
-                          repository: session.repository,
-                          business: pendingBusinesses.first,
-                        ),
-                      ),
-                    );
-                    if (saved == true) await session.reload();
-                    if (mounted) setState(() {});
-                  },
-                )
-              else if (pendingBusinesses.isNotEmpty) ...[
-                const Text(
-                  'Waiting for approval',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Pick a salon to check approval status.',
-                  style: TextStyle(color: AppColors.textSecondary, height: 1.45),
-                ),
-                const SizedBox(height: 16),
-                WorkspaceCards(
-                  children: [
-                    for (final business in pendingBusinesses)
-                      WorkspaceCard(
-                        title: business.name,
-                        leading: BusinessPhoto(
-                          repository: session.repository,
-                          business: business,
-                        ),
-                        subtitle: 'Awaiting approval · ${business.city}',
-                        icon: Icons.hourglass_top_rounded,
-                        onTap: () => _openSalon(business),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-              ] else if (workspace.businesses.isNotEmpty) ...[
-                const Text(
-                  'Your businesses',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 16),
-                WorkspaceCards(
-                  children: [
-                    for (final business in workspace.businesses)
-                      WorkspaceCard(
-                        title: business.name,
-                        leading: BusinessPhoto(
-                          repository: session.repository,
-                          business: business,
-                        ),
-                        subtitle: '${business.city} · ${business.area}',
-                        icon: Icons.storefront_outlined,
-                        onTap: () => _openSalon(business),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-              ],
-              if (active != null && pendingBusinesses.isNotEmpty) ...[
-                const Text(
-                  'Pending approval',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 12),
-                WorkspaceCards(
-                  children: [
-                    for (final business in pendingBusinesses)
-                      WorkspaceCard(
-                        title: business.name,
-                        subtitle: 'Awaiting approval · tap for details',
-                        icon: Icons.hourglass_top_rounded,
-                        onTap: () => _openSalon(business),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-              ],
-              // Owners with a salon stay on their business list — Join is for staff.
-              if (workspace.businesses.isEmpty) ...[
-                const Text(
-                  'Get started',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 12),
-                WorkspaceCards(
-                  children: [
-                    WorkspaceCard(
-                      title: 'Start a business',
-                      subtitle: 'Set up your salon and manage your team.',
-                      icon: Icons.storefront_outlined,
-                      onTap: () => _startBusiness(context),
-                    ),
-                    WorkspaceCard(
-                      title: 'Join a salon',
-                      subtitle:
-                          'Barbers: finish your profile, then join with a code or QR.',
-                      icon: Icons.group_add_outlined,
-                      onTap: () => Navigator.push<void>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              JoinSalon(repository: session.repository),
-                        ),
+                        builder: (_) =>
+                            JoinSalon(repository: session.repository),
                       ),
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ],
-          ),
+          ],
         ),
+      ),
     );
   }
 }
@@ -579,7 +579,7 @@ class _ActiveSalonHome extends StatelessWidget {
                     style: const TextStyle(color: AppColors.homeOlive),
                   ),
                   Text(
-                    '${business.area} · ${business.phone}',
+                    '${business.area} · ${PkPhone.localNumber(business.phone)}',
                     style: const TextStyle(color: AppColors.textSecondary),
                   ),
                 ],
@@ -1115,7 +1115,9 @@ class _JoinSalonState extends State<JoinSalon> {
                               padding: EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
                                 'or',
-                                style: TextStyle(color: AppColors.textSecondary),
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
                             ),
                             Expanded(child: Divider()),

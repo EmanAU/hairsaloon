@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
@@ -249,7 +250,7 @@ class _CustomerBillCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = bill.customerName.trim();
-    final phone = bill.customerPhone.trim();
+    final phone = PkPhone.localNumber(bill.customerPhone);
     final services = bill.lines.map((l) => l.serviceName).join(', ');
     return FinanceCard(
       padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),

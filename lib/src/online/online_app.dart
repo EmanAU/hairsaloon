@@ -10,7 +10,7 @@ import '../theme/app_theme.dart';
 import 'domain/online_models.dart';
 import 'domain/online_repository.dart';
 import 'presentation/business_home.dart';
-import 'presentation/employee_home.dart';
+import 'presentation/manager_entry.dart';
 import 'presentation/online_login_page.dart';
 import 'presentation/profile_form.dart';
 import 'presentation/customer_screens.dart';
@@ -159,9 +159,7 @@ class _OnlineAppState extends State<OnlineApp> {
   void _openOffline(BuildContext context) {
     Navigator.push<void>(
       context,
-      MaterialPageRoute(
-        builder: (_) => const BusinessCombApp(hosted: true),
-      ),
+      MaterialPageRoute(builder: (_) => const BusinessCombApp(hosted: true)),
     );
   }
 
@@ -219,10 +217,7 @@ class _OnlineAppState extends State<OnlineApp> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
-                      ActionButton(
-                        label: 'Retry',
-                        onPressed: session.reload,
-                      ),
+                      ActionButton(label: 'Retry', onPressed: session.reload),
                       ActionButton(
                         label: 'Sign out',
                         onPressed: session.repository.signOut,
@@ -258,10 +253,7 @@ class _OnlineAppState extends State<OnlineApp> {
             onOpenOffline: () => _openOffline(context),
           );
         }
-        return EmployeeHome(
-          session: session,
-          onSignOut: session.repository.signOut,
-        );
+        return ManagerEntry(session: session);
       },
     ),
   );

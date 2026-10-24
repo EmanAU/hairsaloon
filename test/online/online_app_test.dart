@@ -6,6 +6,7 @@ import 'package:hairsaloon/src/online/online_app.dart';
 import 'package:hairsaloon/src/online/presentation/online_session.dart';
 import 'package:hairsaloon/src/online/presentation/profile_form.dart';
 import 'package:hairsaloon/src/online/presentation/contracts_screen.dart';
+import 'package:hairsaloon/src/online/presentation/team_contracts_screen.dart';
 import 'package:hairsaloon/src/online/presentation/business_home.dart';
 import 'fake_online_repository.dart';
 import 'workspace_test_environment.dart';
@@ -161,13 +162,29 @@ void main() {
         await waitForOnlineDashboard(tester);
         expect(find.text('Rate List'), findsOneWidget);
         expect(find.text('Join requests'), findsOneWidget);
-        expect(find.text('Employee joining code & QR'), findsOneWidget);
+        expect(find.text('QR codes'), findsOneWidget);
+        expect(find.text('Contracts'), findsNothing);
+        expect(find.text('Invite replies'), findsNothing);
+        expect(find.text('Sales today'), findsNothing);
+        expect(find.text('Employees'), findsNothing);
+        expect(find.text('Customers'), findsNothing);
+        await tester.tap(find.byTooltip('Open menu').hitTestable().first);
+        await tester.pumpAndSettle();
         expect(find.text('Contracts'), findsOneWidget);
-        await tester.ensureVisible(find.text('Contracts'));
+        await tester.scrollUntilVisible(
+          find.text('Contracts'),
+          200,
+          scrollable: find
+              .descendant(
+                of: find.byType(Drawer),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
         await tester.pumpAndSettle();
         await tester.tap(find.text('Contracts'));
         await tester.pumpAndSettle();
-        expect(find.text('Invite by CNIC & email'), findsOneWidget);
+        expect(find.byType(TeamContractsScreen), findsOneWidget);
         await tester.pumpWidget(const SizedBox());
         await closeOnlineWorkspace(tester);
       },
@@ -282,10 +299,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Accept contract'), findsNothing);
     expect(find.text('Decline contract'), findsNothing);
-    expect(
-      find.textContaining('Your owner set these terms'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Your owner set these terms'), findsOneWidget);
     expect(find.text('PERMANENT · scheduled'), findsOneWidget);
   });
   testWidgets('unconfigured business app shows setup without offline entry', (

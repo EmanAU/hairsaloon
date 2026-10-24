@@ -1,3 +1,4 @@
+import '../../core/utils/pk_cnic.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import 'package:flutter/services.dart';
@@ -34,7 +35,9 @@ class _ProfileFormState extends State<ProfileForm> {
   late final _phone = TextEditingController(
     text: PkPhone.localNumber(widget.profile?.phone),
   );
-  late final _cnic = TextEditingController(text: widget.profile?.cnic);
+  late final _cnic = TextEditingController(
+    text: PkCnic.display(widget.profile?.cnic),
+  );
   late DateTime? _birth = widget.profile?.dateOfBirth;
   late DateTime? _started = widget.profile?.workStartedOn;
   late final Future<String?> _photoUrl = widget.profile?.photoPath == null
@@ -93,7 +96,7 @@ class _ProfileFormState extends State<ProfileForm> {
       await widget.repository.saveProfile(
         name: _name.text,
         phone: _phone.text,
-        cnic: _cnic.text,
+        cnic: PkCnic.digits(_cnic.text),
         dateOfBirth: _birth!,
         workStartedOn: _started!,
         photoBytes: _photo,
@@ -241,14 +244,11 @@ class _ProfileFormState extends State<ProfileForm> {
               controller: _phone,
               keyboardType: TextInputType.phone,
               autofillHints: const [AutofillHints.telephoneNumber],
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(11),
-              ],
+              inputFormatters: [PkPhoneInputFormatter()],
               decoration: _decoration(
                 'Mobile number',
                 Icons.phone_outlined,
-                hint: '03127712502',
+                hint: '03465501748',
               ),
               validator: PkPhone.localValidationError,
             ),
@@ -258,18 +258,14 @@ class _ProfileFormState extends State<ProfileForm> {
             child: TextFormField(
               controller: _cnic,
               keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(13),
-              ],
+              inputFormatters: [PkCnicInputFormatter()],
               decoration: _decoration(
                 'CNIC',
                 Icons.badge_outlined,
-                hint: '13 digits without dashes',
+                hint: '12345-1234567-1',
               ),
-              validator: (value) => RegExp(r'^\d{13}$').hasMatch(value ?? '')
-                  ? null
-                  : 'Enter your 13-digit CNIC',
+              validator: (value) =>
+                  PkCnic.isValid(value) ? null : 'Enter your 13-digit CNIC',
             ),
           ),
           SizedBox(
@@ -333,62 +329,62 @@ class _ProfileFormState extends State<ProfileForm> {
       body: OnlineShell.centered(
         maxWidth: OnlineShell.formMaxWidth,
         child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              24,
-              16,
-              24,
-              24 + MediaQuery.paddingOf(context).bottom,
-            ),
-            child: AbsorbPointer(
-              absorbing: _saving,
-              child: Form(
-                key: _form,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(child: _photoPicker()),
-                    const SizedBox(height: 24),
-                    if (widget.onboarding) ...[
-                      Text(
-                        'If a salon invited you, enter the same CNIC and sign in with the same email they used — you will be asked to join after this.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: _muted,
-                          height: 1.4,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                    _fields(),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ActionButton(
-                        style: FilledButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        label: widget.onboarding
-                            ? 'Save & continue'
-                            : 'Save profile',
-                        onPressed: _save,
-                        icon: Icons.arrow_forward_rounded,
+          padding: EdgeInsets.fromLTRB(
+            24,
+            16,
+            24,
+            24 + MediaQuery.paddingOf(context).bottom,
+          ),
+          child: AbsorbPointer(
+            absorbing: _saving,
+            child: Form(
+              key: _form,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(child: _photoPicker()),
+                  const SizedBox(height: 24),
+                  if (widget.onboarding) ...[
+                    Text(
+                      'If a salon invited you, enter the same CNIC and sign in with the same email they used — you will be asked to join after this.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: _muted,
+                        height: 1.4,
                       ),
                     ),
-                    if (!widget.onboarding && widget.profile != null) ...[
-                      const SizedBox(height: 16),
-                      _identifier('Profile code', widget.profile!.code),
-                      if (widget.repository.userId != null)
-                        _identifier('User ID', widget.repository.userId!),
-                    ],
+                    const SizedBox(height: 20),
                   ],
-                ),
+                  _fields(),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ActionButton(
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      label: widget.onboarding
+                          ? 'Save & continue'
+                          : 'Save profile',
+                      onPressed: _save,
+                      icon: Icons.arrow_forward_rounded,
+                    ),
+                  ),
+                  if (!widget.onboarding && widget.profile != null) ...[
+                    const SizedBox(height: 16),
+                    _identifier('Profile code', widget.profile!.code),
+                    if (widget.repository.userId != null)
+                      _identifier('User ID', widget.repository.userId!),
+                  ],
+                ],
               ),
             ),
           ),
         ),
       ),
-    );
+    ),
+  );
 
   Widget _identifier(String label, String value) => ListTile(
     contentPadding: EdgeInsets.zero,

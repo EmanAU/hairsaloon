@@ -1,5 +1,5 @@
+import '../../core/utils/pk_cnic.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/toast_service.dart';
 import '../../core/utils/pk_phone.dart';
@@ -32,9 +32,9 @@ Future<void> showEmployeeInviteOptions(BuildContext context) async {
         children: [
           Text(
             'Add employee',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 6),
           Text(
@@ -88,9 +88,7 @@ Future<void> showEmployeeInviteOptions(BuildContext context) async {
     case 'qr':
       final scanned = await Navigator.push<QrDestination>(
         context,
-        MaterialPageRoute(
-          builder: (_) => const ScanQr(profileCode: true),
-        ),
+        MaterialPageRoute(builder: (_) => const ScanQr(profileCode: true)),
       );
       if (scanned == null || !context.mounted) return;
       try {
@@ -142,10 +140,7 @@ class _InviteOptionTile extends StatelessWidget {
             border: Border.all(color: AppColors.border),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 14,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             child: Row(
               children: [
                 Container(
@@ -250,7 +245,7 @@ class _IdentityInvitePageState extends State<_IdentityInvitePage> {
   }
 
   Future<void> _submit() async {
-    if (!RegExp(r'^\d{13}$').hasMatch(_cnic.text.trim())) {
+    if (!PkCnic.isValid(_cnic.text)) {
       throw const OnlineFailure('Enter a valid 13-digit CNIC');
     }
     final phoneError = PkPhone.localValidationError(_phone.text);
@@ -262,7 +257,7 @@ class _IdentityInvitePageState extends State<_IdentityInvitePage> {
     }
     await widget.workspace.repository.inviteEmployeeByIdentity(
       businessId: widget.workspace.business.id,
-      cnic: _cnic.text,
+      cnic: PkCnic.digits(_cnic.text),
       phone: PkPhone.normalize(_phone.text),
       email: _email.text,
       name: _name.text,
@@ -286,9 +281,9 @@ class _IdentityInvitePageState extends State<_IdentityInvitePage> {
         elevation: 0,
         title: Text(
           'Invite new person',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
       ),
       body: OnlineShell.centered(
@@ -329,11 +324,12 @@ class _IdentityInvitePageState extends State<_IdentityInvitePage> {
                           TextField(
                             controller: _cnic,
                             keyboardType: TextInputType.number,
-                            maxLength: 13,
+                            maxLength: 15,
+                            inputFormatters: [PkCnicInputFormatter()],
                             textInputAction: TextInputAction.next,
                             decoration: appSheetInputDecoration(
                               'CNIC',
-                              hint: '13 digits',
+                              hint: '12345-1234567-1',
                             ).copyWith(counterText: ''),
                           ),
                           const SizedBox(height: 12),
@@ -342,13 +338,10 @@ class _IdentityInvitePageState extends State<_IdentityInvitePage> {
                             keyboardType: TextInputType.phone,
                             maxLength: 11,
                             textInputAction: TextInputAction.next,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                              LengthLimitingTextInputFormatter(11),
-                            ],
+                            inputFormatters: [PkPhoneInputFormatter()],
                             decoration: appSheetInputDecoration(
                               'Mobile number',
-                              hint: '03124545452',
+                              hint: '03465501748',
                             ).copyWith(counterText: ''),
                           ),
                           const SizedBox(height: 12),

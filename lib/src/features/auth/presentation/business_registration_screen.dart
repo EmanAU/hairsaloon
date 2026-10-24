@@ -24,7 +24,7 @@ class _BusinessRegistrationScreenState
     extends State<BusinessRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
-  final _phone = TextEditingController(text: PkPhone.prefix);
+  final _phone = TextEditingController(text: PkPhone.inputPrefix);
   final _area = TextEditingController();
   final _address = TextEditingController();
   String _businessType = BusinessOptions.defaultBusinessType;
@@ -60,9 +60,9 @@ class _BusinessRegistrationScreenState
     final phone = context.read<AuthStore>().currentUser?.phone;
     _phoneLocked = phone != null && phone.isNotEmpty;
     _phone.text = _phoneLocked
-        ? PkPhone.normalize(phone!)
-        : PkPhone.normalize(profile?.phoneNumber ?? PkPhone.prefix);
-    if (_phone.text.isEmpty) _phone.text = PkPhone.prefix;
+        ? PkPhone.localNumber(phone!)
+        : PkPhone.localNumber(profile?.phoneNumber);
+    if (_phone.text.isEmpty) _phone.text = PkPhone.inputPrefix;
   }
 
   @override
@@ -244,7 +244,7 @@ class _BusinessRegistrationScreenState
                   _field(
                     'Phone number',
                     _phone,
-                    '+923462254477',
+                    '03465501748',
                     keyboard: TextInputType.phone,
                     readOnly: _phoneLocked,
                     inputFormatters: _phoneLocked

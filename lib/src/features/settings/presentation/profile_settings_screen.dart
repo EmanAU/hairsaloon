@@ -44,8 +44,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   void _applyProfile(BusinessProfile profile) {
     _logo = profile.logoBase64;
     _nameCtrl.text = profile.businessName;
-    final phone = PkPhone.normalize(profile.phoneNumber);
-    _phoneCtrl.text = phone.isEmpty ? PkPhone.prefix : phone;
+    final phone = PkPhone.localNumber(profile.phoneNumber);
+    _phoneCtrl.text = phone.isEmpty ? PkPhone.inputPrefix : phone;
     _businessType = BusinessOptions.resolve(
       profile.businessType,
       BusinessOptions.businessTypes,
@@ -96,11 +96,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             onPressed: profile == null
                 ? null
                 : () => setState(() {
-                      if (_isEditing) {
-                        _applyProfile(profile);
-                      }
-                      _isEditing = !_isEditing;
-                    }),
+                    if (_isEditing) {
+                      _applyProfile(profile);
+                    }
+                    _isEditing = !_isEditing;
+                  }),
             child: Text(
               _isEditing ? 'Cancel' : 'Edit',
               style: const TextStyle(
@@ -116,10 +116,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           ? const Center(
               child: Text(
                 'No business profile found.',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
             )
           : ListView(
@@ -297,7 +294,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             errorStyle: TextStyle(fontSize: 11),
             hintStyle: TextStyle(color: _hint, fontSize: 13),
           ),
-          validator: validator ??
+          validator:
+              validator ??
               (value) =>
                   (value == null || value.trim().isEmpty) ? 'Required' : null,
         ),

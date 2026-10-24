@@ -241,7 +241,7 @@ class _MobileBillingScreenState extends State<MobileBillingScreen> {
                       },
                       decoration:
                           _smallDecoration(
-                            'Customer phone (+923462254477)',
+                            'Customer phone (03465501748)',
                           ).copyWith(
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 10,
@@ -697,7 +697,7 @@ class _MobileBillingScreenState extends State<MobileBillingScreen> {
     final store = context.read<BillingStore>();
     final full = store.getCustomerContactByPhone(customer.phone) ?? customer;
     setState(() {
-      _phoneCtrl.text = full.phone;
+      _phoneCtrl.text = PkPhone.localNumber(full.phone);
       _hidePhoneSuggestions = true;
       _selectedCustomer = full;
       _lastExistingPromptPhone = full.phone.trim();
@@ -745,7 +745,7 @@ class _MobileBillingScreenState extends State<MobileBillingScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  full.phone.trim(),
+                  PkPhone.localNumber(full.phone),
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12.5,
@@ -789,7 +789,7 @@ class _MobileBillingScreenState extends State<MobileBillingScreen> {
     if (!mounted) return;
 
     setState(() {
-      _phoneCtrl.text = result.phone;
+      _phoneCtrl.text = PkPhone.localNumber(result.phone);
       _hidePhoneSuggestions = true;
       _selectedCustomer = result;
     });
@@ -1164,8 +1164,8 @@ class _AddCustomerSheetState extends State<_AddCustomerSheet> {
   final _nameCtrl = TextEditingController();
   late final _phoneCtrl = TextEditingController(
     text: widget.initialPhone.trim().isEmpty
-        ? PkPhone.prefix
-        : PkPhone.normalize(widget.initialPhone),
+        ? PkPhone.inputPrefix
+        : PkPhone.localNumber(widget.initialPhone),
   );
   String? _phoneError;
 
@@ -1218,7 +1218,7 @@ class _AddCustomerSheetState extends State<_AddCustomerSheet> {
             },
             style: const TextStyle(fontSize: 13.5),
             decoration: appSheetInputDecoration(
-              'Customer Number (+923462254477)',
+              'Customer Number (03465501748)',
             ).copyWith(errorText: _phoneError),
           ),
         ],

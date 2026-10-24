@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/core/layout/safe_scroll_padding.dart';
@@ -77,11 +78,9 @@ class _EmployeeHistoryScreenState extends State<EmployeeHistoryScreen> {
       context: context,
       firstDate: DateTime(now.year - 5),
       lastDate: DateTime(now.year + 1),
-      initialDateRange: _customRange ??
-          DateTimeRange(
-            start: now.subtract(const Duration(days: 7)),
-            end: now,
-          ),
+      initialDateRange:
+          _customRange ??
+          DateTimeRange(start: now.subtract(const Duration(days: 7)), end: now),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -110,7 +109,8 @@ class _EmployeeHistoryScreenState extends State<EmployeeHistoryScreen> {
     final sublineParts = <String>[
       if (category.isNotEmpty) category,
       if (speciality.isNotEmpty) speciality,
-      if (employee.phoneNumber.trim().isNotEmpty) employee.phoneNumber.trim(),
+      if (employee.phoneNumber.trim().isNotEmpty)
+        PkPhone.localNumber(employee.phoneNumber),
     ];
     final subline = sublineParts.join(' • ');
 
@@ -381,7 +381,7 @@ class EmployeeOrderDetailsScreen extends StatelessWidget {
 
     final customer = bill.customerName.trim().isNotEmpty
         ? (bill.customerPhone.trim().isNotEmpty
-              ? '${bill.customerName.trim()} • ${bill.customerPhone.trim()}'
+              ? '${bill.customerName.trim()} • ${PkPhone.localNumber(bill.customerPhone)}'
               : bill.customerName.trim())
         : (bill.customerPhone.trim().isNotEmpty
               ? bill.customerPhone.trim()

@@ -1,3 +1,4 @@
+import '../../../online/data/business_workspace.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
@@ -57,6 +58,8 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   @override
   Widget build(BuildContext context) {
+    final onlineWorkspace = context.watch<BusinessWorkspace?>();
+    final compactHome = onlineWorkspace != null;
     final profile = context.watch<BusinessProfileNotifier>().profile;
     final owner = context.watch<AuthStore>().currentUser?.name.trim() ?? '';
     final business = profile?.businessName.trim() ?? '';
@@ -109,45 +112,46 @@ class _DashboardScreenState extends State<DashboardScreen>
                     child: Column(
                       children: [
                         const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _MiniStat(
-                                label: 'Employees',
-                                value: '$team',
-                                asset: 'employees',
-                                tint: const Color(0xFFE9FBE4),
-                                onTap: () => open(AppRoutes.employees),
+                        if (!compactHome)
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _MiniStat(
+                                  label: 'Employees',
+                                  value: '$team',
+                                  asset: 'employees',
+                                  tint: const Color(0xFFE9FBE4),
+                                  onTap: () => open(AppRoutes.employees),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: _MiniStat(
-                                label: 'Customers',
-                                value: '$customers',
-                                asset: 'customers',
-                                tint: const Color(0xFFEBF1FF),
-                                onTap: () => open(AppRoutes.customers),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: _MiniStat(
+                                  label: 'Customers',
+                                  value: '$customers',
+                                  asset: 'customers',
+                                  tint: const Color(0xFFEBF1FF),
+                                  onTap: () => open(AppRoutes.customers),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: _MiniStat(
-                                label: 'Sales today',
-                                value: '$currency $money',
-                                asset: 'rates',
-                                tint: const Color(0xFFFFF5D9),
-                                onTap: () => Navigator.of(context).pushNamed(
-                                  AppRoutes.financeSales,
-                                  arguments: FinanceRouteArgs(
-                                    anchor: _today,
-                                    period: FinancePeriod.daily,
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: _MiniStat(
+                                  label: 'Sales today',
+                                  value: '$currency $money',
+                                  asset: 'rates',
+                                  tint: const Color(0xFFFFF5D9),
+                                  onTap: () => Navigator.of(context).pushNamed(
+                                    AppRoutes.financeSales,
+                                    arguments: FinanceRouteArgs(
+                                      anchor: _today,
+                                      period: FinancePeriod.daily,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
                         const SizedBox(height: 12),
                         GridView(
                           padding: widget.extraShortcuts == null
@@ -163,13 +167,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           children: [
-                            DashboardShortcut(
-                              title: 'Employees',
-                              detail: 'Manage your team\nmembers and roles.',
-                              asset: 'employees',
-                              tint: const Color(0xFFF0FBDD),
-                              onTap: () => open(AppRoutes.employees),
-                            ),
+                            if (!compactHome)
+                              DashboardShortcut(
+                                title: 'Employees',
+                                detail: 'Manage your team\nmembers and roles.',
+                                asset: 'employees',
+                                tint: const Color(0xFFF0FBDD),
+                                onTap: () => open(AppRoutes.employees),
+                              ),
                             DashboardShortcut(
                               title: 'Rate List',
                               detail: 'View services\nand pricing.',
@@ -184,13 +189,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 );
                               },
                             ),
-                            DashboardShortcut(
-                              title: 'Customers',
-                              detail: 'Manage customer\ndetails and records.',
-                              asset: 'customers',
-                              tint: const Color(0xFFEAF0FF),
-                              onTap: () => open(AppRoutes.customers),
-                            ),
+                            if (!compactHome)
+                              DashboardShortcut(
+                                title: 'Customers',
+                                detail: 'Manage customer\ndetails and records.',
+                                asset: 'customers',
+                                tint: const Color(0xFFEAF0FF),
+                                onTap: () => open(AppRoutes.customers),
+                              ),
                             DashboardShortcut(
                               title: 'Finance',
                               detail:
@@ -440,7 +446,7 @@ class _Header extends StatelessWidget {
                                 Expanded(
                                   flex: 4,
                                   child: _Identity(
-                                    label: 'Owner Name',
+                                    label: 'Signed in as',
                                     value: owner,
                                     icon: CupertinoIcons.person_fill,
                                   ),

@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:flutter/material.dart';
 import '../domain/entities/customer_contact.dart';
 
@@ -138,7 +139,7 @@ class BillingCustomerPicker extends StatelessWidget {
         person.name.isEmpty ? 'Saved customer' : person.name,
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
-      subtitle: Text(person.phone),
+      subtitle: Text(PkPhone.localNumber(person.phone)),
       trailing: Icon(
         checked ? Icons.check_circle : Icons.chevron_right,
         color: const Color(0xFF668400),

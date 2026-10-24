@@ -12,10 +12,12 @@ class WorkspaceScreen extends StatefulWidget {
     required this.repository,
     required this.business,
     this.onClose,
+    this.asManager = false,
   });
   final OnlineRepository repository;
   final SalonBusiness business;
   final VoidCallback? onClose;
+  final bool asManager;
   @override
   State<WorkspaceScreen> createState() => _WorkspaceScreenState();
 }
@@ -30,12 +32,20 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     final businesses = account.businesses.where(
       (business) => business.id == widget.business.id,
     );
-    if (businesses.isEmpty || !businesses.first.isActive) {
+    SalonBusiness? selected = businesses.isEmpty ? null : businesses.first;
+    if (widget.asManager) {
+      final assigned = await widget.repository.myManagerBusinesses();
+      if (!assigned.any((shop) => shop.businessId == widget.business.id)) {
+        throw const OnlineFailure('Manager access is no longer available.');
+      }
+      selected = await widget.repository.findBusiness(widget.business.id);
+    }
+    if (selected == null || !selected.isActive) {
       throw const OnlineFailure('Business approval is required.');
     }
     final workspace = await BusinessWorkspace.open(
       widget.repository,
-      businesses.first,
+      selected,
       account.account,
       personalProfile: account.profile,
     );

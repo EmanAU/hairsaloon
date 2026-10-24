@@ -1,7 +1,53 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hairsaloon/src/core/utils/pk_phone.dart';
+import 'package:hairsaloon/src/core/utils/pk_cnic.dart';
 
 void main() {
+  test(
+    'all phone input formats display local digits and retain canonical identity',
+    () {
+      final formatter = PkPhoneInputFormatter();
+      for (final input in [
+        '03465501748',
+        '+923465501748',
+        '00923465501748',
+        '923465501748',
+      ]) {
+        final result = formatter.formatEditUpdate(
+          TextEditingValue.empty,
+          TextEditingValue(text: input),
+        );
+        expect(result.text, '03465501748');
+        expect(PkPhone.normalize(result.text), '+923465501748');
+      }
+      expect(
+        formatter
+            .formatEditUpdate(TextEditingValue.empty, TextEditingValue.empty)
+            .text,
+        isEmpty,
+      );
+    },
+  );
+  test(
+    'CNIC inputs use one display format without changing database digits',
+    () {
+      for (final input in ['1234512345671', '12345-1234567-1']) {
+        expect(PkCnic.isValid(input), isTrue);
+        expect(PkCnic.display(input), '12345-1234567-1');
+        expect(PkCnic.digits(input), '1234512345671');
+        expect(
+          PkCnicInputFormatter()
+              .formatEditUpdate(
+                TextEditingValue.empty,
+                TextEditingValue(text: input),
+              )
+              .text,
+          '12345-1234567-1',
+        );
+      }
+      expect(PkCnic.isValid('12345-1234567'), isFalse);
+    },
+  );
   test('profile phone requires an 11-digit local mobile number', () {
     expect(PkPhone.localValidationError('03127712502'), isNull);
     for (final invalid in [

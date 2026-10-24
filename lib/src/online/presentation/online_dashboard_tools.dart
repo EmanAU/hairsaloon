@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/services/toast_service.dart';
@@ -9,7 +10,6 @@ import '../domain/online_repository.dart';
 import 'contracts_screen.dart';
 import 'invite_qr_screen.dart';
 import 'join_requests_screen.dart';
-import 'team_contracts_screen.dart';
 import 'widgets/online_widgets.dart';
 
 class OnlineDashboardTools extends StatefulWidget {
@@ -27,15 +27,10 @@ class OnlineDashboardTools extends StatefulWidget {
 
 class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
   late Future<List<SalonStaff>> _team = _load();
-  late Future<List<OwnerEmployeeInvite>> _invites = _loadInvites();
   late final Timer _poll;
   bool _reviewing = false;
   Future<List<SalonStaff>> _load() =>
       widget.workspace.repository.team(widget.workspace.business.id);
-  Future<List<OwnerEmployeeInvite>> _loadInvites() => widget
-      .workspace
-      .repository
-      .ownerEmployeeInvites(widget.workspace.business.id);
   @override
   void initState() {
     super.initState();
@@ -43,7 +38,6 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
       if (mounted && ModalRoute.of(context)?.isCurrent == true) {
         setState(() {
           _team = _load();
-          _invites = _loadInvites();
         });
       }
     });
@@ -153,73 +147,13 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
                 );
               },
             ),
-            FutureBuilder<List<SalonStaff>>(
-              future: _team,
-              builder: (context, snapshot) {
-                final needsContract = snapshot.data
-                        ?.where(
-                          (e) =>
-                              e.joinStatus == 'accepted' && !e.isWorking,
-                        )
-                        .length ??
-                    0;
-                return DashboardShortcut(
-                  title: 'Contracts',
-                  badge: needsContract,
-                  detail: snapshot.hasError
-                      ? 'Employee list and\nagreements.'
-                      : needsContract == 0
-                      ? 'Employee list and\nagreements.'
-                      : '$needsContract without\nactive contract.',
-                  asset: 'employees',
-                  tint: AppColors.homeSage,
-                  onTap: () => _open(
-                    TeamContractsScreen(
-                      repository: repository,
-                      businessId: business.id,
-                      business: business,
-                    ),
-                  ),
-                );
-              },
-            ),
-            FutureBuilder<List<OwnerEmployeeInvite>>(
-              future: _invites,
-              builder: (context, snapshot) {
-                final declined =
-                    snapshot.data
-                        ?.where((e) => e.status == 'declined')
-                        .length ??
-                    0;
-                return DashboardShortcut(
-                  title: 'Invite replies',
-                  badge: declined,
-                  detail: snapshot.hasError
-                      ? 'Invites you sent\nto new people.'
-                      : declined == 0
-                      ? 'Invites you sent\nto new people.'
-                      : '$declined declined\ninvite${declined == 1 ? '' : 's'}.',
-                  asset: 'employees',
-                  tint: AppColors.homeSand,
-                  onTap: () => _open(
-                    _OwnerInvitesScreen(
-                      repository: repository,
-                      businessId: business.id,
-                    ),
-                  ),
-                );
-              },
-            ),
             DashboardShortcut(
               title: 'QR codes',
               detail: 'Joining code and\ninvite QR codes.',
               asset: 'rates',
               tint: AppColors.homeSand,
               onTap: () => _open(
-                InviteQrScreen(
-                  repository: repository,
-                  businessId: business.id,
-                ),
+                InviteQrScreen(repository: repository, businessId: business.id),
               ),
             ),
           ],
@@ -281,8 +215,7 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
                                           ),
                                         ),
                                       ),
-                                      onPressed: () =>
-                                          _review(employee, false),
+                                      onPressed: () => _review(employee, false),
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -297,8 +230,7 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
                                           ),
                                         ),
                                       ),
-                                      onPressed: () =>
-                                          _review(employee, true),
+                                      onPressed: () => _review(employee, true),
                                     ),
                                   ),
                                 ],
@@ -310,51 +242,6 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
                     ),
                 ],
               ),
-            );
-          },
-        ),
-        FutureBuilder<List<OwnerEmployeeInvite>>(
-          future: _invites,
-          builder: (context, snapshot) {
-            final declined =
-                snapshot.data
-                    ?.where((e) => e.status == 'declined')
-                    .take(3)
-                    .toList() ??
-                [];
-            if (declined.isEmpty) return const SizedBox.shrink();
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 12),
-                const Text(
-                  'Declined invites',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                ),
-                for (final invite in declined)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Material(
-                      color: AppColors.surface,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        side: const BorderSide(color: AppColors.homeBorder),
-                      ),
-                      child: ListTile(
-                        title: Text(
-                          invite.displayName.trim().isEmpty
-                              ? invite.email
-                              : invite.displayName,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: Text(
-                          'Declined your invite · ${invite.phone}',
-                          style: const TextStyle(color: AppColors.textSecondary),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
             );
           },
         ),
@@ -386,8 +273,9 @@ class _OnlineDashboardToolsState extends State<OnlineDashboardTools> {
   }
 }
 
-class _OwnerInvitesScreen extends StatefulWidget {
-  const _OwnerInvitesScreen({
+class OwnerInvitesScreen extends StatefulWidget {
+  const OwnerInvitesScreen({
+    super.key,
     required this.repository,
     required this.businessId,
   });
@@ -395,10 +283,10 @@ class _OwnerInvitesScreen extends StatefulWidget {
   final String businessId;
 
   @override
-  State<_OwnerInvitesScreen> createState() => _OwnerInvitesScreenState();
+  State<OwnerInvitesScreen> createState() => OwnerInvitesScreenState();
 }
 
-class _OwnerInvitesScreenState extends State<_OwnerInvitesScreen> {
+class OwnerInvitesScreenState extends State<OwnerInvitesScreen> {
   late Future<List<OwnerEmployeeInvite>> _invites = widget.repository
       .ownerEmployeeInvites(widget.businessId);
 
@@ -428,10 +316,7 @@ class _OwnerInvitesScreenState extends State<_OwnerInvitesScreen> {
           if (invites.isEmpty) {
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: 40),
-              child: Text(
-                'No invites yet.',
-                textAlign: TextAlign.center,
-              ),
+              child: Text('No invites yet.', textAlign: TextAlign.center),
             );
           }
           return Column(
@@ -453,7 +338,7 @@ class _OwnerInvitesScreenState extends State<_OwnerInvitesScreen> {
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       subtitle: Text(
-                        '${invite.status[0].toUpperCase()}${invite.status.substring(1)} · ${invite.phone}',
+                        '${invite.status[0].toUpperCase()}${invite.status.substring(1)} · ${PkPhone.localNumber(invite.phone)}',
                         style: const TextStyle(color: AppColors.textSecondary),
                       ),
                     ),

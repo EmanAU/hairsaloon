@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/utils/pk_cnic.dart';
 import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
@@ -19,6 +20,8 @@ import 'package:hairsaloon/src/online/presentation/employee_invite_flows.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'employee_photo.dart';
+import '../../../core/widgets/app_sheet.dart';
+import '../../../online/domain/online_models.dart';
 
 class EmployeesScreen extends StatefulWidget {
   const EmployeesScreen({super.key});
@@ -37,7 +40,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
   final _firstNameCtrl = TextEditingController();
   final _lastNameCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController(text: PkPhone.prefix);
+  final _phoneCtrl = TextEditingController(text: PkPhone.inputPrefix);
   final _cnicCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
   final _specialityCtrl = TextEditingController();
@@ -274,6 +277,39 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         confirmLabel: 'Make manager',
       );
       if (confirm != true) return;
+      if (!mounted) return;
+      final workspace = context.read<BusinessWorkspace?>();
+      if (workspace != null && e.onlineSynced) {
+        final pin = await showAppTextInputSheet(
+          context: context,
+          title: 'Manager PIN',
+          label: '4-digit PIN',
+          subtitle: 'Share this PIN with ${e.fullName}.',
+          keyboardType: TextInputType.number,
+          maxLength: 4,
+          validator: (value) => RegExp(r'^\d{4}$').hasMatch(value)
+              ? null
+              : 'Enter exactly 4 digits',
+        );
+        if (pin == null || !mounted) return;
+        try {
+          await workspace.repository.setEmployeeManager(
+            employeeId: e.id,
+            isManager: true,
+            pin: pin,
+          );
+        } catch (error) {
+          if (mounted) {
+            ToastService.error(
+              error is OnlineFailure
+                  ? error.message
+                  : 'Could not grant manager access. Please retry.',
+              context,
+            );
+          }
+          return;
+        }
+      }
       await store.setManager(e.id);
       ToastService.success('${e.fullName} is now manager');
       return;
@@ -288,6 +324,26 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         confirmLabel: 'Remove',
       );
       if (confirm != true) return;
+      if (!mounted) return;
+      final workspace = context.read<BusinessWorkspace?>();
+      if (workspace != null && e.onlineSynced) {
+        try {
+          await workspace.repository.setEmployeeManager(
+            employeeId: e.id,
+            isManager: false,
+          );
+        } catch (error) {
+          if (mounted) {
+            ToastService.error(
+              error is OnlineFailure
+                  ? error.message
+                  : 'Could not remove manager access. Please retry.',
+              context,
+            );
+          }
+          return;
+        }
+      }
       await store.removeManager(e.id);
       ToastService.success('Manager role removed');
       return;
@@ -374,7 +430,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
               _cnicCtrl,
               'CNIC Number',
               keyboardType: TextInputType.number,
-              inputFormatters: [_CnicFormatter()],
+              inputFormatters: [PkCnicInputFormatter()],
             ),
             const SizedBox(height: 8),
             _field(_addressCtrl, 'Home Address'),
@@ -577,7 +633,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   void _resetFormFields() {
     _firstNameCtrl.clear();
     _lastNameCtrl.clear();
-    _phoneCtrl.text = PkPhone.prefix;
+    _phoneCtrl.text = PkPhone.inputPrefix;
     _cnicCtrl.clear();
     _addressCtrl.clear();
     _specialityCtrl.clear();
@@ -618,8 +674,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     );
   }
 
-  bool _isValidCnic(String value) =>
-      RegExp(r'^\d{5}-\d{7}-\d$').hasMatch(value);
+  bool _isValidCnic(String value) => PkCnic.isValid(value);
 }
 
 class _StaffAvatar extends StatelessWidget {
@@ -659,27 +714,6 @@ class _StaffAvatar extends StatelessWidget {
                 ),
               ),
             ),
-    );
-  }
-}
-
-class _CnicFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-    final limited = digits.length > 13 ? digits.substring(0, 13) : digits;
-    final buffer = StringBuffer();
-    for (var i = 0; i < limited.length; i++) {
-      if (i == 5 || i == 12) buffer.write('-');
-      buffer.write(limited[i]);
-    }
-    final formatted = buffer.toString();
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

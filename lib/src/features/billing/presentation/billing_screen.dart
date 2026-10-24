@@ -217,7 +217,7 @@ class _BillingScreenState extends State<_TabletBillingScreen> {
   void _applyCustomer(CustomerContact customer) {
     setState(() {
       _selectedCustomer = customer;
-      _phoneCtrl.text = customer.phone;
+      _phoneCtrl.text = PkPhone.localNumber(customer.phone);
     });
     FocusScope.of(context).unfocus();
   }
@@ -244,7 +244,7 @@ class _BillingScreenState extends State<_TabletBillingScreen> {
     if (!mounted) return;
 
     setState(() {
-      _phoneCtrl.text = result.phone;
+      _phoneCtrl.text = PkPhone.localNumber(result.phone);
       _selectedCustomer = result;
     });
 
@@ -587,8 +587,8 @@ class _AddCustomerSheetState extends State<_AddCustomerSheet> {
   final _nameCtrl = TextEditingController();
   late final _phoneCtrl = TextEditingController(
     text: widget.initialPhone.trim().isEmpty
-        ? PkPhone.prefix
-        : PkPhone.normalize(widget.initialPhone),
+        ? PkPhone.inputPrefix
+        : PkPhone.localNumber(widget.initialPhone),
   );
   String? _phoneError;
 
@@ -641,7 +641,7 @@ class _AddCustomerSheetState extends State<_AddCustomerSheet> {
             },
             style: const TextStyle(fontSize: 13.5),
             decoration: appSheetInputDecoration(
-              'Customer Number (+923462254477)',
+              'Customer Number (03465501748)',
             ).copyWith(errorText: _phoneError),
           ),
         ],

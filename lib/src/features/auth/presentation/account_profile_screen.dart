@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
@@ -41,7 +42,10 @@ class AccountProfileScreen extends StatelessWidget {
                 const SizedBox(height: 10),
                 _InfoTile(label: 'Username', value: user.username),
                 const SizedBox(height: 10),
-                _InfoTile(label: 'Phone', value: user.phone),
+                _InfoTile(
+                  label: 'Phone',
+                  value: PkPhone.localNumber(user.phone),
+                ),
                 const SizedBox(height: 22),
                 SizedBox(
                   width: double.infinity,

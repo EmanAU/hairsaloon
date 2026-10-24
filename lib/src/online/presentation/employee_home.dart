@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
@@ -16,9 +17,11 @@ class EmployeeHome extends StatefulWidget {
     super.key,
     required this.session,
     required this.onSignOut,
+    this.onSwitchWorkspace,
   });
   final OnlineSession session;
   final Future<void> Function() onSignOut;
+  final VoidCallback? onSwitchWorkspace;
 
   @override
   State<EmployeeHome> createState() => _EmployeeHomeState();
@@ -41,10 +44,7 @@ class _EmployeeHomeState extends State<EmployeeHome> {
     PendingEmployeeInvite invite, {
     required bool accept,
   }) async {
-    await widget.session.repository.respondToEmployeeInvite(
-      invite.id,
-      accept,
-    );
+    await widget.session.repository.respondToEmployeeInvite(invite.id, accept);
     if (!mounted) return;
     if (accept) {
       showMessage(context, 'Joined ${invite.businessName}');
@@ -83,6 +83,12 @@ class _EmployeeHomeState extends State<EmployeeHome> {
         backgroundColor: AppColors.homeCanvas,
         title: Text('Your workspace', style: text.titleLarge),
         actions: [
+          if (widget.onSwitchWorkspace != null)
+            IconButton(
+              tooltip: 'Switch workspace',
+              icon: const Icon(Icons.swap_horiz),
+              onPressed: widget.onSwitchWorkspace,
+            ),
           IconButton(
             tooltip: 'Edit profile',
             icon: const Icon(CupertinoIcons.person),
@@ -124,11 +130,12 @@ class _EmployeeHomeState extends State<EmployeeHome> {
         child: OnlineShell.centered(
           maxWidth: OnlineShell.pageMaxWidth,
           child: RemoteContent(
-              future: _data,
-              onRetry: _refresh,
-              builder: (data) {
-              final filtered =
-                  data.days.where((d) => _inPeriod(d.date)).toList();
+            future: _data,
+            onRetry: _refresh,
+            builder: (data) {
+              final filtered = data.days
+                  .where((d) => _inPeriod(d.date))
+                  .toList();
               // If today is empty, still show the latest working day so staff
               // immediately see what they completed after a contract starts.
               final days = filtered.isNotEmpty
@@ -149,7 +156,8 @@ class _EmployeeHomeState extends State<EmployeeHome> {
               return FutureBuilder<List<PendingEmployeeInvite>>(
                 future: _invites,
                 builder: (context, inviteSnap) {
-                  final invites = inviteSnap.data ?? const <PendingEmployeeInvite>[];
+                  final invites =
+                      inviteSnap.data ?? const <PendingEmployeeInvite>[];
                   final invitesLoading =
                       inviteSnap.connectionState == ConnectionState.waiting &&
                       !inviteSnap.hasData;
@@ -256,10 +264,8 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                       _ProfileHeader(
                         name: workspace.account.name,
                         phone: profile?.phone ?? '',
-                        experience:
-                            profile?.experienceAt(DateTime.now()) ?? '',
-                        photoFuture:
-                            widget.session.repository.profilePhoto(),
+                        experience: profile?.experienceAt(DateTime.now()) ?? '',
+                        photoFuture: widget.session.repository.profilePhoto(),
                       ),
                       const SizedBox(height: AppSpacing.md),
                       if (invites.isNotEmpty) ...[
@@ -279,10 +285,8 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                                       backgroundColor: AppColors.background,
                                       foregroundColor: AppColors.textPrimary,
                                     ),
-                                    onPressed: () => _respondToInvite(
-                                      invite,
-                                      accept: false,
-                                    ),
+                                    onPressed: () =>
+                                        _respondToInvite(invite, accept: false),
                                   ),
                                 ),
                                 const SizedBox(width: AppSpacing.sm),
@@ -290,10 +294,8 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                                   child: ActionButton(
                                     label: 'Yes',
                                     showIcon: false,
-                                    onPressed: () => _respondToInvite(
-                                      invite,
-                                      accept: true,
-                                    ),
+                                    onPressed: () =>
+                                        _respondToInvite(invite, accept: true),
                                   ),
                                 ),
                               ],
@@ -330,114 +332,111 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                         ],
                         const SizedBox(height: AppSpacing.sm),
                       ],
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Daily work',
-                          style: text.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: _anchor,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime.now().add(
-                              const Duration(days: 1),
-                            ),
-                          );
-                          if (picked != null) {
-                            setState(() => _anchor = picked);
-                          }
-                        },
-                        child: Text(
-                          '${_anchor.day}/${_anchor.month}/${_anchor.year}',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  SegmentedButton<_WorkPeriod>(
-                    segments: const [
-                      ButtonSegment(
-                        value: _WorkPeriod.daily,
-                        label: Text('Daily'),
-                      ),
-                      ButtonSegment(
-                        value: _WorkPeriod.weekly,
-                        label: Text('Weekly'),
-                      ),
-                      ButtonSegment(
-                        value: _WorkPeriod.monthly,
-                        label: Text('Monthly'),
-                      ),
-                    ],
-                    selected: {_period},
-                    onSelectionChanged: (value) =>
-                        setState(() => _period = value.first),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _StatTile(
-                          label: 'Sales',
-                          value: _money(sales),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: _StatTile(
-                          label: 'Jobs',
-                          value: '$jobs',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  if (days.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.xl,
-                      ),
-                      child: Text(
-                        'No work recorded for this period yet.',
-                        textAlign: TextAlign.center,
-                        style: text.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    )
-                  else
-                    for (final day in days) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          top: AppSpacing.sm,
-                          bottom: AppSpacing.sm,
-                        ),
-                        child: Text(
-                          '${day.date.day}/${day.date.month}/${day.date.year}',
-                          style: text.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      for (final job in day.jobs)
-                        _JobListTile(
-                          job: job,
-                          money: _money,
-                          onTap: () => Navigator.push<void>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => _JobDetailPage(job: job),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Daily work',
+                              style: text.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
-                        ),
-                    ],
+                          TextButton(
+                            onPressed: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: _anchor,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime.now().add(
+                                  const Duration(days: 1),
+                                ),
+                              );
+                              if (picked != null) {
+                                setState(() => _anchor = picked);
+                              }
+                            },
+                            child: Text(
+                              '${_anchor.day}/${_anchor.month}/${_anchor.year}',
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      SegmentedButton<_WorkPeriod>(
+                        segments: const [
+                          ButtonSegment(
+                            value: _WorkPeriod.daily,
+                            label: Text('Daily'),
+                          ),
+                          ButtonSegment(
+                            value: _WorkPeriod.weekly,
+                            label: Text('Weekly'),
+                          ),
+                          ButtonSegment(
+                            value: _WorkPeriod.monthly,
+                            label: Text('Monthly'),
+                          ),
+                        ],
+                        selected: {_period},
+                        onSelectionChanged: (value) =>
+                            setState(() => _period = value.first),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _StatTile(
+                              label: 'Sales',
+                              value: _money(sales),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: _StatTile(label: 'Jobs', value: '$jobs'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      if (days.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AppSpacing.xl,
+                          ),
+                          child: Text(
+                            'No work recorded for this period yet.',
+                            textAlign: TextAlign.center,
+                            style: text.bodyMedium?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        )
+                      else
+                        for (final day in days) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              top: AppSpacing.sm,
+                              bottom: AppSpacing.sm,
+                            ),
+                            child: Text(
+                              '${day.date.day}/${day.date.month}/${day.date.year}',
+                              style: text.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          for (final job in day.jobs)
+                            _JobListTile(
+                              job: job,
+                              money: _money,
+                              onTap: () => Navigator.push<void>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => _JobDetailPage(job: job),
+                                ),
+                              ),
+                            ),
+                        ],
                     ],
                   );
                 },
@@ -591,16 +590,16 @@ class _JoinedSalonCard extends StatelessWidget {
           children: [
             Text(
               'Your salon',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 2),
             Text(
               businessName,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
           ],
         ),
@@ -610,11 +609,7 @@ class _JoinedSalonCard extends StatelessWidget {
 }
 
 class _BannerPanel extends StatelessWidget {
-  const _BannerPanel({
-    required this.title,
-    required this.subtitle,
-    this.child,
-  });
+  const _BannerPanel({required this.title, required this.subtitle, this.child});
   final String title;
   final String subtitle;
   final Widget? child;
@@ -639,10 +634,7 @@ class _BannerPanel extends StatelessWidget {
             subtitle,
             style: text.bodyMedium?.copyWith(color: AppColors.textSecondary),
           ),
-          if (child != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            child!,
-          ],
+          if (child != null) ...[const SizedBox(height: AppSpacing.sm), child!],
         ],
       ),
     );
@@ -675,46 +667,40 @@ class _SalonSummaryCard extends StatelessWidget {
           children: [
             Text(
               'Your salon',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 2),
             Text(
               contract.businessName,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 10),
             Text(
               'Employment type',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 2),
             Text(
               _kindLabel,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
             ),
             const SizedBox(height: 10),
             Text(
               'Commission',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 2),
             Text(
               '${contract.commission.toStringAsFixed(0)}%',
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
             ),
           ],
         ),
@@ -772,7 +758,7 @@ class _ProfileHeader extends StatelessWidget {
                 Text(name, style: text.titleMedium),
                 if (phone.isNotEmpty)
                   Text(
-                    phone,
+                    PkPhone.localNumber(phone),
                     style: text.bodyMedium?.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -948,18 +934,14 @@ class _JobDetailPage extends StatelessWidget {
                   _JobField(label: 'Salon', value: job.businessName),
                   _JobField(
                     label: 'Services',
-                    value: job.services.isEmpty
-                        ? '—'
-                        : job.services.join(', '),
+                    value: job.services.isEmpty ? '—' : job.services.join(', '),
                   ),
                   _JobField(label: 'Time', value: _time),
-                  _JobField(
-                    label: 'Total to salon',
-                    value: _money(job.total),
-                  ),
+                  _JobField(label: 'Total to salon', value: _money(job.total)),
                   _JobField(
                     label: 'Your commission',
-                    value: '+${_money(job.earning)}'
+                    value:
+                        '+${_money(job.earning)}'
                         ' (${job.commissionPercent.toStringAsFixed(0)}%)',
                     valueColor: AppColors.success,
                   ),
@@ -974,11 +956,7 @@ class _JobDetailPage extends StatelessWidget {
 }
 
 class _JobField extends StatelessWidget {
-  const _JobField({
-    required this.label,
-    required this.value,
-    this.valueColor,
-  });
+  const _JobField({required this.label, required this.value, this.valueColor});
 
   final String label;
   final String value;
@@ -1041,16 +1019,13 @@ class _ContractNotice extends StatelessWidget {
           children: [
             Text(
               contract.businessName,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 10),
             _JobField(label: 'Employment type', value: _kindLabel),
-            _JobField(
-              label: 'Status',
-              value: contract.displayStatus,
-            ),
+            _JobField(label: 'Status', value: contract.displayStatus),
             _JobField(
               label: 'Salary',
               value: contract.salary.toStringAsFixed(0),

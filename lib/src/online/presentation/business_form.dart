@@ -254,151 +254,148 @@ class _BusinessFormState extends State<BusinessForm> {
       body: OnlineShell.centered(
         maxWidth: OnlineShell.formMaxWidth,
         child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              24,
-              16,
-              24,
-              24 + MediaQuery.paddingOf(context).bottom,
-            ),
-            child: AbsorbPointer(
-              absorbing: _saving,
-              child: Form(
-                key: _form,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _photoPicker(),
-                    const SizedBox(height: 24),
-                    LayoutBuilder(
-                      builder: (context, size) {
-                        final width = size.maxWidth >= OnlineShell.twoColMinWidth
-                            ? (size.maxWidth - 16) / 2
-                            : size.maxWidth;
-                        return Wrap(
-                          spacing: 16,
-                          runSpacing: 18,
-                          children: [
-                            SizedBox(
-                              width: width,
-                              child: _field(
-                                _name,
-                                'Business name',
-                                Icons.storefront_outlined,
-                                maxLength: 160,
-                              ),
+          padding: EdgeInsets.fromLTRB(
+            24,
+            16,
+            24,
+            24 + MediaQuery.paddingOf(context).bottom,
+          ),
+          child: AbsorbPointer(
+            absorbing: _saving,
+            child: Form(
+              key: _form,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _photoPicker(),
+                  const SizedBox(height: 24),
+                  LayoutBuilder(
+                    builder: (context, size) {
+                      final width = size.maxWidth >= OnlineShell.twoColMinWidth
+                          ? (size.maxWidth - 16) / 2
+                          : size.maxWidth;
+                      return Wrap(
+                        spacing: 16,
+                        runSpacing: 18,
+                        children: [
+                          SizedBox(
+                            width: width,
+                            child: _field(
+                              _name,
+                              'Business name',
+                              Icons.storefront_outlined,
+                              maxLength: 160,
                             ),
-                            SizedBox(
-                              width: width,
-                              child: TextFormField(
-                                controller: _phone,
-                                keyboardType: TextInputType.phone,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                  LengthLimitingTextInputFormatter(11),
-                                ],
-                                decoration: _decoration(
-                                  'Business phone',
-                                  Icons.phone_outlined,
-                                  hint: '03127712502',
-                                ),
-                                validator: PkPhone.localValidationError,
+                          ),
+                          SizedBox(
+                            width: width,
+                            child: TextFormField(
+                              controller: _phone,
+                              keyboardType: TextInputType.phone,
+                              inputFormatters: [PkPhoneInputFormatter()],
+                              decoration: _decoration(
+                                'Business phone',
+                                Icons.phone_outlined,
+                                hint: '03465501748',
                               ),
+                              validator: PkPhone.localValidationError,
                             ),
-                            SizedBox(
-                              width: width,
-                              child: DropdownButtonFormField<String>(
-                                initialValue: _type,
-                                isExpanded: true,
-                                decoration: _decoration(
-                                  'Business type',
-                                  Icons.category_outlined,
-                                ),
-                                items:
-                                    {
-                                          ...BusinessOptions.businessTypes,
-                                          if (!BusinessOptions.businessTypes
-                                              .contains(_type))
-                                            _type,
-                                        }
-                                        .map(
-                                          (value) => DropdownMenuItem(
-                                            value: value,
-                                            child: Text(
-                                              value,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
+                          ),
+                          SizedBox(
+                            width: width,
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _type,
+                              isExpanded: true,
+                              decoration: _decoration(
+                                'Business type',
+                                Icons.category_outlined,
+                              ),
+                              items:
+                                  {
+                                        ...BusinessOptions.businessTypes,
+                                        if (!BusinessOptions.businessTypes
+                                            .contains(_type))
+                                          _type,
+                                      }
+                                      .map(
+                                        (value) => DropdownMenuItem(
+                                          value: value,
+                                          child: Text(
+                                            value,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                        )
-                                        .toList(),
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    setState(() => _type = value);
-                                  }
-                                },
-                              ),
+                                        ),
+                                      )
+                                      .toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() => _type = value);
+                                }
+                              },
                             ),
-                            SizedBox(
-                              width: width,
-                              child: DropdownButtonFormField<String>(
-                                initialValue: _city,
-                                isExpanded: true,
-                                decoration: _decoration(
-                                  'City',
-                                  Icons.location_city_outlined,
-                                ),
-                                items: BusinessOptions.cities
-                                    .map(
-                                      (city) => DropdownMenuItem(
-                                        value: city,
-                                        child: Text(city),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (value) =>
-                                    setState(() => _city = value),
-                                validator: (value) =>
-                                    value == null ? 'Select your city' : null,
+                          ),
+                          SizedBox(
+                            width: width,
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _city,
+                              isExpanded: true,
+                              decoration: _decoration(
+                                'City',
+                                Icons.location_city_outlined,
                               ),
+                              items: BusinessOptions.cities
+                                  .map(
+                                    (city) => DropdownMenuItem(
+                                      value: city,
+                                      child: Text(city),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) =>
+                                  setState(() => _city = value),
+                              validator: (value) =>
+                                  value == null ? 'Select your city' : null,
                             ),
-                            SizedBox(
-                              width: size.maxWidth,
-                              child: _field(
-                                _area,
-                                'Area',
-                                Icons.near_me_outlined,
-                              ),
+                          ),
+                          SizedBox(
+                            width: size.maxWidth,
+                            child: _field(
+                              _area,
+                              'Area',
+                              Icons.near_me_outlined,
                             ),
-                            SizedBox(
-                              width: size.maxWidth,
-                              child: _field(
-                                _address,
-                                'Address',
-                                Icons.location_on_outlined,
-                                maxLength: 250,
-                                lines: 2,
-                              ),
+                          ),
+                          SizedBox(
+                            width: size.maxWidth,
+                            child: _field(
+                              _address,
+                              'Address',
+                              Icons.location_on_outlined,
+                              maxLength: 250,
+                              lines: 2,
                             ),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    ActionButton(
-                      label: 'Save business',
-                      onPressed: _save,
-                      icon: Icons.check,
-                      style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  ActionButton(
+                    label: 'Save business',
+                    onPressed: _save,
+                    icon: Icons.check,
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
         ),
       ),
-    );
+    ),
+  );
 }

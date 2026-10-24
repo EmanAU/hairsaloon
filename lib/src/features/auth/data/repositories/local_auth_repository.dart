@@ -65,7 +65,7 @@ class LocalAuthRepository implements AuthRepository {
         !RegExp(r'^\+92\d{10}$').hasMatch(normalizedPhone) ||
         password.length < 6) {
       throw const FormatException(
-        'Enter a name, valid +92 phone number and password of at least 6 characters.',
+        'Enter a name, an 11-digit phone number starting with 03 and password of at least 6 characters.',
       );
     }
     final accounts = _accounts();

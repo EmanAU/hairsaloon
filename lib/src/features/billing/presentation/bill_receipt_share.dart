@@ -18,8 +18,18 @@ class BillReceiptShare {
   static const _whatsAppChannel = MethodChannel('hairsaloon/whatsapp_share');
 
   static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
   static String formatDateTime(DateTime d) {
@@ -71,7 +81,7 @@ class BillReceiptShare {
       ..writeln('Bill No: ${bill.shortNumber}')
       ..writeln('Date: ${formatDateTime(bill.createdAt)}')
       ..writeln('Customer: ${orDash(bill.customerName)}')
-      ..writeln('Phone: ${orDash(bill.customerPhone)}')
+      ..writeln('Phone: ${orDash(PkPhone.localNumber(bill.customerPhone))}')
       ..writeln('Staff: ${orDash(bill.employeeName)}')
       ..writeln('Payment: ${orDash(bill.paymentType)}')
       ..writeln('------------------------------');

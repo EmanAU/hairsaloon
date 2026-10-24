@@ -81,8 +81,13 @@ void main() {
     expect(find.byType(EmployeeHome), findsOneWidget);
     expect(find.text('Ali Barber'), findsOneWidget);
     expect(find.text('Cut & Co'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Hassan'), 250);
     expect(find.text('Hassan'), findsOneWidget);
+    await tester.tap(find.text('Hassan'));
+    await tester.pumpAndSettle();
     expect(find.textContaining('Haircut'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
 
     await tester.pumpWidget(
       OnlineApp(audience: AppAudience.business, repository: repository),

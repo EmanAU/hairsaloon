@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/utils/pk_cnic.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +12,7 @@ import 'package:hairsaloon/src/features/employees/presentation/state/employees_s
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../../../online/domain/online_repository.dart';
+import '../../../online/data/business_workspace.dart';
 import 'employee_photo.dart';
 
 class EmployeeDetailsScreen extends StatefulWidget {
@@ -50,6 +52,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
   bool _completed = false;
   bool _saving = false;
   String? _saveError;
+  final _managerPin = TextEditingController();
 
   @override
   void initState() {
@@ -61,7 +64,9 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
   void _hydrateFrom(EmployeeItem item) {
     _firstNameCtrl = TextEditingController(text: item.firstName);
     _lastNameCtrl = TextEditingController(text: item.lastName);
-    _phoneCtrl = TextEditingController(text: item.phoneNumber);
+    _phoneCtrl = TextEditingController(
+      text: PkPhone.localNumber(item.phoneNumber),
+    );
     _cnicCtrl = TextEditingController(text: _displayCnic(item.cnicNumber));
     _addressCtrl = TextEditingController(text: item.homeAddress);
     _specialityCtrl = TextEditingController(text: item.speciality ?? '');
@@ -91,7 +96,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     final item = widget.item;
     _firstNameCtrl.text = item.firstName;
     _lastNameCtrl.text = item.lastName;
-    _phoneCtrl.text = item.phoneNumber;
+    _phoneCtrl.text = PkPhone.localNumber(item.phoneNumber);
     _cnicCtrl.text = _displayCnic(item.cnicNumber);
     _addressCtrl.text = item.homeAddress;
     _specialityCtrl.text = item.speciality ?? '';
@@ -127,6 +132,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     _addressCtrl.dispose();
     _specialityCtrl.dispose();
     _otherCategoryCtrl.dispose();
+    _managerPin.dispose();
     super.dispose();
   }
 
@@ -264,7 +270,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
                   _cnicCtrl,
                   'CNIC number',
                   keyboardType: TextInputType.number,
-                  inputFormatters: [_CnicFormatter()],
+                  inputFormatters: [PkCnicInputFormatter()],
                 ),
                 const SizedBox(height: 12),
                 _editField(_addressCtrl, 'Home address'),
@@ -327,6 +333,26 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
                   value: _isManager,
                   onChanged: (value) => setState(() => _isManager = value),
                 ),
+                if (widget.item.onlineSynced &&
+                    _isManager &&
+                    !widget.item.isManager) ...[
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _managerPin,
+                    obscureText: true,
+                    enabled: !_saving,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(4),
+                    ],
+                    decoration: _inputDecoration().copyWith(
+                      labelText: '4-digit manager PIN',
+                      hintText: 'Give this PIN to the employee',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 SwitchListTile.adaptive(
                   contentPadding: EdgeInsets.zero,
                   dense: true,
@@ -517,12 +543,19 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
       return _fail('Enter the employee’s last name.');
     }
     if (!PkPhone.isValid(phone)) {
-      return _fail('Enter a valid employee phone number (+92 and 10 digits).');
+      return _fail('Enter an 11-digit employee phone number starting with 03.');
     }
     if (!_isValidCnic(cnic)) {
       return _fail('Enter the employee’s 13-digit CNIC.');
     }
     if (address.isEmpty) return _fail('Enter the employee’s home address.');
+    final managerChanged =
+        widget.item.onlineSynced && _isManager != widget.item.isManager;
+    if (managerChanged &&
+        _isManager &&
+        !RegExp(r'^\d{4}$').hasMatch(_managerPin.text)) {
+      return _fail('Set a 4-digit manager PIN.');
+    }
 
     final cnicDigits = cnic.replaceAll(RegExp(r'[^0-9]'), '');
     for (final other in store.all) {
@@ -558,6 +591,18 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
       _saveError = null;
     });
     try {
+      if (managerChanged) {
+        final repository =
+            widget.repository ?? context.read<BusinessWorkspace?>()?.repository;
+        if (repository == null) {
+          throw StateError('Online workspace unavailable');
+        }
+        await repository.setEmployeeManager(
+          employeeId: widget.item.id,
+          isManager: _isManager,
+          pin: _isManager ? _managerPin.text : null,
+        );
+      }
       final updated = widget.item.copyWith(
         firstName: first,
         lastName: last,
@@ -600,33 +645,6 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     ToastService.error(message, context);
   }
 
-  String _displayCnic(String value) {
-    final digits = value.replaceAll(RegExp(r'[\s-]'), '');
-    if (!RegExp(r'^\d{13}$').hasMatch(digits)) return value;
-    return '${digits.substring(0, 5)}-${digits.substring(5, 12)}-${digits.substring(12)}';
-  }
-
-  bool _isValidCnic(String value) =>
-      RegExp(r'^\d{13}$').hasMatch(value.replaceAll(RegExp(r'[\s-]'), ''));
-}
-
-class _CnicFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-    final limited = digits.length > 13 ? digits.substring(0, 13) : digits;
-    final buffer = StringBuffer();
-    for (var i = 0; i < limited.length; i++) {
-      if (i == 5 || i == 12) buffer.write('-');
-      buffer.write(limited[i]);
-    }
-    final formatted = buffer.toString();
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
-  }
+  String _displayCnic(String value) => PkCnic.display(value);
+  bool _isValidCnic(String value) => PkCnic.isValid(value);
 }

@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:hairsaloon/src/core/layout/adaptive_page.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:flutter/cupertino.dart';
@@ -157,7 +158,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                     child: Text(
                       widget.customerName.isEmpty
                           ? widget.customerPhone
-                          : '${widget.customerName} • ${widget.customerPhone}',
+                          : '${widget.customerName} • ${PkPhone.localNumber(widget.customerPhone)}',
                       style: const TextStyle(fontSize: 12),
                     ),
                   ),

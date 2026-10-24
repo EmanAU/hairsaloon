@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/core/widgets/app_sheet.dart';
@@ -161,7 +162,10 @@ class _CustomerCard extends StatelessWidget {
                 ? 'Walk-in customer'
                 : bill.customerName.trim(),
           ),
-          _InfoRow(label: 'Phone', value: orDash(bill.customerPhone)),
+          _InfoRow(
+            label: 'Phone',
+            value: orDash(PkPhone.localNumber(bill.customerPhone)),
+          ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 6),
             child: Divider(height: 1, color: AppColors.border),

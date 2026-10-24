@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
@@ -174,7 +175,7 @@ class _SaleTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = bill.customerName.trim();
-    final phone = bill.customerPhone.trim();
+    final phone = PkPhone.localNumber(bill.customerPhone);
     final customer = name.isNotEmpty
         ? name
         : (phone.isNotEmpty ? phone : 'Walk-in Customer');

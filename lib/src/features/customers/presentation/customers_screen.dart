@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
@@ -18,7 +19,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
     final grouped = <String, List<Bill>>{};
     for (final bill in bills) {
       final name = bill.customerName.trim();
-      final phone = bill.customerPhone.trim();
+      final phone = PkPhone.localNumber(bill.customerPhone);
       final key = name.isNotEmpty
           ? (phone.isNotEmpty ? '$name • $phone' : name)
           : (phone.isNotEmpty ? phone : 'Walk-in Customer');

@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
@@ -57,7 +58,7 @@ class PosReceiptCard extends StatelessWidget {
         : bill.customerName.trim();
     final customerPhone = bill.customerPhone.trim().isEmpty
         ? '-'
-        : bill.customerPhone.trim();
+        : PkPhone.localNumber(bill.customerPhone);
 
     return Container(
       width: 340,
@@ -92,7 +93,7 @@ class PosReceiptCard extends StatelessWidget {
           if (businessPhone.trim().isNotEmpty) ...[
             const SizedBox(height: 2),
             Text(
-              businessPhone.trim(),
+              PkPhone.localNumber(businessPhone),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppColors.textSecondary,
@@ -118,8 +119,14 @@ class PosReceiptCard extends StatelessWidget {
           _kv('Date', dateText),
           _kv('Customer', customerName),
           _kv('Phone', customerPhone),
-          _kv('Staff', bill.employeeName.trim().isEmpty ? '-' : bill.employeeName),
-          _kv('Payment', bill.paymentType.trim().isEmpty ? '-' : bill.paymentType),
+          _kv(
+            'Staff',
+            bill.employeeName.trim().isEmpty ? '-' : bill.employeeName,
+          ),
+          _kv(
+            'Payment',
+            bill.paymentType.trim().isEmpty ? '-' : bill.paymentType,
+          ),
           const SizedBox(height: 10),
           const _DashLine(),
           const SizedBox(height: 8),
@@ -266,10 +273,7 @@ class PosReceiptCard extends StatelessWidget {
           const Text(
             'Please come again',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 10,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -295,10 +299,7 @@ class PosReceiptCard extends StatelessWidget {
           ),
           const Text(
             ':  ',
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
           ),
           Expanded(
             child: Text(

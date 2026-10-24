@@ -24,8 +24,9 @@ class MadeWithLoveCredit extends StatelessWidget {
     );
     return Semantics(
       label: 'Made with love by Intelligement',
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Text('Made with ', style: style),
           Icon(

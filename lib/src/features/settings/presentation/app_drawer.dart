@@ -13,6 +13,9 @@ import 'package:hairsaloon/src/features/settings/presentation/state/settings_sto
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../online/data/business_workspace.dart';
+import '../../../online/presentation/team_contracts_screen.dart';
+import '../../../online/presentation/online_dashboard_tools.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -28,6 +31,7 @@ class AppDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final workspace = context.watch<BusinessWorkspace?>();
     final profile = context.watch<BusinessProfileNotifier>().profile;
     final businessName = (profile?.businessName.trim().isNotEmpty ?? false)
         ? profile!.businessName
@@ -93,6 +97,45 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
                   const SizedBox(height: 10),
+                  if (workspace != null) ...[
+                    const _SectionLabel('TEAM'),
+                    _Item(
+                      icon: CupertinoIcons.doc_text,
+                      title: 'Contracts',
+                      showDivider: true,
+                      onTap: () {
+                        final navigator = Navigator.of(context);
+                        navigator.pop();
+                        navigator.push(
+                          MaterialPageRoute(
+                            builder: (_) => TeamContractsScreen(
+                              repository: workspace.repository,
+                              businessId: workspace.business.id,
+                              business: workspace.business,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    _Item(
+                      icon: CupertinoIcons.envelope,
+                      title: 'Invite replies',
+                      showDivider: false,
+                      onTap: () {
+                        final navigator = Navigator.of(context);
+                        navigator.pop();
+                        navigator.push(
+                          MaterialPageRoute(
+                            builder: (_) => OwnerInvitesScreen(
+                              repository: workspace.repository,
+                              businessId: workspace.business.id,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   const _SectionLabel('CATALOGUE'),
                   _Item(
                     icon: CupertinoIcons.square_list,
@@ -141,10 +184,7 @@ class AppDrawer extends StatelessWidget {
                       final settings = context.read<SettingsStore>();
                       final navigator = Navigator.of(context);
                       navigator.pop();
-                      await _showCurrencyDialog(
-                        navigator.context,
-                        settings,
-                      );
+                      await _showCurrencyDialog(navigator.context, settings);
                     },
                   ),
                   _Item(
