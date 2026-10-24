@@ -30,7 +30,7 @@ class _EmployeeEarningsScreenState extends State<EmployeeEarningsScreen> {
       final employeeSales = bills
           .where(
             (bill) =>
-                bill.employeeName == employee.fullName &&
+                bill.belongsToEmployee(employee.id, employee.fullName) &&
                 _isInPeriod(bill.createdAt),
           )
           .fold<double>(0, (sum, bill) => sum + bill.grandTotal);
@@ -39,7 +39,7 @@ class _EmployeeEarningsScreenState extends State<EmployeeEarningsScreen> {
       final commissionBase = bills
           .where(
             (bill) =>
-                bill.employeeName == employee.fullName &&
+                bill.belongsToEmployee(employee.id, employee.fullName) &&
                 _isInPeriod(bill.createdAt),
           )
           .fold<double>(0, (sum, bill) => sum + bill.commissionBase);

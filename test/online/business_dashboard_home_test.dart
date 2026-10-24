@@ -111,7 +111,7 @@ void main() {
         ),
       );
       await waitForOnlineDashboard(tester);
-      expect(find.text('New Bill'), findsOneWidget);
+      expect(find.text('Scan QR'), findsOneWidget);
       expect(find.text('Rate List'), findsOneWidget);
       expect(find.text('Sales History'), findsOneWidget);
       expect(find.text('Join Requests'), findsOneWidget);
@@ -240,12 +240,11 @@ void main() {
       await tester.pageBack();
       await tester.pumpAndSettle();
       repository.workspace = ownerWorkspace;
-      await tester.tap(find.text('Go Online'));
+      await tester.tap(find.text('Sync now'));
       await tester.pumpAndSettle();
-      expect(find.text('Sync status'), findsOneWidget);
+      expect(find.text('Sync status'), findsNothing);
       expect(find.text('Sync now'), findsOneWidget);
-      await tester.tap(find.byTooltip('Back to dashboard'));
-      await tester.pumpAndSettle();
+      expect(find.text('Scan QR'), findsOneWidget);
       await waitForOnlineDashboard(tester);
       await tester.tap(find.text('Sales History'));
       await tester.pumpAndSettle();
@@ -265,7 +264,7 @@ void main() {
       expect(find.byType(ExpensesScreen), findsOneWidget);
       await tester.tap(find.text('Home'));
       await tester.pumpAndSettle();
-      expect(find.text('New Bill'), findsOneWidget);
+      expect(find.text('Scan QR'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       await closeOnlineWorkspace(tester);

@@ -109,13 +109,13 @@ class FinanceCalculator {
     required Map<String, SalaryPayout> payoutsById,
     required bool Function(DateTime date) include,
   }) {
-    final name = norm(employee.fullName);
     final percent = commissionPercent(employee.commission);
 
     final salesByDay = <DateTime, double>{};
     final commissionByDay = <DateTime, double>{};
     for (final bill in bills) {
-      if (norm(bill.employeeName) != name || !include(bill.createdAt)) {
+      if (!bill.belongsToEmployee(employee.id, employee.fullName) ||
+          !include(bill.createdAt)) {
         continue;
       }
       salesByDay.update(

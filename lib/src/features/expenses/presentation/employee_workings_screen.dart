@@ -28,7 +28,7 @@ class EmployeeWorkingsScreen extends StatelessWidget {
     final bills = context
         .watch<BillingStore>()
         .bills
-        .where((b) => b.employeeName == employeeName)
+        .where((b) => b.belongsToEmployee(employee.id, employee.fullName))
         .where((b) => _isInPeriod(b.createdAt, anchorDate, period))
         .toList(growable: false);
 

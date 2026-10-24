@@ -15,7 +15,6 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../online/data/business_workspace.dart';
 import '../../../online/presentation/team_contracts_screen.dart';
-import '../../../online/presentation/online_dashboard_tools.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -112,23 +111,6 @@ class AppDrawer extends StatelessWidget {
                               repository: workspace.repository,
                               businessId: workspace.business.id,
                               business: workspace.business,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    _Item(
-                      icon: CupertinoIcons.envelope,
-                      title: 'Invite replies',
-                      showDivider: false,
-                      onTap: () {
-                        final navigator = Navigator.of(context);
-                        navigator.pop();
-                        navigator.push(
-                          MaterialPageRoute(
-                            builder: (_) => OwnerInvitesScreen(
-                              repository: workspace.repository,
-                              businessId: workspace.business.id,
                             ),
                           ),
                         );

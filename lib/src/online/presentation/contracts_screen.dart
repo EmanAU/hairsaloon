@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/toast_service.dart';
 import '../../core/widgets/app_sheet.dart';
@@ -382,8 +383,10 @@ class ProposeContractPage extends StatefulWidget {
     required this.repository,
     required this.employee,
     this.business,
+    this.localEmployee,
   });
 
+  final EmployeeItem? localEmployee;
   final OnlineRepository repository;
   final SalonStaff employee;
   final SalonBusiness? business;
@@ -400,6 +403,27 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
   String _kind = 'permanent';
   DateTime _starts = DateTime.now();
   DateTime _ends = DateTime.now().add(const Duration(days: 30));
+
+  @override
+  void initState() {
+    super.initState();
+    final item = widget.localEmployee;
+    if (item == null) return;
+    _salary.text = item.basicSalary ?? '0';
+    _commission.text = item.commission ?? '0';
+    _terms.text = item.agreementDescription ?? '';
+    _kind = item.contract?['kind'] as String? ?? 'permanent';
+    _starts =
+        DateTime.tryParse(
+          item.contract?['startsAt']?.toString() ?? '',
+        )?.toLocal() ??
+        _starts;
+    _ends =
+        DateTime.tryParse(
+          item.contract?['endsAt']?.toString() ?? '',
+        )?.toLocal() ??
+        _ends;
+  }
 
   @override
   void dispose() {
@@ -471,6 +495,37 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
         'End time must be after the start time and in the future.',
         context,
       );
+      return;
+    }
+    final local = widget.localEmployee;
+    if (local != null) {
+      final updated = local.copyWith(
+        basicSalary: _salary.text.trim(),
+        commission: _commission.text.trim(),
+        agreementDescription: _terms.text.trim(),
+        contract: {
+          'id': local.contract?['id'] ?? const Uuid().v4(),
+          'kind': _kind,
+          'startsAt': _starts.toUtc().toIso8601String(),
+          'endsAt': ends?.toUtc().toIso8601String(),
+          'salary': double.parse(_salary.text),
+          'commission': double.parse(_commission.text),
+          'terms': _terms.text.trim(),
+        },
+      );
+      final store = context.read<EmployeesStore>();
+      await store.update(updated);
+      if (!mounted) return;
+      final workspace = context.read<BusinessWorkspace?>();
+      final synced = workspace == null || await workspace.syncEmployeeRecords();
+      if (!mounted) return;
+      ToastService.success(
+        synced
+            ? 'Contract saved'
+            : 'Contract saved on this device. Sync will retry when connected.',
+        context,
+      );
+      Navigator.pop(context, true);
       return;
     }
     try {
@@ -739,7 +794,9 @@ class _ProposeContractPageState extends State<ProposeContractPage> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Set employment terms. They take effect immediately.',
+                                  widget.localEmployee == null
+                                      ? 'Set employment terms. They take effect immediately.'
+                                      : 'Save terms now. Their dashboard will show them when they join.',
                                   style: text.bodyMedium?.copyWith(
                                     color: AppColors.homeOlive,
                                     height: 1.4,

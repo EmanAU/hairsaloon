@@ -86,30 +86,38 @@ Future<void> showEmployeeInviteOptions(BuildContext context) async {
         ),
       );
     case 'qr':
-      final scanned = await Navigator.push<QrDestination>(
+      await scanEmployeeProfile(context, workspace);
+  }
+}
+
+/// Scan and add an existing employee profile using the same invitation flow.
+Future<void> scanEmployeeProfile(
+  BuildContext context,
+  BusinessWorkspace workspace,
+) async {
+  final scanned = await Navigator.push<QrDestination>(
+    context,
+    MaterialPageRoute(builder: (_) => const ScanQr(profileCode: true)),
+  );
+  if (scanned == null || !context.mounted) return;
+  try {
+    await workspace.repository.inviteEmployee(
+      workspace.business.id,
+      scanned.id,
+    );
+    if (context.mounted) {
+      ToastService.success('Employee added to your salon', context);
+      await _afterInvite(context, workspace);
+    }
+  } catch (error) {
+    if (context.mounted) {
+      ToastService.error(
+        error is OnlineFailure
+            ? error.message
+            : 'Could not add this employee. Try again.',
         context,
-        MaterialPageRoute(builder: (_) => const ScanQr(profileCode: true)),
       );
-      if (scanned == null || !context.mounted) return;
-      try {
-        await workspace.repository.inviteEmployee(
-          workspace.business.id,
-          scanned.id,
-        );
-        if (context.mounted) {
-          ToastService.success('Employee added to your salon', context);
-          await _afterInvite(context, workspace);
-        }
-      } catch (error) {
-        if (context.mounted) {
-          ToastService.error(
-            error is OnlineFailure
-                ? error.message
-                : 'Could not add this employee. Try again.',
-            context,
-          );
-        }
-      }
+    }
   }
 }
 

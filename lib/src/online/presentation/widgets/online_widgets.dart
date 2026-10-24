@@ -184,7 +184,9 @@ class RemoteContent<T> extends StatelessWidget {
     required this.future,
     required this.onRetry,
     required this.builder,
+    this.keepDataWhileLoading = false,
   });
+  final bool keepDataWhileLoading;
   final Future<T> future;
   final VoidCallback onRetry;
   final Widget Function(T data) builder;
@@ -193,7 +195,8 @@ class RemoteContent<T> extends StatelessWidget {
   Widget build(BuildContext context) => FutureBuilder<T>(
     future: future,
     builder: (context, snapshot) {
-      if (snapshot.connectionState != ConnectionState.done) {
+      if (snapshot.connectionState != ConnectionState.done &&
+          !(keepDataWhileLoading && snapshot.hasData)) {
         return const Padding(
           padding: EdgeInsets.all(AppSpacing.xl),
           child: Center(child: CircularProgressIndicator()),

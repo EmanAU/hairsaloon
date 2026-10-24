@@ -252,6 +252,7 @@ class _BillingScreenState extends State<_TabletBillingScreen> {
   }
 
   Future<Bill> _saveBill(String employee, String payment) async {
+    final selectedEmployee = context.read<EmployeesStore>().byId(employee);
     final selectedLines = _selectedLines(
       context.read<ServicesStore>().services,
     );
@@ -278,7 +279,8 @@ class _BillingScreenState extends State<_TabletBillingScreen> {
       createdAt: DateTime.now(),
       customerName: contact?.name.trim() ?? '',
       customerPhone: phone,
-      employeeName: employee,
+      employeeName: selectedEmployee?.fullName ?? employee,
+      employeeId: selectedEmployee?.id,
       paymentType: payment,
       lines: selectedLines,
       subTotal: subTotal,
@@ -313,7 +315,6 @@ class _BillingScreenState extends State<_TabletBillingScreen> {
           (employee) =>
               employee.isActive && employee.fullName.trim().isNotEmpty,
         )
-        .map((employee) => employee.fullName)
         .toList();
     final settings = context.read<SettingsStore>();
     final business = ReceiptBusinessInfo.from(
@@ -332,7 +333,12 @@ class _BillingScreenState extends State<_TabletBillingScreen> {
         context: context,
         barrierDismissible: false,
         builder: (_) => CheckoutDialog(
-          employees: employees.isEmpty ? ['Unassigned'] : employees,
+          employees: employees.isEmpty
+              ? ['Unassigned']
+              : employees.map((e) => e.id).toList(),
+          employeeLabels: {
+            for (final employee in employees) employee.id: employee.fullName,
+          },
           paymentMethods: settings.paymentMethods,
           lines: lines,
           total: totals.grandTotal,

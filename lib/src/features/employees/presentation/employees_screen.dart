@@ -21,6 +21,7 @@ import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'employee_photo.dart';
+import '../../../online/presentation/contracts_screen.dart';
 import '../../../core/widgets/app_sheet.dart';
 import '../../../online/domain/online_models.dart';
 
@@ -210,7 +211,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             context
                 .read<BillingStore>()
                 .bills
-                .where((b) => b.employeeName == e.fullName)
+                .where((b) => b.belongsToEmployee(e.id, e.fullName))
                 .toList()
               ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
         Navigator.of(context).push(
@@ -768,6 +769,24 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         );
       }
       if (workspace != null) {
+        ScaffoldMessenger.maybeOf(context)?.removeCurrentSnackBar();
+        await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProposeContractPage(
+              repository: workspace.repository,
+              business: workspace.business,
+              localEmployee: store.byId(employee.id) ?? employee,
+              employee: SalonStaff(
+                id: employee.id,
+                name: employee.fullName,
+                isWorking: false,
+                phone: employee.phoneNumber,
+                cnic: employee.cnicNumber,
+              ),
+            ),
+          ),
+        );
         await workspace.synchronize();
         return;
       }

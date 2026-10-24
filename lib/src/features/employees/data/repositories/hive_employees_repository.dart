@@ -1,4 +1,4 @@
-﻿import 'package:hairsaloon/src/core/storage/hive_boxes.dart';
+import 'package:hairsaloon/src/core/storage/hive_boxes.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -47,6 +47,7 @@ class HiveEmployeesRepository {
 
 Map<String, dynamic> _employeeToMap(EmployeeItem item) {
   return <String, dynamic>{
+    'contract': item.contract,
     'id': item.id,
     'firstName': item.firstName,
     'lastName': item.lastName,
@@ -71,6 +72,9 @@ Map<String, dynamic> _employeeToMap(EmployeeItem item) {
 EmployeeItem _employeeFromMap(Map<String, dynamic> map) {
   final id = (map['id'] ?? '').toString();
   return EmployeeItem(
+    contract: map['contract'] is Map
+        ? Map<String, dynamic>.from(map['contract'] as Map)
+        : null,
     id: id,
     firstName: (map['firstName'] ?? '').toString(),
     lastName: (map['lastName'] ?? '').toString(),

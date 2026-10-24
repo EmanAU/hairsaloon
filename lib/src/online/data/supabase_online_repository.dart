@@ -7,7 +7,6 @@ import 'package:http/http.dart' show ClientException;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/utils/pk_phone.dart';
-import '../../features/billing/domain/entities/bill.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
 
@@ -727,73 +726,11 @@ class SupabaseOnlineRepository implements OnlineRepository {
   Future<EmployeeDashboardData> employeeDashboard() async {
     final contracts = await this.contracts();
     final joinRequests = await this.joinRequests();
-    final account = (await loadWorkspace()).account;
-    final name = account.name.trim().toLowerCase();
-    final jobs = <EmployeeWorkJob>[];
-
-    for (final contract in contracts.where((c) => c.isLive)) {
-      if (contract.businessId.isEmpty) continue;
-      final snapshot = await businessSnapshot(contract.businessId);
-      final payload = snapshot?['payload'];
-      if (payload is! Map) continue;
-      final bills = Map<String, dynamic>.from(
-        (payload['bills'] as Map?) ?? const {},
-      );
-      for (final raw in bills.values) {
-        if (raw is! Map) continue;
-        final bill = Map<String, dynamic>.from(raw);
-        final employeeName = (bill['employeeName'] ?? '').toString().trim();
-        final billEmployeeId = (bill['employeeId'] ?? '').toString();
-        if (billEmployeeId.isNotEmpty
-            ? billEmployeeId != contract.employeeId
-            : employeeName.toLowerCase() != name) {
-          continue;
-        }
-        final lines = (bill['lines'] as List?) ?? const [];
-        final services = lines
-            .whereType<Map>()
-            .map(
-              (line) => (line['serviceName'] ?? line['name'] ?? '').toString(),
-            )
-            .where((label) => label.isNotEmpty)
-            .toList();
-        jobs.add(
-          EmployeeWorkJob(
-            id: (bill['id'] ?? '').toString(),
-            createdAt:
-                DateTime.tryParse((bill['createdAt'] ?? '').toString()) ??
-                DateTime.now(),
-            customerName: (bill['customerName'] ?? 'Customer').toString(),
-            total: (bill['grandTotal'] as num?)?.toDouble() ?? 0,
-            services: services,
-            businessName: contract.businessName,
-            commissionPercent: contract.commission,
-            bill: Bill.fromJson(bill),
-          ),
-        );
-      }
-    }
-
-    jobs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    final byDay = <DateTime, List<EmployeeWorkJob>>{};
-    for (final job in jobs) {
-      final day = DateTime(
-        job.createdAt.year,
-        job.createdAt.month,
-        job.createdAt.day,
-      );
-      byDay.putIfAbsent(day, () => []).add(job);
-    }
-    final days =
-        byDay.entries
-            .map((entry) => EmployeeDayWork(date: entry.key, jobs: entry.value))
-            .toList()
-          ..sort((a, b) => b.date.compareTo(a.date));
-
-    return EmployeeDashboardData(
+    final rows = await _client.rpc('employee_work_history') as List;
+    return EmployeeDashboardData.fromHistory(
       contracts: contracts,
       joinRequests: joinRequests,
-      days: days,
+      rows: rows,
     );
   }
 

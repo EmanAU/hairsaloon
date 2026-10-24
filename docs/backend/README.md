@@ -25,6 +25,12 @@ The diagram shows primary keys, foreign keys and selected business fields. This 
 - `contract_reminders` is a view, not a base table. It is omitted from the ERD.
 - RLS, grants, RPC logic, triggers and partial/exclusion indexes also govern behavior; the ERD alone is not an authorization specification. Refer to `supabase/migrations/`.
 
+## Assisted employees and payments
+
+Owners can save employee details and contract terms before the employee registers. Terms are validated in `employee_invites.employee_data.contract`; the verified employee's acceptance creates the linked contract atomically and idempotently. The local employee UUID is retained as the membership UUID when possible.
+
+New bills include `employeeId`. `employee_work_history()` returns only the authenticated member's bills and payouts, including work recorded before signup. Legacy name-only bills are returned only when the stored employee name is unambiguous in the salon snapshot. Full POS snapshots remain restricted to owner/manager/admin access. Settlement status and in-app contract/payment notifications derive from durable contract and payout records; they do not send push notifications.
+
 ## Complete column dictionary
 
 ### public.business_employees

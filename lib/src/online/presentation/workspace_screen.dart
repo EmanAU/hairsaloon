@@ -123,10 +123,6 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
             widget.onClose ?? () => Navigator.of(context).maybePop(),
         onLogOut: widget.repository.signOut,
         onGoOnline: () {
-          setState(() {
-            workspace.inPos = false;
-            _showSync = true;
-          });
           unawaited(workspace.synchronize());
         },
         dashboardExtras: (_) => OnlineDashboardTools(

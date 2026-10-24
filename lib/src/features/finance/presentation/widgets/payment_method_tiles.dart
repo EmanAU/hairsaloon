@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../../theme/app_colors.dart';
 
@@ -38,7 +37,7 @@ class PaymentMethodTiles extends StatelessWidget {
           runSpacing: 8,
           children: [
             for (final entry in entries.entries)
-              OutlinedButton.icon(
+              OutlinedButton(
                 onPressed: () {
                   if (entry.key.isEmpty) {
                     onChanged({});
@@ -48,17 +47,6 @@ class PaymentMethodTiles extends StatelessWidget {
                   if (!next.add(entry.key)) next.remove(entry.key);
                   onChanged(next);
                 },
-                icon: Icon(
-                  entry.key.isEmpty
-                      ? CupertinoIcons.list_bullet
-                      : entry.key.contains('cash')
-                      ? CupertinoIcons.money_dollar_circle
-                      : entry.key.contains('card')
-                      ? CupertinoIcons.creditcard
-                      : CupertinoIcons.device_phone_portrait,
-                  size: 17,
-                ),
-                label: Text(entry.value),
                 style: OutlinedButton.styleFrom(
                   backgroundColor:
                       (entry.key.isEmpty
@@ -85,6 +73,7 @@ class PaymentMethodTiles extends StatelessWidget {
                     borderRadius: BorderRadius.circular(11),
                   ),
                 ),
+                child: Text(entry.value),
               ),
           ],
         ),

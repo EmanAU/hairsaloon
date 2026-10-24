@@ -118,6 +118,28 @@ void main() {
     );
   }
 
+  test('stable employee id survives renames and separates identical names', () {
+    final mine = Bill.fromJson({
+      ...bills.single.toJson(),
+      'employeeId': employee.id,
+      'employeeName': 'Previous name',
+    });
+    final other = Bill.fromJson({
+      ...bills.single.toJson(),
+      'id': 'other',
+      'employeeId': 'another-person',
+    });
+    final days = FinanceCalculator.employeeDays(
+      employee: employee,
+      bills: [mine, other],
+      expenses: const [],
+      payoutsById: const {},
+      include: (_) => true,
+    );
+    expect(days.single.sales, 1000);
+    expect(days.single.earning, 400);
+  });
+
   test('shop expenses never reduce employee commission', () {
     final days = FinanceCalculator.employeeDays(
       employee: employee,

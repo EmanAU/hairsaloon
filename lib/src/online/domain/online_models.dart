@@ -1,5 +1,6 @@
 import 'dart:convert';
 import '../../features/billing/domain/entities/bill.dart';
+import '../../features/finance/domain/entities/salary_payout.dart';
 
 enum AppAudience { business, customer }
 
@@ -166,6 +167,8 @@ class WorkContract {
     this.businessId = '',
     this.businessName = 'Salon unavailable',
     this.releaseReason,
+    this.createdAt,
+    this.releasedAt,
   });
   final String id;
   final String employeeId;
@@ -179,6 +182,8 @@ class WorkContract {
   final String terms;
   final String businessName;
   final String? releaseReason;
+  final DateTime? createdAt;
+  final DateTime? releasedAt;
 
   bool get isLive => displayStatus == 'active';
 
@@ -212,6 +217,8 @@ class WorkContract {
           (membership?['businesses'] as Map?)?['name'] as String? ??
           'Salon unavailable',
       releaseReason: json['release_reason'] as String?,
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? ''),
+      releasedAt: DateTime.tryParse(json['released_at']?.toString() ?? ''),
     );
   }
 }
@@ -245,13 +252,65 @@ class EmployeeWorkJob {
 }
 
 class EmployeeDayWork {
-  const EmployeeDayWork({required this.date, required this.jobs});
+  const EmployeeDayWork({
+    required this.date,
+    required this.jobs,
+    this.payments = const [],
+  });
   final DateTime date;
   final List<EmployeeWorkJob> jobs;
+  final List<EmployeePayment> payments;
+  double get paid =>
+      payments.fold<double>(0, (sum, payment) => sum + payment.payout.amount);
+  double get bonus => payments.fold<double>(
+    0,
+    (sum, payment) => sum + payment.payout.bonusAmount,
+  );
+  double get due => double.parse(
+    (earning - (paid - bonus)).clamp(0, double.infinity).toStringAsFixed(2),
+  );
+  String get settlementStatus => payments.isEmpty
+      ? 'Pending'
+      : due == 0
+      ? 'Paid'
+      : 'Partially paid';
 
   double get sales => jobs.fold<double>(0, (sum, job) => sum + job.total);
-  double get earning => jobs.fold<double>(0, (sum, job) => sum + job.earning);
+  double get earning => double.parse(
+    jobs
+        .fold<double>(
+          0,
+          (sum, job) => sum + job.commissionBase * job.commissionPercent / 100,
+        )
+        .toStringAsFixed(2),
+  );
   int get jobCount => jobs.length;
+}
+
+class EmployeePayment {
+  const EmployeePayment({
+    required this.businessId,
+    required this.businessName,
+    required this.payout,
+  });
+  final String businessId;
+  final String businessName;
+  final SalaryPayout payout;
+}
+
+class EmployeeNotice {
+  const EmployeeNotice({
+    required this.id,
+    required this.title,
+    required this.message,
+    required this.date,
+    this.payment,
+  });
+  final String id;
+  final String title;
+  final String message;
+  final DateTime date;
+  final EmployeePayment? payment;
 }
 
 class EmployeeDashboardData {
@@ -259,10 +318,119 @@ class EmployeeDashboardData {
     required this.contracts,
     required this.joinRequests,
     required this.days,
+    this.payments = const [],
   });
+  final List<EmployeePayment> payments;
   final List<WorkContract> contracts;
   final List<SalonJoinRequest> joinRequests;
   final List<EmployeeDayWork> days;
+
+  factory EmployeeDashboardData.fromHistory({
+    required List<WorkContract> contracts,
+    required List<SalonJoinRequest> joinRequests,
+    required List<dynamic> rows,
+  }) {
+    final jobs = <EmployeeWorkJob>[];
+    final payments = <EmployeePayment>[];
+    for (final raw in rows.whereType<Map>()) {
+      final businessId = raw['businessId'].toString();
+      final businessName = raw['businessName']?.toString() ?? 'Salon';
+      final fallback =
+          double.tryParse(raw['commission']?.toString() ?? '') ?? 0;
+      for (final item in (raw['bills'] as List? ?? []).whereType<Map>()) {
+        final bill = Bill.fromJson({
+          ...Map<String, dynamic>.from(item),
+          'id': '$businessId:${item['id']}',
+        });
+        final applicable =
+            contracts
+                .where(
+                  (c) =>
+                      c.businessId == businessId &&
+                      !bill.createdAt.isBefore(c.startsAt) &&
+                      (c.endsAt == null ||
+                          bill.createdAt.isBefore(c.endsAt!)) &&
+                      (c.releasedAt == null ||
+                          bill.createdAt.isBefore(c.releasedAt!)) &&
+                      (c.status == 'accepted' || c.status == 'released'),
+                )
+                .toList()
+              ..sort((a, b) => b.startsAt.compareTo(a.startsAt));
+        jobs.add(
+          EmployeeWorkJob(
+            id: bill.id,
+            createdAt: bill.createdAt.toLocal(),
+            customerName: bill.customerName,
+            total: bill.grandTotal,
+            services: bill.lines.map((l) => l.serviceName).toList(),
+            businessName: businessName,
+            commissionPercent: applicable.firstOrNull?.commission ?? fallback,
+            bill: bill,
+          ),
+        );
+      }
+      for (final item in (raw['payouts'] as List? ?? []).whereType<Map>()) {
+        payments.add(
+          EmployeePayment(
+            businessId: businessId,
+            businessName: businessName,
+            payout: SalaryPayout.fromMap(Map<String, dynamic>.from(item)),
+          ),
+        );
+      }
+    }
+    DateTime day(DateTime time) {
+      final local = time.toLocal();
+      return DateTime(local.year, local.month, local.day);
+    }
+
+    final dates = {
+      ...jobs.map((j) => day(j.createdAt)),
+      ...payments.map((p) => day(p.payout.workDate)),
+    }.toList()..sort((a, b) => b.compareTo(a));
+    jobs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return EmployeeDashboardData(
+      contracts: contracts,
+      joinRequests: joinRequests,
+      payments: payments,
+      days: dates
+          .map(
+            (date) => EmployeeDayWork(
+              date: date,
+              jobs: jobs.where((j) => day(j.createdAt) == date).toList(),
+              payments: payments
+                  .where((p) => day(p.payout.workDate) == date)
+                  .toList(),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  List<EmployeeNotice> get notifications {
+    final notices = <EmployeeNotice>[
+      for (final payment in payments)
+        EmployeeNotice(
+          id: 'payment:${payment.businessId}:${payment.payout.id}:${payment.payout.amount}:${payment.payout.settledAt.toIso8601String()}',
+          title: 'Payment recorded',
+          message:
+              '${payment.businessName} paid Rs ${payment.payout.amount.toStringAsFixed(0)} for ${payment.payout.workDate.day}/${payment.payout.workDate.month}/${payment.payout.workDate.year}.',
+          date: payment.payout.settledAt,
+          payment: payment,
+        ),
+      for (final contract in contracts)
+        EmployeeNotice(
+          id: 'contract:${contract.id}:${contract.status}',
+          title: contract.status == 'released'
+              ? 'Contract ended'
+              : 'Contract saved',
+          message:
+              '${contract.businessName} · ${contract.commission.toStringAsFixed(0)}% commission · ${contract.displayStatus}',
+          date: contract.releasedAt ?? contract.createdAt ?? contract.startsAt,
+        ),
+    ];
+    return notices..sort((a, b) => b.date.compareTo(a.date));
+  }
 
   List<WorkContract> get liveContracts =>
       contracts.where((c) => c.isLive).toList();

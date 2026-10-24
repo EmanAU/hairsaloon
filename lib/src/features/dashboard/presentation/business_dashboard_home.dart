@@ -7,6 +7,7 @@ import '../../../online/data/business_workspace.dart';
 import '../../../online/presentation/business_owner_details_screen.dart';
 import '../../../online/presentation/invite_qr_screen.dart';
 import '../../../online/presentation/join_requests_screen.dart';
+import '../../../online/presentation/employee_invite_flows.dart';
 import '../../router/app_routes.dart';
 import '../../services/presentation/categories_screen.dart';
 
@@ -281,9 +282,16 @@ class BusinessDashboardHome extends StatelessWidget {
                                         color: border,
                                       ),
                                       Expanded(
-                                        child: _CardAction(
-                                          label: 'Go Online',
-                                          onTap: onGoOnline,
+                                        child: AnimatedBuilder(
+                                          animation: workspace,
+                                          builder: (context, _) => _CardAction(
+                                            label: workspace.busy
+                                                ? 'Syncing…'
+                                                : 'Sync now',
+                                            onTap: workspace.busy
+                                                ? null
+                                                : onGoOnline,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -312,11 +320,10 @@ class BusinessDashboardHome extends StatelessWidget {
                             padding: EdgeInsets.zero,
                             children: [
                               _HomeTile(
-                                label: 'New Bill',
-                                icon: 'bill',
-                                onTap: () => Navigator.of(
-                                  context,
-                                ).pushNamed(AppRoutes.billing),
+                                label: 'Scan QR',
+                                icon: 'qr',
+                                onTap: () =>
+                                    scanEmployeeProfile(context, workspace),
                               ),
                               _HomeTile(
                                 label: 'Rate List',
@@ -374,7 +381,7 @@ class _CardAction extends StatelessWidget {
       shape: const RoundedRectangleBorder(),
       textStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
         fontSize: 11,
-        fontWeight: FontWeight.w400,
+        fontWeight: FontWeight.w700,
       ),
     ),
     child: Text(label),

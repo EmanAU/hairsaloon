@@ -18,6 +18,7 @@ class EmployeeItem {
     this.email = '',
     this.dateOfBirth,
     this.workStartedOn,
+    this.contract,
   });
 
   final String id;
@@ -43,7 +44,12 @@ class EmployeeItem {
   final String email;
   final DateTime? dateOfBirth;
   final DateTime? workStartedOn;
+  final Map<String, dynamic>? contract;
   Map<String, dynamic> get onboardingData => {
+    'contract': contract,
+    'basicSalary': basicSalary,
+    'commission': commission,
+    'agreementDescription': agreementDescription,
     'id': id,
     'firstName': firstName,
     'lastName': lastName,
@@ -81,6 +87,7 @@ class EmployeeItem {
     String? email,
     DateTime? dateOfBirth,
     DateTime? workStartedOn,
+    Map<String, dynamic>? contract,
   }) {
     return EmployeeItem(
       id: id ?? this.id,
@@ -101,6 +108,7 @@ class EmployeeItem {
       email: email ?? this.email,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       workStartedOn: workStartedOn ?? this.workStartedOn,
+      contract: contract ?? this.contract,
     );
   }
 }

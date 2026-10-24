@@ -1,6 +1,9 @@
 import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'employee_payments_screen.dart';
 import '../../core/widgets/app_confirm_dialog.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
@@ -34,7 +37,142 @@ class EmployeeHome extends StatefulWidget {
   State<EmployeeHome> createState() => _EmployeeHomeState();
 }
 
-class _EmployeeHomeState extends State<EmployeeHome> {
+class _EmployeeHomeState extends State<EmployeeHome>
+    with WidgetsBindingObserver {
+  Timer? _poll;
+  final Set<String> _seenNotices = {};
+  String get _noticeKey =>
+      'employee-notices-${widget.session.workspace?.account.id}';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_loadSeenNotices());
+    _poll = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted &&
+          WidgetsBinding.instance.lifecycleState != AppLifecycleState.paused &&
+          ModalRoute.of(context)?.isCurrent == true) {
+        _refresh();
+      }
+    });
+  }
+
+  Future<void> _loadSeenNotices() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final seen = preferences.getStringList(_noticeKey) ?? [];
+      if (mounted) setState(() => _seenNotices.addAll(seen));
+    } catch (_) {}
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) _refresh();
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  Future<void> _openPayments([List<EmployeeDayWork>? days]) async {
+    late List<EmployeeDayWork> values;
+    try {
+      values = days ?? (await _data).days;
+    } catch (_) {
+      if (mounted) {
+        showMessage(
+          context,
+          'Could not load payments. Please retry.',
+          error: true,
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EmployeePaymentsScreen(
+          days: values,
+          workDate: days?.length == 1 ? days!.single.date : null,
+          onRefresh: widget.session.repository.employeeDashboard,
+        ),
+      ),
+    );
+    if (mounted) _refresh();
+  }
+
+  Future<void> _openNotifications() async {
+    late EmployeeDashboardData data;
+    try {
+      data = await _data;
+    } catch (_) {
+      if (mounted) {
+        showMessage(
+          context,
+          'Could not load notifications. Please retry.',
+          error: true,
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EmployeeNotificationsScreen(
+          notices: data.notifications,
+          onRefresh: widget.session.repository.employeeDashboard,
+          seen: _seenNotices,
+          onRead: (notice) async {
+            _seenNotices.add(notice.id);
+            try {
+              final preferences = await SharedPreferences.getInstance();
+              await preferences.setStringList(
+                _noticeKey,
+                _seenNotices.toList(),
+              );
+            } catch (_) {}
+            if (!mounted) return;
+            try {
+              final latest = await widget.session.repository
+                  .employeeDashboard();
+              if (!mounted) return;
+              if (notice.payment != null) {
+                final date = notice.payment!.payout.workDate;
+                await _openPayments(
+                  latest.days
+                      .where(
+                        (day) =>
+                            day.date.year == date.year &&
+                            day.date.month == date.month &&
+                            day.date.day == date.day,
+                      )
+                      .toList(),
+                );
+              } else {
+                await _showContracts(latest);
+              }
+            } catch (_) {
+              if (mounted) {
+                showMessage(
+                  context,
+                  'Could not open this update. Please retry.',
+                  error: true,
+                );
+              }
+            }
+          },
+        ),
+      ),
+    );
+    if (mounted) _refresh();
+  }
+
   late Future<EmployeeDashboardData> _data = widget.session.repository
       .employeeDashboard();
   late Future<List<PendingEmployeeInvite>> _invites = widget.session.repository
@@ -189,11 +327,32 @@ class _EmployeeHomeState extends State<EmployeeHome> {
           ),
         ),
         actions: [
+          FutureBuilder<EmployeeDashboardData>(
+            future: _data,
+            builder: (context, snapshot) {
+              final unread =
+                  snapshot.data?.notifications
+                      .where((n) => !_seenNotices.contains(n.id))
+                      .length ??
+                  0;
+              return IconButton(
+                tooltip: 'Notifications',
+                onPressed: snapshot.hasData ? () => _openNotifications() : null,
+                icon: Badge(
+                  isLabelVisible: unread > 0,
+                  label: Text('$unread'),
+                  child: const Icon(CupertinoIcons.bell),
+                ),
+              );
+            },
+          ),
           PopupMenuButton<String>(
             tooltip: 'Employee menu',
             icon: const Icon(CupertinoIcons.ellipsis_circle),
             onSelected: (value) async {
               if (value == 'refresh') _refresh();
+              if (value == 'payments') await _openPayments();
+              if (!context.mounted) return;
               if (value == 'switch') widget.onSwitchWorkspace?.call();
               if (value == 'profile') {
                 final saved = await Navigator.push<bool>(
@@ -223,6 +382,10 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                   value: 'switch',
                   child: Text('Switch workspace'),
                 ),
+              const PopupMenuItem(
+                value: 'payments',
+                child: Text('Payments & settlement'),
+              ),
               const PopupMenuItem(value: 'refresh', child: Text('Refresh')),
               const PopupMenuItem(value: 'signout', child: Text('Sign out')),
             ],
@@ -235,6 +398,7 @@ class _EmployeeHomeState extends State<EmployeeHome> {
           maxWidth: OnlineShell.pageMaxWidth,
           child: RemoteContent(
             future: _data,
+            keepDataWhileLoading: true,
             onRetry: _refresh,
             builder: (data) {
               final filtered = data.days
@@ -519,6 +683,23 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 14),
+                      OutlinedButton.icon(
+                        onPressed: () => _openPayments(),
+                        icon: const Icon(
+                          CupertinoIcons.money_dollar_circle,
+                          size: 19,
+                        ),
+                        label: const Text('Payments & settlement'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.homeOlive,
+                          minimumSize: const Size(double.infinity, 46),
+                          side: const BorderSide(color: AppColors.border),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       const Text(
                         'Daily work',
@@ -541,7 +722,7 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                         const _BannerPanel(
                           title: 'Contract pending',
                           subtitle:
-                              'Your owner will set your contract. Completed bills will appear after it starts.',
+                              'Your owner will set your employment terms. Your recorded work stays saved.',
                         ),
                       if (days.isEmpty)
                         const FinanceEmpty(
@@ -551,6 +732,19 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                         FinanceDayHeader(
                           date: day.date,
                           trailing: FinanceFormat.money(day.sales),
+                        ),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton(
+                            onPressed: () => _openPayments([day]),
+                            child: Text(
+                              '${day.settlementStatus} · ${FinanceFormat.money(day.due)} pending',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.homeOlive,
+                              ),
+                            ),
+                          ),
                         ),
                         for (final job in day.jobs)
                           _JobListTile(

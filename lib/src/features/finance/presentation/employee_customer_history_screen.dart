@@ -78,11 +78,13 @@ class _EmployeeCustomerHistoryScreenState
 
   @override
   Widget build(BuildContext context) {
-    final name = FinanceCalculator.norm(widget.employee.fullName);
     final bills = context
         .watch<BillingStore>()
         .bills
-        .where((b) => FinanceCalculator.norm(b.employeeName) == name)
+        .where(
+          (b) =>
+              b.belongsToEmployee(widget.employee.id, widget.employee.fullName),
+        )
         .where((b) => _inRange(b.createdAt))
         .where(
           (b) =>

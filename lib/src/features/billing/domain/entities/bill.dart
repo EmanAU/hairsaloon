@@ -101,6 +101,7 @@ class Bill {
     this.discountType = BillDiscountType.none,
     this.discountValue = 0,
     this.discountAmount = 0,
+    this.employeeId,
   });
 
   final String id;
@@ -108,6 +109,7 @@ class Bill {
   final String customerName;
   final String customerPhone;
   final String employeeName;
+  final String? employeeId;
   final String paymentType;
   final List<BillLine> lines;
   final double subTotal;
@@ -119,6 +121,10 @@ class Bill {
   final double discountAmount;
 
   bool get hasDiscount => discountAmount > 0;
+  bool belongsToEmployee(String id, String name) =>
+      employeeId?.trim().isNotEmpty == true
+      ? employeeId == id
+      : employeeName.trim().toLowerCase() == name.trim().toLowerCase();
 
   /// Shop discounts and tax never change an employee's service commission.
   double get commissionBase => subTotal < 0 ? 0 : subTotal;
@@ -140,6 +146,7 @@ class Bill {
       'customerName': customerName,
       'customerPhone': customerPhone,
       'employeeName': employeeName,
+      'employeeId': employeeId,
       'paymentType': paymentType,
       'lines': lines.map((line) => line.toJson()).toList(),
       'subTotal': subTotal,
@@ -162,6 +169,7 @@ class Bill {
       customerName: (json['customerName'] ?? '').toString(),
       customerPhone: (json['customerPhone'] ?? '').toString(),
       employeeName: (json['employeeName'] ?? '').toString(),
+      employeeId: json['employeeId']?.toString(),
       paymentType: (json['paymentType'] ?? '').toString(),
       lines: rawLines
           .whereType<Map>()

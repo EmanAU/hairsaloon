@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../features/employees/domain/entities/employee_item.dart';
+import '../../features/employees/presentation/state/employees_store.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../domain/online_models.dart';
@@ -28,8 +31,7 @@ class _TeamContractsScreenState extends State<TeamContractsScreen> {
   late Future<List<SalonStaff>> _staff = _load();
   late final Timer _poll;
 
-  Future<List<SalonStaff>> _load() =>
-      widget.repository.team(widget.businessId);
+  Future<List<SalonStaff>> _load() => widget.repository.team(widget.businessId);
 
   @override
   void initState() {
@@ -47,7 +49,9 @@ class _TeamContractsScreenState extends State<TeamContractsScreen> {
     super.dispose();
   }
 
-  void _refresh() => setState(() => _staff = _load());
+  void _refresh() => setState(() {
+    _staff = _load();
+  });
 
   Future<void> _openContracts(SalonStaff employee) async {
     final business = widget.business;
@@ -124,10 +128,7 @@ class _TeamContractsScreenState extends State<TeamContractsScreen> {
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right,
-                color: AppColors.iconMuted,
-              ),
+              const Icon(Icons.chevron_right, color: AppColors.iconMuted),
             ],
           ),
         ),
@@ -154,13 +155,54 @@ class _TeamContractsScreenState extends State<TeamContractsScreen> {
         ),
       ),
       const SizedBox(height: AppSpacing.lg),
+      for (final employee
+          in context.watch<EmployeesStore?>()?.employees.where(
+                (e) => !e.onlineSynced,
+              ) ??
+              const <EmployeeItem>[]) ...[
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 8,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: AppColors.border),
+          ),
+          title: Text(employee.fullName),
+          subtitle: Text(
+            employee.contract == null
+                ? 'Set employment terms'
+                : 'Contract saved · account not linked yet',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.push<bool>(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProposeContractPage(
+                repository: widget.repository,
+                business: widget.business,
+                localEmployee: employee,
+                employee: SalonStaff(
+                  id: employee.id,
+                  name: employee.fullName,
+                  isWorking: false,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
       RemoteContent<List<SalonStaff>>(
         future: _staff,
         onRetry: _refresh,
         builder: (staff) {
-          final employees =
-              staff.where((e) => e.joinStatus == 'accepted').toList();
-          if (employees.isEmpty) {
+          final employees = staff
+              .where((e) => e.joinStatus == 'accepted')
+              .toList();
+          if (employees.isEmpty &&
+              (context.read<EmployeesStore?>()?.employees.isEmpty ?? true)) {
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: 40),
               child: Text(

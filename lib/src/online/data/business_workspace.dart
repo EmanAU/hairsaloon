@@ -55,6 +55,10 @@ class BusinessWorkspace extends ChangeNotifier {
   bool _disposed = false;
   bool _syncingTeam = false;
   static const _employeeFields = [
+    'contract',
+    'basicSalary',
+    'commission',
+    'agreementDescription',
     'id',
     'firstName',
     'lastName',

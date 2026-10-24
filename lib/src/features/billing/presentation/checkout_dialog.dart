@@ -5,6 +5,7 @@ class CheckoutDialog extends StatefulWidget {
   const CheckoutDialog({
     super.key,
     required this.employees,
+    this.employeeLabels = const {},
     required this.paymentMethods,
     required this.lines,
     required this.total,
@@ -12,6 +13,7 @@ class CheckoutDialog extends StatefulWidget {
     required this.onSave,
   });
   final List<String> employees, paymentMethods;
+  final Map<String, String> employeeLabels;
   final List<BillLine> lines;
   final double total;
   final String customer;
@@ -105,7 +107,10 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                       .map(
                         (value) => DropdownMenuItem(
                           value: value,
-                          child: Text(value, overflow: TextOverflow.ellipsis),
+                          child: Text(
+                            widget.employeeLabels[value] ?? value,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       )
                       .toList(),

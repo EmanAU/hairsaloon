@@ -1,3 +1,5 @@
+import 'dart:async';
+import '../../../online/data/business_workspace.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/core/services/toast_service.dart';
@@ -59,6 +61,7 @@ class _EmployeeIncomeDetailScreenState
       ),
     );
     if (result == null || !mounted) return;
+    final workspace = context.read<BusinessWorkspace?>();
     try {
       await context.read<PayoutsStore>().settleDays(
         employee: _employee,
@@ -67,6 +70,7 @@ class _EmployeeIncomeDetailScreenState
         bonusConfirmed: result.bonusConfirmed,
         note: result.note,
       );
+      if (workspace != null) unawaited(workspace.synchronize());
       final remaining =
           days.fold<double>(0, (sum, day) => sum + day.dueAmount) -
           result.amount;
@@ -80,11 +84,10 @@ class _EmployeeIncomeDetailScreenState
 
   @override
   Widget build(BuildContext context) {
-    final name = FinanceCalculator.norm(_employee.fullName);
     final allBills = context
         .watch<BillingStore>()
         .bills
-        .where((b) => FinanceCalculator.norm(b.employeeName) == name)
+        .where((b) => b.belongsToEmployee(_employee.id, _employee.fullName))
         .toList(growable: false);
     final expenses = context.watch<ExpensesStore>().items;
     final payouts = context.watch<PayoutsStore>();
