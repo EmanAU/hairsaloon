@@ -8,7 +8,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test:admin": "node --experimental-strip-types --test tests/admin-*.test.mjs",
-    "test:db": "node --test ../supabase/tests/database.test.mjs"
+    "test:db": "node --test ../supabase/tests/*.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",

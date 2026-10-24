@@ -372,10 +372,21 @@ void main() {
       }
 
       Future<void> press(Finder finder) async {
+        if (finder.evaluate().isEmpty) {
+          final scrollable = find.byType(Scrollable).last;
+          tester.state<ScrollableState>(scrollable).position.jumpTo(0);
+          await tester.pumpAndSettle();
+          await tester.scrollUntilVisible(
+            finder,
+            200,
+            scrollable: scrollable,
+            maxScrolls: 30,
+          );
+        }
         await Scrollable.ensureVisible(tester.element(finder), alignment: 0.35);
         await tester.pumpAndSettle();
         await tester.tap(finder);
-        await tester.pumpAndSettle();
+        await tester.pump();
         await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 50)),
         );
@@ -433,9 +444,11 @@ void main() {
       await tester.pumpAndSettle();
       final businessFields = find.byType(TextFormField);
       await tester.enterText(businessFields.at(0), 'Business COMB Salon');
-      await tester.enterText(businessFields.at(2), 'Islamabad');
-      await tester.enterText(businessFields.at(3), 'G-11');
-      await tester.enterText(businessFields.at(4), 'G-11 Markaz, Islamabad');
+      await press(find.byType(DropdownButtonFormField<String>).last);
+      await tester.tap(find.text('Islamabad').last);
+      await tester.pumpAndSettle();
+      await tester.enterText(businessFields.at(2), 'G-11');
+      await tester.enterText(businessFields.at(3), 'G-11 Markaz, Islamabad');
       tester.testTextInput.hide();
       await capture('06_business_setup_filled');
       await pages('business_setup');
@@ -467,22 +480,22 @@ void main() {
           !tablet ? find.byTooltip(label) : find.text(label).last;
       await tester.tap(navItem('Billing'));
       await capture('02_billing');
-      await press(find.text('Add New'));
+      if (tablet) await press(find.text('Search'));
+      await press(find.text(tablet ? 'Add New Customer' : 'Add New'));
       await capture('billing_add_customer_dialog');
       ToastService.navigatorKey.currentState!.pop();
       await tester.pumpAndSettle();
-      await press(find.text('Discount'));
-      await capture('billing_discount_dialog');
-      ToastService.navigatorKey.currentState!.pop();
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField).first, '+923009876543');
+      // Register a real contact before billing instead of relying on old seed data.
+      await press(find.text(tablet ? 'Add New Customer' : 'Add New'));
+      final customerFields = find.byType(TextField);
+      await tester.enterText(
+        customerFields.at(customerFields.evaluate().length - 2),
+        'Audit Customer',
+      );
+      await tester.enterText(customerFields.last, '03009876543');
       tester.testTextInput.hide();
+      await press(find.text('Save Customer'));
       await tester.pumpAndSettle();
-      final useCustomer = find.text('Use Customer');
-      if (useCustomer.evaluate().isNotEmpty) {
-        await capture('billing_existing_customer_dialog');
-        await press(useCustomer);
-      }
       final serviceName = ToastService.navigatorKey.currentContext!
           .read<ServicesStore>()
           .services
@@ -490,6 +503,11 @@ void main() {
           .subcategory;
       await press(find.text(serviceName).first);
       await capture('billing_service_selected');
+      await press(find.textContaining(RegExp(r'^(Add discount|Discount)$')));
+      await capture('billing_discount_dialog');
+      ToastService.navigatorKey.currentState!.pop();
+      await tester.pumpAndSettle();
+      if (tablet) await press(find.text('Checkout'));
       final billingDropdowns = find.byType(DropdownButtonFormField<String>);
       await press(billingDropdowns.first);
       await capture('billing_employee_dropdown');
@@ -498,7 +516,7 @@ void main() {
       await capture('billing_payment_dropdown');
       await press(find.text('Cash').last);
       await capture('billing_ready_to_save');
-      await press(find.text('Save Bill'));
+      await press(find.text(tablet ? 'Save & show receipt' : 'Save Bill'));
       for (var i = 0; i < 12; i++) {
         await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 40)),
@@ -511,7 +529,23 @@ void main() {
             .read<BillingStore>()
             .bills
             .length,
-        greaterThan(1),
+        greaterThanOrEqualTo(1),
+      );
+      final savedBills = ToastService.navigatorKey.currentContext!
+          .read<BillingStore>()
+          .bills;
+      expect(
+        savedBills.any(
+          (bill) =>
+              bill.customerName == 'Audit Customer' && bill.employeeId != null,
+        ),
+        isTrue,
+        reason: savedBills
+            .map(
+              (bill) =>
+                  '${bill.customerName}/${bill.employeeName}/${bill.employeeId}',
+            )
+            .join(', '),
       );
       ToastService.navigatorKey.currentState!.pop();
       await tester.pumpAndSettle();
@@ -570,8 +604,7 @@ void main() {
         );
         await capture(route.key);
         await pages(route.key);
-        if (route.value == AppRoutes.employees &&
-            route.key == '09_employees') {
+        if (route.value == AppRoutes.employees && route.key == '09_employees') {
           final menus = find.byWidgetPredicate(
             (widget) =>
                 widget is PopupMenuButton<String> &&
@@ -594,8 +627,7 @@ void main() {
           }
         }
 
-        if (route.value == AppRoutes.employees &&
-            route.key == '09_employees') {
+        if (route.value == AppRoutes.employees && route.key == '09_employees') {
           final add = find.byIcon(CupertinoIcons.add);
           if (add.evaluate().isNotEmpty) {
             await press(add.first);

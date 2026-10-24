@@ -66,6 +66,9 @@ void main() {
     final badge = tester.widget<Badge>(find.byType(Badge));
     expect(badge.isLabelVisible, isTrue);
     expect((badge.label as Text).data, '1');
+    await tester.ensureVisible(find.text('Join Requests'));
+    await tester.tap(find.text('Join Requests'));
+    await tester.pumpAndSettle();
     expect(find.text('Ali'), findsWidgets);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
@@ -93,11 +96,16 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           scaffoldMessengerKey: ToastService.messengerKey,
-          home: StaffScreen(repository: repository, businessId: 'salon'),
+          home: StaffScreen(
+            repository: repository,
+            businessId: 'salon',
+            showRequests: true,
+          ),
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Requests (2)'), findsOneWidget);
+      expect(find.text('Ali'), findsOneWidget);
+      expect(find.text('Bilal'), findsOneWidget);
       expect(find.text('Invite employee'), findsNothing);
       repository.rejectJoinReview = true;
       await tester.tap(find.text('Accept').first);
@@ -106,24 +114,20 @@ void main() {
         find.text('Could not review request. Please retry.'),
         findsOneWidget,
       );
-      expect(find.text('Requests (2)'), findsOneWidget);
+      expect(find.text('Ali'), findsOneWidget);
+      expect(find.text('Bilal'), findsOneWidget);
       repository.rejectJoinReview = false;
       await tester.tap(find.text('Accept').first);
       await tester.pumpAndSettle();
-      expect(find.text('Requests (1)'), findsOneWidget);
-      expect(find.text('Employees (1)'), findsOneWidget);
+      // Approval opens contract setup immediately.
+      expect(find.text('Save contract'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.text('Ali'), findsNothing);
+      expect(find.text('Bilal'), findsOneWidget);
       await tester.tap(find.text('Decline'));
       await tester.pumpAndSettle();
-      expect(find.text('Requests (0)'), findsOneWidget);
-      await tester.tap(find.text('Employees (1)'));
-      await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.text('Ali'),
-        200,
-        scrollable: find.byType(Scrollable).first,
-      );
-      expect(find.text('Ali'), findsOneWidget);
-      expect(find.text('Bilal'), findsNothing);
+      expect(find.text('No pending join requests.'), findsOneWidget);
       expect(
         repository.teamRows.where((e) => e.joinStatus == 'accepted').single.id,
         'ali',

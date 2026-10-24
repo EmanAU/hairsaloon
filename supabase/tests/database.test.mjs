@@ -29,6 +29,7 @@ before(async () => {
   await db.exec(`
     create role anon;
     create role authenticated;
+    create role service_role;
     create schema auth;
     create schema storage;
     create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
@@ -36,7 +37,7 @@ before(async () => {
     alter table storage.objects enable row level security;
     grant usage on schema storage to authenticated;
     grant select,insert,delete on storage.objects to authenticated;
-    create table auth.users(id uuid primary key);
+    create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);
     create function auth.uid() returns uuid language sql stable as
       $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
     grant usage on schema public, auth to anon, authenticated;
@@ -45,10 +46,12 @@ before(async () => {
   `);
   const directory = new URL('../migrations/', import.meta.url);
   for (const file of (await readdir(directory)).filter(name => name.endsWith('.sql')).sort()) {
-    await db.exec(await readFile(new URL(file, directory), 'utf8'));
+    // PGlite has no pgcrypto; these tests never exercise manager PIN hashing.
+    const sql = (await readFile(new URL(file, directory), 'utf8')).replace(/create extension if not exists pgcrypto with schema extensions;/i, '');
+    await db.exec(sql);
   }
   for (const [name, id] of Object.entries(ids)) {
-    await db.query('insert into auth.users values ($1)', [id]);
+    await db.query('insert into auth.users(id) values ($1)', [id]);
     await as(name);
     await db.query('insert into public.users(id, display_name) values ($1, $2)', [id, name]);
     await db.exec('reset role');
@@ -143,15 +146,14 @@ test('code joining is idempotent and owners cannot accept for employees', async 
   permanent = await scalar(`select public.propose_contract($1,'permanent',now(),null,10000,10,'Monthly salary')`, [membership]);
   await rejects('select public.respond_to_contract($1,true)', [permanent], '42501');
   await as('employee');
-  await db.query('select public.respond_to_contract($1,true)', [permanent]);
+  await rejects('select public.respond_to_contract($1,true)', [permanent], '42501');
+  assert.equal(await scalar('select status from public.employee_contracts where id=$1', [permanent]), 'accepted');
   await rejects('update public.employee_contracts set salary=999999 where id=$1', [permanent], '42501');
 });
 
 test('accepted permanent contracts block a second salon until release', async () => {
   await as('owner2');
-  const next = await scalar(`select public.propose_contract($1,'fixed',now(),now()+interval '2 days',100,0,'Test')`, [secondMembership]);
-  await as('employee');
-  await rejects('select public.respond_to_contract($1,true)', [next], '23P01');
+  await rejects(`select public.propose_contract($1,'fixed',now(),now()+interval '2 days',100,0,'Test')`, [secondMembership], '23P01');
   await as('customer');
   await rejects("select public.release_contract($1,'unauthorized')", [permanent], '42501');
   await as('owner');
@@ -160,7 +162,7 @@ test('accepted permanent contracts block a second salon until release', async ()
   await as('owner2');
   const replacement = await scalar(`select public.propose_contract($1,'fixed',now(),now()+interval '2 days',100,0,'New contract')`, [secondMembership]);
   await as('employee');
-  await db.query('select public.respond_to_contract($1,true)', [replacement]);
+  assert.equal(await scalar('select status from public.employee_contracts where id=$1', [replacement]), 'accepted');
   assert.equal(await scalar('select count(*)::int from public.contract_reminders'), 1);
   await as('customer');
   assert.equal(await scalar('select count(*)::int from public.contract_reminders'), 0);
@@ -205,7 +207,7 @@ test('ended contracts permit a new contract without a scheduled expiry job', asy
   await as('owner2');
   const contract = await scalar("select public.propose_contract($1,'daily',now(),now()+interval '12 hours',100,0,'')", [employee]);
   await as('customer');
-  await db.query('select public.respond_to_contract($1,true)', [contract]);
+  assert.equal(await scalar('select status from public.employee_contracts where id=$1', [contract]), 'accepted');
   assert.equal(await scalar('select count(*)::int from public.contract_reminders'), 1);
 });
 
@@ -214,10 +216,9 @@ test('touching contract boundaries are allowed but one-second overlaps are rejec
   const employee = await scalar('select id from public.business_employees where business_id=$1 and profile_id=$2', [secondBusiness, ids.customer]);
   const ends = await scalar("select ends_at from public.employee_contracts where employee_id=$1 and status='accepted' order by ends_at desc limit 1", [employee]);
   const touching = await scalar("select public.propose_contract($1,'daily',$2::timestamptz,$2::timestamptz+interval '12 hours',100,0,'')", [employee, ends]);
-  const overlapping = await scalar("select public.propose_contract($1,'daily',$2::timestamptz-interval '1 second',$2::timestamptz+interval '6 hours',100,0,'')", [employee, ends]);
+  await rejects("select public.propose_contract($1,'daily',$2::timestamptz-interval '1 second',$2::timestamptz+interval '6 hours',100,0,'')", [employee, ends], '23P01');
   await as('customer');
-  await db.query('select public.respond_to_contract($1,true)', [touching]);
-  await rejects('select public.respond_to_contract($1,true)', [overlapping], '23P01');
+  assert.equal(await scalar('select status from public.employee_contracts where id=$1', [touching]), 'accepted');
 });
 
 test('suspended businesses cannot receive new joins or contract proposals', async () => {
@@ -352,11 +353,12 @@ test('public barber photos reveal only linked active photos, never private profi
 
 test('owners can decline requests; another owner cannot review or read the team', async () => {
   await as('owner');
-  const salon = await scalar("insert into public.businesses(owner_id,name,phone,business_type,city,area,address) values ($1,'Request salon','03000000000','Hair Salon','Lahore','Test','Road') returning id", [ids.owner]);
+  const salon = business;
   const code = await scalar('select code from public.business_invites where business_id=$1', [salon]);
   await as('admin');
   await db.query('select public.review_business($1,true)', [salon]);
   await as('employee');
+  await db.query('select public.leave_business($1)', [salon]);
   const request = await scalar('select public.request_join($1)', [code]);
   await rejects("update public.business_employees set join_status='accepted' where id=$1", [request], '42501');
   await as('owner2');

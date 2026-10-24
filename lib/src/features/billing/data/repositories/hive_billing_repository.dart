@@ -1,3 +1,4 @@
+import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:hairsaloon/src/core/storage/hive_boxes.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/customer_contact.dart';
@@ -45,7 +46,7 @@ class HiveBillingRepository {
   Future<bool> addKnownCustomerPhone(String phone) async {
     final normalized = _normalizePhone(phone);
     if (normalized.isEmpty) return false;
-    final exists = _phonesBox.containsKey(normalized);
+    final exists = _phonesBox.containsKey(_keyFor(_phonesBox, phone));
     if (exists) return false;
     await _phonesBox.put(normalized, phone.trim());
     return true;
@@ -54,7 +55,7 @@ class HiveBillingRepository {
   CustomerContact? getCustomerContactByPhone(String phone) {
     final normalized = _normalizePhone(phone);
     if (normalized.isEmpty) return null;
-    final raw = _contactsBox.get(normalized);
+    final raw = _contactsBox.get(_keyFor(_contactsBox, phone));
     if (raw == null) return null;
     return CustomerContact.fromJson(Map<String, dynamic>.from(raw));
   }
@@ -69,7 +70,8 @@ class HiveBillingRepository {
     final trimmedPhone = phone.trim();
     final trimmedName = name.trim();
 
-    final existingRaw = _contactsBox.get(normalized);
+    final contactKey = _keyFor(_contactsBox, phone);
+    final existingRaw = _contactsBox.get(contactKey);
     final existing = existingRaw == null
         ? null
         : CustomerContact.fromJson(Map<String, dynamic>.from(existingRaw));
@@ -79,28 +81,28 @@ class HiveBillingRepository {
       phone: trimmedPhone.isNotEmpty ? trimmedPhone : (existing?.phone ?? ''),
     );
 
-    await _contactsBox.put(normalized, merged.toJson());
-    await _phonesBox.put(normalized, merged.phone.trim());
+    await _contactsBox.put(contactKey, merged.toJson());
+    await _phonesBox.put(_keyFor(_phonesBox, phone), merged.phone.trim());
     return existing == null;
   }
 
   bool hasKnownCustomerPhone(String phone) {
     final normalized = _normalizePhone(phone);
     if (normalized.isEmpty) return false;
-    return _phonesBox.containsKey(normalized);
+    return _phonesBox.containsKey(_keyFor(_phonesBox, phone));
   }
 
   bool hasKnownCustomerContact(String phone) {
     final normalized = _normalizePhone(phone);
     if (normalized.isEmpty) return false;
-    return _contactsBox.containsKey(normalized);
+    return _contactsBox.containsKey(_keyFor(_contactsBox, phone));
   }
 
   List<String> searchCustomerPhones(String query) {
     final normalized = _normalizePhone(query);
     if (normalized.isEmpty) return const <String>[];
     return _phonesBox.values
-        .where((phone) => _normalizePhone(phone).contains(normalized))
+        .where((phone) => _matchesPhone(phone, normalized))
         .toList(growable: false);
   }
 
@@ -110,14 +112,28 @@ class HiveBillingRepository {
 
     final values = _contactsBox.values
         .map((raw) => CustomerContact.fromJson(Map<String, dynamic>.from(raw)))
-        .where((c) => _normalizePhone(c.phone).contains(normalized))
+        .where((c) => _matchesPhone(c.phone, normalized))
         .toList(growable: false);
 
     values.sort((a, b) => b.phone.length.compareTo(a.phone.length));
     return values;
   }
 
+  static bool _matchesPhone(String phone, String query) =>
+      _normalizePhone(phone).contains(query) ||
+      PkPhone.localNumber(phone).contains(query);
+
+  // Resolve old local-format keys without deleting or rewriting customer history.
+  static String _keyFor(Box box, String phone) {
+    final normalized = _normalizePhone(phone);
+    if (box.containsKey(normalized)) return normalized;
+    for (final key in box.keys) {
+      if (_normalizePhone(key.toString()) == normalized) return key.toString();
+    }
+    return normalized;
+  }
+
   static String _normalizePhone(String value) {
-    return value.replaceAll(RegExp(r'[^0-9+]'), '');
+    return PkPhone.normalize(value.replaceAll(RegExp(r'[^0-9+]'), ''));
   }
 }

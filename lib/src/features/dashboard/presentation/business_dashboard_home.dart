@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/utils/pk_phone.dart';
 import '../../../core/widgets/app_confirm_dialog.dart';
 import '../../../online/data/business_workspace.dart';
+import '../../../online/domain/online_repository.dart';
 import '../../../online/presentation/business_owner_details_screen.dart';
 import '../../../online/presentation/invite_qr_screen.dart';
 import '../../../online/presentation/join_requests_screen.dart';
@@ -343,6 +345,10 @@ class BusinessDashboardHome extends StatelessWidget {
                               _HomeTile(
                                 label: 'Join Requests',
                                 icon: 'join',
+                                badge: _JoinRequestBadge(
+                                  repository: workspace.repository,
+                                  businessId: business.id,
+                                ),
                                 onTap: () => _open(
                                   context,
                                   JoinRequestsScreen(
@@ -393,7 +399,9 @@ class _HomeTile extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.onTap,
+    this.badge,
   });
+  final Widget? badge;
   final String label, icon;
   final VoidCallback onTap;
   @override
@@ -409,7 +417,7 @@ class _HomeTile extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _VectorIcon(icon),
+          badge ?? _VectorIcon(icon),
           const SizedBox(height: 12),
           Text(
             label,
@@ -456,5 +464,58 @@ class _VectorIcon extends StatelessWidget {
     width: size,
     height: size,
     colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+  );
+}
+
+/// Keep pending requests visible without blocking Home when the network is down.
+class _JoinRequestBadge extends StatefulWidget {
+  const _JoinRequestBadge({required this.repository, required this.businessId});
+  final OnlineRepository repository;
+  final String businessId;
+  @override
+  State<_JoinRequestBadge> createState() => _JoinRequestBadgeState();
+}
+
+class _JoinRequestBadgeState extends State<_JoinRequestBadge> {
+  Timer? _poll;
+  int _count = 0;
+  bool _loading = false;
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+    _poll = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (ModalRoute.of(context)?.isCurrent == true) _refresh();
+    });
+  }
+
+  Future<void> _refresh() async {
+    if (_loading) return;
+    _loading = true;
+    try {
+      final staff = await widget.repository.team(widget.businessId);
+      if (mounted) {
+        setState(
+          () => _count = staff.where((e) => e.joinStatus == 'pending').length,
+        );
+      }
+    } catch (_) {
+      // Retain the last count offline; the request page offers retry details.
+    } finally {
+      _loading = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Badge(
+    isLabelVisible: _count > 0,
+    label: Text('$_count'),
+    child: const _VectorIcon('join'),
   );
 }

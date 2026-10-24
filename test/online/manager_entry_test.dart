@@ -43,7 +43,9 @@ void main() {
       await tester.tap(find.text('Employee dashboard'));
       await tester.pumpAndSettle();
       expect(find.byType(EmployeeHome), findsOneWidget);
-      await tester.tap(find.byTooltip('Switch workspace'));
+      await tester.tap(find.byTooltip('Employee menu'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Switch workspace'));
       await tester.pumpAndSettle();
       expect(find.text('Choose your workspace'), findsOneWidget);
     },

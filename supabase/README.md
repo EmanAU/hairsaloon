@@ -5,7 +5,9 @@
 This is an imperative migration project. Apply all SQL migrations in
 filename order using the Supabase CLI after linking the intended project. Use
 `supabase db push --help` to inspect the installed CLI before deployment.
-No remote database has been connected or modified during development.
+The existing hosted project has been configured in earlier work. See
+`../docs/final-release.md` for the current verified deployment status; do not
+reapply the fresh-project bootstrap to that existing database.
 
 For a full local Supabase stack, install a supported container runtime and run
 `supabase start` from the repository root. This machine currently has no Docker

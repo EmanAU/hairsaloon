@@ -102,14 +102,15 @@ void main() {
           method: 'EasyPaisa',
           holder: 'Abdullah',
         );
-        final method = settings.paymentAccounts.single;
+        final method = settings.customPaymentAccounts.single;
         expect(method, 'EasyPaisa — Abdullah');
         await expectLater(
           settings.savePaymentAccount(method: 'easypaisa', holder: 'abdullah'),
           throwsArgumentError,
         );
         owner = 'B';
-        expect(settings.paymentAccounts, isEmpty);
+        expect(settings.customPaymentAccounts, isEmpty);
+        expect(settings.paymentAccounts, SettingsStore.defaultPaymentAccounts);
         owner = 'A';
         expect(settings.paymentMethods, contains(method));
         final now = DateTime.now();

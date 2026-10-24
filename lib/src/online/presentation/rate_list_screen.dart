@@ -27,10 +27,7 @@ class _OnlineRateListState extends State<OnlineRateList> {
     } catch (_) {
       // Seeding is best-effort; still show whatever services exist.
     }
-    return widget.repository.services(
-      widget.businessId,
-      includeInactive: true,
-    );
+    return widget.repository.services(widget.businessId, includeInactive: true);
   }
 
   void _refresh() => setState(() => _services = _load());
@@ -46,7 +43,7 @@ class _OnlineRateListState extends State<OnlineRateList> {
         ),
       ),
     );
-    if (saved == true && mounted) _refresh();
+    if (saved == true && context.mounted) _refresh();
   }
 
   @override
@@ -209,7 +206,7 @@ class _ServiceFormState extends State<_ServiceForm> {
                       ),
                     ),
                   );
-                  if (saved == true && mounted) {
+                  if (saved == true && context.mounted) {
                     Navigator.pop(context, true);
                   }
                 },

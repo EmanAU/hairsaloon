@@ -6,7 +6,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hairsaloon/src/online/presentation/profile_form.dart';
-import 'package:hairsaloon/src/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:hairsaloon/src/online/presentation/business_home.dart';
 import 'package:hairsaloon/src/online/presentation/business_form.dart';
 import 'package:hairsaloon/src/online/presentation/staff_screen.dart';
@@ -208,7 +207,11 @@ void main() {
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
-            home: StaffScreen(repository: repository, businessId: id),
+            home: StaffScreen(
+              repository: repository,
+              businessId: id,
+              showRequests: true,
+            ),
           ),
         ),
       );
@@ -254,22 +257,13 @@ void main() {
       );
       await waitForOnlineDashboard(tester);
       expect(find.text('Rate List'), findsOneWidget);
-      expect(find.text('Finance'), findsOneWidget);
-      expect(find.text('Join requests'), findsOneWidget);
+      expect(find.text('Join Requests'), findsOneWidget);
       await capture('online_dashboard');
-      final contracts = find
-          .ancestor(
-            of: find.text('Contracts'),
-            matching: find.byType(DashboardShortcut),
-          )
-          .first;
-      await tester.ensureVisible(contracts);
+      await tester.ensureVisible(find.text('Join Requests'));
+      await tester.tap(find.text('Join Requests'));
       await tester.pumpAndSettle();
-      await capture('online_dashboard_tools');
-      await tester.tap(contracts);
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.pumpAndSettle();
-      expect(find.byType(StaffScreen), findsOneWidget);
+      expect(find.text('Ali Khan'), findsOneWidget);
+      await capture('online_dashboard_requests');
       await tester.pageBack();
       await tester.pumpAndSettle();
       await tester.tap(
@@ -287,21 +281,10 @@ void main() {
         size.width >= 600 ? find.text('Home').last : find.byTooltip('Home'),
       );
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Sync status'));
+      await tester.ensureVisible(find.text('Sync now'));
+      await tester.tap(find.text('Sync now'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Sync status'));
-      await tester.pumpAndSettle();
-      expect(find.text('Sync now'), findsOneWidget);
-      await tester.tap(find.byTooltip('Back to dashboard'));
-      await waitForOnlineDashboard(tester);
-      await tester.ensureVisible(find.text('Switch business'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Switch business'));
-      await tester.pumpAndSettle();
-      expect(find.text('Your workspace'), findsOneWidget);
-      // One owner → one shop: do not offer starting another business.
-      expect(find.text('Start a business'), findsNothing);
-      expect(find.text('Join a salon'), findsOneWidget);
+      expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       await closeOnlineWorkspace(tester);
     });

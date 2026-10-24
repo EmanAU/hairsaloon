@@ -57,7 +57,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(picker.selectedSource, ImageSource.gallery);
-    expect(selected, base64Encode(bytes));
+    expect(selected, isNotNull);
+    final normalized = base64Decode(selected!);
+    expect(normalized.take(8), [137, 80, 78, 71, 13, 10, 26, 10]);
+    expect(normalized.length, lessThanOrEqualTo(2 * 1024 * 1024));
     expect(find.byType(Image), findsOneWidget);
 
     await tester.tap(find.text('Change photo'));

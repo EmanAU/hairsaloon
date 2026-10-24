@@ -396,14 +396,15 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
         : (_newSubcategory ?? '').trim();
     if (finalSubcategory.isEmpty) return;
 
+    final services = context.read<ServicesStore>();
     if (typedName.isNotEmpty) {
-      await context.read<ServicesStore>().addSubcategory(
+      await services.addSubcategory(
         category: _newCategory!,
         subcategory: typedName,
       );
     }
 
-    await context.read<ServicesStore>().addService(
+    await services.addService(
       ServiceItem(
         id: DateTime.now().microsecondsSinceEpoch.toString(),
         category: _newCategory!,

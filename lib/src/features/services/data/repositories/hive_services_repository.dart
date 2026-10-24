@@ -67,7 +67,7 @@ class HiveServicesRepository {
     );
     if (duplicate) return false;
 
-    final updated = LinkedHashMap<String, List<String>>();
+    final updated = <String, List<String>>{};
     for (final entry in tree.entries) {
       if (entry.key == normalizedOld) {
         updated[normalizedNew] = List<String>.from(entry.value);
@@ -136,8 +136,9 @@ class HiveServicesRepository {
     final services = getServices();
     for (final service in services) {
       if (service.category != category) continue;
-      if (service.subcategory.toLowerCase() != normalized.toLowerCase())
+      if (service.subcategory.toLowerCase() != normalized.toLowerCase()) {
         continue;
+      }
       await _servicesBox.delete(service.id);
     }
   }
@@ -265,8 +266,9 @@ class HiveServicesRepository {
     var updatedAny = false;
     for (final service in services) {
       if (service.category != category) continue;
-      if (service.subcategory.toLowerCase() != normalized.toLowerCase())
+      if (service.subcategory.toLowerCase() != normalized.toLowerCase()) {
         continue;
+      }
       updatedAny = true;
       final updated = service.copyWith(price: price);
       await _servicesBox.put(updated.id, _serviceToMap(updated));

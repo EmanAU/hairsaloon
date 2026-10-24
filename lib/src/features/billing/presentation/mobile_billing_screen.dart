@@ -101,7 +101,7 @@ class _MobileBillingScreenState extends State<MobileBillingScreen> {
         .toList(growable: false);
     final employeeOptions = activeEmployees.isEmpty
         ? <String>['Unassigned']
-        : activeEmployees.map((e) => e.fullName).toList(growable: false);
+        : activeEmployees.map((e) => e.id).toList(growable: false);
     if (_employee != null && !employeeOptions.contains(_employee)) {
       _employee = null;
     }
@@ -837,12 +837,16 @@ class _MobileBillingScreenState extends State<MobileBillingScreen> {
     final contact = phone.isEmpty
         ? null
         : context.read<BillingStore>().getCustomerContactByPhone(phone);
+    final selectedEmployee = context.read<EmployeesStore>().byId(
+      _employee ?? '',
+    );
     final bill = Bill(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       createdAt: DateTime.now(),
       customerName: contact?.name.trim() ?? '',
       customerPhone: phone,
-      employeeName: _employee ?? '',
+      employeeName: selectedEmployee?.fullName ?? _employee ?? '',
+      employeeId: selectedEmployee?.id,
       paymentType: _paymentType ?? '',
       lines: selectedLines,
       subTotal: subTotal,
@@ -936,11 +940,12 @@ class _MobileBillingScreenState extends State<MobileBillingScreen> {
   }
 
   String _formatEmployeeLabel(
-    String fullName, {
+    String employeeId, {
     required List<EmployeeItem> activeEmployees,
   }) {
-    final match = activeEmployees.where((e) => e.fullName == fullName).toList();
-    if (match.isEmpty) return fullName;
+    final match = activeEmployees.where((e) => e.id == employeeId).toList();
+    if (match.isEmpty) return employeeId;
+    final fullName = match.first.fullName;
     final type = (match.first.employeeType ?? '').trim();
     if (type.isEmpty) return fullName;
     return '$fullName • $type';
