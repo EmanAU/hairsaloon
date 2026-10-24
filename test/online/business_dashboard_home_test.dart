@@ -155,7 +155,11 @@ void main() {
       await tester.tap(find.byTooltip('QR codes'));
       await tester.pumpAndSettle();
       expect(find.byType(InviteQrScreen), findsOneWidget);
+      await tester.tap(find.text('Employee invitation'));
+      await tester.pumpAndSettle();
       expect(find.text('Salon joining code'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
       await tester.pageBack();
       await tester.pumpAndSettle();
       await tester.tap(find.text('Business Details'));

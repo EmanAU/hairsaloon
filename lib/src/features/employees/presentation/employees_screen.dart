@@ -132,6 +132,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                   ),
                   label: const Text('Create employee'),
                 ),
+              if (!_showAddForm && context.read<BusinessWorkspace?>() != null)
+                const SizedBox(height: 12),
               if (context.read<BusinessWorkspace?>() != null)
                 OutlinedButton.icon(
                   onPressed: () => showEmployeeInviteOptions(context),

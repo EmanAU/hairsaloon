@@ -127,21 +127,9 @@ flutter_launcher_icons:
   adaptive_icon_foreground: assets/trimmatrix_logo.png
   adaptive_icon_foreground_inset: 20
 
+# Native splash uses compact dp-sized XML layouts in android/app/src/main/res.
+# Keep generation off so it cannot overwrite the centered 96dp logo layout.
 flutter_native_splash:
-  android: true
+  android: false
   ios: false
   web: false
-  color: '#FFFFFF'
-  color_dark: '#FFFFFF'
-  image: assets/trimmatrix_logo.png
-  image_dark: assets/trimmatrix_logo.png
-  branding: assets/trimmatrix_wordmark.png
-  branding_dark: assets/trimmatrix_wordmark.png
-  android_12:
-    color: '#FFFFFF'
-    color_dark: '#FFFFFF'
-    image: assets/trimmatrix_logo.png
-    image_dark: assets/trimmatrix_logo.png
-    icon_background_color: '#FFFFFF'
-    branding: assets/trimmatrix_wordmark.png
-    branding_dark: assets/trimmatrix_wordmark.png
