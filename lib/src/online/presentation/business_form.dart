@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'dart:ui' as ui;
 import 'dart:convert';
 import '../../theme/app_colors.dart';
@@ -184,26 +185,36 @@ class _BusinessFormState extends State<BusinessForm> {
     }
   }
 
-  InputDecoration _decoration(String label, IconData icon, {String? hint}) =>
-      InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(icon, size: 21, color: AppColors.textSecondary),
-        filled: true,
-        fillColor: AppColors.homeCanvas,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 18,
-        ),
-      );
+  InputDecoration _decoration(
+    String label,
+    IconData icon, {
+    String? hint,
+  }) => InputDecoration(
+    labelText: label,
+    hintText: hint,
+    labelStyle: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+    hintStyle: const TextStyle(fontSize: 12, color: AppColors.iconMuted),
+    errorStyle: const TextStyle(fontSize: 10.5),
+    errorMaxLines: 2,
+    prefixIcon: Icon(icon, size: 18, color: AppColors.textSecondary),
+    prefixIconConstraints: const BoxConstraints(minWidth: 36),
+    isDense: true,
+    filled: true,
+    fillColor: const Color(0xFFF8F9F6),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.border),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.border),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.homeInk),
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+  );
 
   Widget _field(
     TextEditingController controller,
@@ -213,6 +224,8 @@ class _BusinessFormState extends State<BusinessForm> {
     int lines = 1,
   }) => TextFormField(
     controller: controller,
+    style: const TextStyle(fontSize: 13),
+    textInputAction: lines > 1 ? TextInputAction.newline : TextInputAction.next,
     textCapitalization: TextCapitalization.words,
     maxLines: lines,
     inputFormatters: [LengthLimitingTextInputFormatter(maxLength)],
@@ -220,50 +233,90 @@ class _BusinessFormState extends State<BusinessForm> {
     validator: (value) => (value?.trim().isEmpty ?? true) ? 'Required' : null,
   );
 
-  Widget _photoPicker() => Column(
-    children: [
-      FutureBuilder<String?>(
-        future: _photoUrl,
-        builder: (context, snapshot) {
-          final ImageProvider? image = _photo != null
-              ? MemoryImage(_photo!)
-              : snapshot.data == null
-              ? null
-              : NetworkImage(snapshot.data!);
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              height: 88,
-              width: 88,
-              child: image == null
-                  ? const ColoredBox(
-                      color: AppColors.homeSage,
-                      child: Icon(Icons.storefront_outlined, size: 36),
-                    )
-                  : Image(
-                      image: image,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, error, stack) =>
-                          const Icon(Icons.storefront_outlined, size: 36),
-                    ),
+  Widget _photoPicker() => Material(
+    color: const Color(0xFFF8F9F6),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+      side: const BorderSide(color: AppColors.border),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: _picking ? null : _choosePhoto,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            FutureBuilder<String?>(
+              future: _photoUrl,
+              builder: (context, snapshot) {
+                final ImageProvider? image = _photo != null
+                    ? MemoryImage(_photo!)
+                    : snapshot.data == null
+                    ? null
+                    : NetworkImage(snapshot.data!);
+                const placeholder = ColoredBox(
+                  color: Color(0xFFEBF1DC),
+                  child: Icon(
+                    CupertinoIcons.camera,
+                    color: AppColors.homeInk,
+                    size: 28,
+                  ),
+                );
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: SizedBox(
+                    height: 56,
+                    width: 56,
+                    child: image == null
+                        ? placeholder
+                        : Image(
+                            image: image,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, error, stack) => placeholder,
+                          ),
+                  ),
+                );
+              },
             ),
-          );
-        },
-      ),
-      const SizedBox(height: 8),
-      TextButton(
-        onPressed: _picking ? null : _choosePhoto,
-        child: Text(
-          _photo != null || widget.business?.logoPath != null
-              ? 'Change business photo'
-              : 'Add business photo',
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _picking
+                        ? 'Opening photos…'
+                        : _photo != null || widget.business?.logoPath != null
+                        ? 'Change business photo'
+                        : 'Add business photo',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.homeInk,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  const Text(
+                    'Shop photo or logo · up to 2 MB',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      height: 1.4,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              CupertinoIcons.chevron_right,
+              size: 14,
+              color: AppColors.textSecondary,
+            ),
+          ],
         ),
       ),
-      const Text(
-        'Up to 2 MB',
-        style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
-      ),
-    ],
+    ),
   );
 
   @override
@@ -273,19 +326,27 @@ class _BusinessFormState extends State<BusinessForm> {
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          tooltip: 'Back',
+          onPressed: _saving ? null : () => Navigator.maybePop(context),
+          icon: const Icon(CupertinoIcons.back),
+        ),
         title: Text(
           widget.business == null ? 'Register business' : 'Edit business',
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
         ),
       ),
       body: OnlineShell.centered(
-        maxWidth: OnlineShell.formMaxWidth,
+        maxWidth: 640,
         child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(
-            24,
-            16,
-            24,
-            24 + MediaQuery.paddingOf(context).bottom,
+            20,
+            12,
+            20,
+            20 + MediaQuery.paddingOf(context).bottom,
           ),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: AbsorbPointer(
             absorbing: _saving,
             child: Form(
@@ -293,23 +354,44 @@ class _BusinessFormState extends State<BusinessForm> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Text(
+                    widget.business == null
+                        ? 'Set up your business'
+                        : 'Your business details',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -.35,
+                      color: AppColors.homeInk,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Add your salon’s details so customers can find you.',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      height: 1.5,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
                   _photoPicker(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 18),
                   LayoutBuilder(
                     builder: (context, size) {
                       final width = size.maxWidth >= OnlineShell.twoColMinWidth
-                          ? (size.maxWidth - 16) / 2
+                          ? (size.maxWidth - 12) / 2
                           : size.maxWidth;
                       return Wrap(
-                        spacing: 16,
-                        runSpacing: 18,
+                        spacing: 12,
+                        runSpacing: 12,
                         children: [
                           SizedBox(
                             width: width,
                             child: _field(
                               _name,
                               'Business name',
-                              Icons.storefront_outlined,
+                              CupertinoIcons.building_2_fill,
                               maxLength: 160,
                             ),
                           ),
@@ -317,11 +399,13 @@ class _BusinessFormState extends State<BusinessForm> {
                             width: width,
                             child: TextFormField(
                               controller: _phone,
+                              style: const TextStyle(fontSize: 13),
+                              textInputAction: TextInputAction.next,
                               keyboardType: TextInputType.phone,
                               inputFormatters: [PkPhoneInputFormatter()],
                               decoration: _decoration(
                                 'Business phone',
-                                Icons.phone_outlined,
+                                CupertinoIcons.phone,
                                 hint: '03465501748',
                               ),
                               validator: PkPhone.localValidationError,
@@ -332,9 +416,20 @@ class _BusinessFormState extends State<BusinessForm> {
                             child: DropdownButtonFormField<String>(
                               initialValue: _type,
                               isExpanded: true,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    fontSize: 13,
+                                    color: AppColors.homeInk,
+                                  ),
+                              icon: const Icon(
+                                CupertinoIcons.chevron_down,
+                                size: 14,
+                                color: AppColors.textSecondary,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
                               decoration: _decoration(
                                 'Business type',
-                                Icons.category_outlined,
+                                CupertinoIcons.square_grid_2x2,
                               ),
                               items:
                                   {
@@ -365,9 +460,20 @@ class _BusinessFormState extends State<BusinessForm> {
                             child: DropdownButtonFormField<String>(
                               initialValue: _city,
                               isExpanded: true,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    fontSize: 13,
+                                    color: AppColors.homeInk,
+                                  ),
+                              icon: const Icon(
+                                CupertinoIcons.chevron_down,
+                                size: 14,
+                                color: AppColors.textSecondary,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
                               decoration: _decoration(
                                 'City',
-                                Icons.location_city_outlined,
+                                CupertinoIcons.building_2_fill,
                               ),
                               items: BusinessOptions.cities
                                   .map(
@@ -388,7 +494,7 @@ class _BusinessFormState extends State<BusinessForm> {
                             child: _field(
                               _area,
                               'Area',
-                              Icons.near_me_outlined,
+                              CupertinoIcons.location,
                             ),
                           ),
                           SizedBox(
@@ -396,7 +502,7 @@ class _BusinessFormState extends State<BusinessForm> {
                             child: _field(
                               _address,
                               'Address',
-                              Icons.location_on_outlined,
+                              CupertinoIcons.location_solid,
                               maxLength: 250,
                               lines: 2,
                             ),
@@ -405,13 +511,14 @@ class _BusinessFormState extends State<BusinessForm> {
                       );
                     },
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   if (_photoError != null) ...[
                     Text(
                       _photoError!,
                       key: const Key('business-photo-error'),
                       style: const TextStyle(
                         color: AppColors.textSecondary,
+                        fontSize: 12,
                         height: 1.4,
                       ),
                     ),
@@ -428,10 +535,16 @@ class _BusinessFormState extends State<BusinessForm> {
                         ? 'Save business'
                         : 'Retry photo',
                     onPressed: _save,
-                    icon: Icons.check,
+                    icon: CupertinoIcons.check_mark,
                     style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.onPrimary,
+                      iconSize: 18,
+                      textStyle: Theme.of(context).textTheme.labelLarge
+                          ?.copyWith(fontSize: 12, fontWeight: FontWeight.w600),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                   ),
