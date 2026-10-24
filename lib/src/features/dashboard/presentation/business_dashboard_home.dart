@@ -1,11 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/utils/pk_phone.dart';
 import '../../../core/widgets/app_confirm_dialog.dart';
 import '../../../online/data/business_workspace.dart';
-import '../../../online/domain/qr_destination.dart';
 import '../../../online/presentation/business_owner_details_screen.dart';
 import '../../../online/presentation/invite_qr_screen.dart';
 import '../../../online/presentation/join_requests_screen.dart';
@@ -23,7 +21,7 @@ class BusinessDashboardHome extends StatelessWidget {
   final BusinessWorkspace workspace;
   final VoidCallback? onGoOnline;
   final Future<void> Function()? onLogOut;
-  static const yellow = Color(0xFFD2FF45);
+  static const yellow = Color(0xFFCDFA4A);
   static const green = Color(0xFF086744);
   static const ink = Color(0xFF202430);
   static const border = Color(0xFFECEDEF);
@@ -61,32 +59,28 @@ class BusinessDashboardHome extends StatelessWidget {
                             children: [
                               IconButton(
                                 tooltip: 'Open menu',
+                                padding: EdgeInsets.zero,
+                                alignment: Alignment.centerLeft,
                                 onPressed: () =>
                                     Scaffold.of(context).openDrawer(),
-                                icon: const Icon(
-                                  CupertinoIcons.line_horizontal_3,
-                                  size: 23,
+                                icon: const _VectorIcon(
+                                  'menu',
                                   color: ink,
+                                  size: 22,
                                 ),
                               ),
                               Expanded(
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const _VectorIcon(
-                                      'scissors',
-                                      color: ink,
-                                      size: 31,
-                                    ),
-                                    const SizedBox(width: 7),
                                     const Flexible(
                                       child: FittedBox(
                                         fit: BoxFit.scaleDown,
                                         child: Text(
                                           'TrimMatrix',
                                           style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w500,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w400,
                                             color: Colors.black,
                                             letterSpacing: -.6,
                                           ),
@@ -98,6 +92,8 @@ class BusinessDashboardHome extends StatelessWidget {
                               ),
                               IconButton(
                                 tooltip: 'Log out',
+                                padding: EdgeInsets.zero,
+                                alignment: Alignment.centerRight,
                                 onPressed: onLogOut == null
                                     ? null
                                     : () async {
@@ -115,10 +111,10 @@ class BusinessDashboardHome extends StatelessWidget {
                                           await onLogOut!();
                                         }
                                       },
-                                icon: const Icon(
-                                  CupertinoIcons.square_arrow_right,
-                                  size: 23,
+                                icon: const _VectorIcon(
+                                  'logout',
                                   color: ink,
+                                  size: 22,
                                 ),
                               ),
                             ],
@@ -136,9 +132,9 @@ class BusinessDashboardHome extends StatelessWidget {
                                 Padding(
                                   padding: const EdgeInsets.fromLTRB(
                                     20,
-                                    20,
                                     16,
-                                    20,
+                                    16,
+                                    16,
                                   ),
                                   child: Column(
                                     crossAxisAlignment:
@@ -160,26 +156,24 @@ class BusinessDashboardHome extends StatelessWidget {
                                                 ? 'Approved business'
                                                 : 'Pending approval',
                                             child: Icon(
-                                              CupertinoIcons.checkmark_seal,
+                                              CupertinoIcons.star,
                                               size: 18,
-                                              color: business.isActive
-                                                  ? green
-                                                  : const Color(0xFF92969F),
+                                              color: const Color(0xFF92969F),
                                             ),
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 17),
+                                      const SizedBox(height: 14),
                                       Text(
                                         business.name,
                                         style: const TextStyle(
-                                          fontSize: 21,
+                                          fontSize: 20,
                                           fontWeight: FontWeight.w400,
                                           color: green,
                                           height: 1.25,
                                         ),
                                       ),
-                                      const SizedBox(height: 22),
+                                      const SizedBox(height: 16),
                                       Row(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.center,
@@ -242,29 +236,16 @@ class BusinessDashboardHome extends StatelessWidget {
                                                 ),
                                                 borderRadius:
                                                     BorderRadius.circular(4),
-                                                child: Padding(
-                                                  padding: const EdgeInsets.all(
-                                                    4,
-                                                  ),
-                                                  child: QrImageView(
-                                                    data: QrDestination(
-                                                      'salon',
-                                                      business.id,
-                                                    ).value,
-                                                    size: 54,
-                                                    padding: EdgeInsets.zero,
-                                                    eyeStyle: const QrEyeStyle(
-                                                      eyeShape:
-                                                          QrEyeShape.square,
-                                                      color: green,
+                                                child: const SizedBox(
+                                                  width: 48,
+                                                  height: 48,
+                                                  child: Align(
+                                                    alignment:
+                                                        Alignment.centerRight,
+                                                    child: _VectorIcon(
+                                                      'qr',
+                                                      size: 28,
                                                     ),
-                                                    dataModuleStyle:
-                                                        const QrDataModuleStyle(
-                                                          dataModuleShape:
-                                                              QrDataModuleShape
-                                                                  .square,
-                                                          color: green,
-                                                        ),
                                                   ),
                                                 ),
                                               ),
@@ -448,8 +429,11 @@ class _VectorIcon extends StatelessWidget {
   final Color color;
   final double size;
   static const paths = {
-    'scissors':
-        '<circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M7 16.5 20 2M17 16.5 4 2M12 10l-2 3"/>',
+    'menu': '<path d="M3 6h18M3 12h18M3 18h18"/>',
+    'logout':
+        '<path d="M14 5V3a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v18a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2M10 12h12M18 8l4 4-4 4"/>',
+    'qr':
+        '<g stroke-width="1.8"><rect x="2" y="2" width="7" height="7" rx=".5"/><rect x="15" y="2" width="7" height="7" rx=".5"/><rect x="2" y="15" width="7" height="7" rx=".5"/><path d="M5.5 5.5h.01M18.5 5.5h.01M5.5 18.5h.01M15 13h3v4h4v5h-4M13 17v5M22 12v2M13 12v1"/></g>',
     'bill':
         '<path d="M14 21H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9M7 6h8M7 10h6M7 14h3"/><circle cx="18" cy="18" r="5"/><path d="M18 15v6M15 18h6"/>',
     'list':

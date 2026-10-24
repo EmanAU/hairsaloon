@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -57,8 +58,17 @@ void main() {
       await preopenOnlineWorkspace(tester, repository);
       {
         await tester.runAsync(() async {
-          const fonts =
-              'C:/flutter_windows_3.38.4-stable/flutter/bin/cache/artifacts/material_fonts';
+          final configFile = File('.dart_tool/package_config.json').absolute;
+          final config =
+              jsonDecode(await configFile.readAsString())
+                  as Map<String, dynamic>;
+          final flutterPackage = (config['packages'] as List)
+              .cast<Map<String, dynamic>>()
+              .firstWhere((p) => p['name'] == 'flutter');
+          final sdk = Directory.fromUri(
+            configFile.uri.resolve(flutterPackage['rootUri'] as String),
+          ).parent.parent;
+          final fonts = '${sdk.path}/bin/cache/artifacts/material_fonts';
           for (final family in ['Roboto', 'Ahem']) {
             await (FontLoader(family)..addFont(
                   Future.value(
