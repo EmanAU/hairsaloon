@@ -92,7 +92,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('Customer view'), findsOneWidget);
+    expect(find.text('Edit customer view'), findsOneWidget);
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(repository.lastSavedService, isNotNull);
@@ -112,6 +112,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Fallback body'), findsOneWidget);
+    expect(
+      find.textContaining('Fallback body', findRichText: true),
+      findsOneWidget,
+    );
   });
 }

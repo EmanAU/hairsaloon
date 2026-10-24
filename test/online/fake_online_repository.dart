@@ -54,7 +54,7 @@ class FakeOnlineRepository implements OnlineRepository {
   ) async => {'conflict': false, 'revision': revision + 1};
   @override
   Future<SalonBusiness?> findBusiness(String id, {bool barber = false}) async =>
-      null;
+      (await discoverBusinesses()).where((b) => b.id == id).firstOrNull;
   @override
   Future<List<Map<String, dynamic>>> reviews(
     String businessId, {

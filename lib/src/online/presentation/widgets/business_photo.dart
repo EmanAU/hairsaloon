@@ -12,6 +12,7 @@ class BusinessPhoto extends StatefulWidget {
     this.height = 48,
     this.borderRadius = 8,
     this.fit = BoxFit.cover,
+    this.placeholderIcon = Icons.storefront_outlined,
   });
 
   final OnlineRepository repository;
@@ -20,6 +21,7 @@ class BusinessPhoto extends StatefulWidget {
   final double height;
   final double borderRadius;
   final BoxFit fit;
+  final IconData placeholderIcon;
 
   @override
   State<BusinessPhoto> createState() => _BusinessPhotoState();
@@ -52,7 +54,7 @@ class _BusinessPhotoState extends State<BusinessPhoto> {
               borderRadius: BorderRadius.circular(widget.borderRadius),
             ),
             child: Icon(
-              Icons.storefront_outlined,
+              widget.placeholderIcon,
               size: (widget.height * 0.35).clamp(22, 48),
               color: AppColors.homeOlive,
             ),
@@ -69,9 +71,9 @@ class _BusinessPhotoState extends State<BusinessPhoto> {
           errorBuilder: (_, __, ___) => SizedBox(
             width: widget.width,
             height: widget.height,
-            child: const ColoredBox(
+            child: ColoredBox(
               color: AppColors.homeSage,
-              child: Icon(Icons.storefront_outlined, color: AppColors.homeOlive),
+              child: Icon(widget.placeholderIcon, color: AppColors.homeOlive),
             ),
           ),
         ),

@@ -364,6 +364,8 @@ void main() {
       OnlineApp(audience: AppAudience.customer, repository: repository),
     );
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Test Salon'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Test Salon'));
     await tester.pumpAndSettle();
     expect(find.text('Haircut'), findsOneWidget);
