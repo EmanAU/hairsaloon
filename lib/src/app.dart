@@ -76,6 +76,7 @@ class BusinessCombApp extends StatefulWidget {
     this.onCloseWorkspace,
     this.onLogOut,
     this.onOpenOnlineRateList,
+    this.onGoOnline,
     this.hosted = false,
   });
   final BusinessWorkspace? workspace;
@@ -85,6 +86,7 @@ class BusinessCombApp extends StatefulWidget {
 
   /// Hosted: home Rate List opens online customer catalogue.
   final VoidCallback? onOpenOnlineRateList;
+  final VoidCallback? onGoOnline;
 
   /// When true, this app is nested under [OnlineApp] and must not claim
   /// [ToastService] global keys (the host owns the messenger).
@@ -241,7 +243,8 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                       ? null
                       : ToastService.navigatorKey,
                   // Always attach a messenger so toasts work inside hosted POS.
-                  scaffoldMessengerKey: widget.hosted || widget.workspace != null
+                  scaffoldMessengerKey:
+                      widget.hosted || widget.workspace != null
                       ? _hostedMessengerKey
                       : ToastService.messengerKey,
                   theme: AppTheme.light(),
@@ -260,6 +263,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                                 homeExtras: widget.dashboardExtras,
                                 onExit: widget.onCloseWorkspace,
                                 onLogOut: widget.onLogOut,
+                                onGoOnline: widget.onGoOnline,
                                 onOpenOnlineRateList:
                                     widget.onOpenOnlineRateList,
                               )
@@ -278,6 +282,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                           homeExtras: widget.dashboardExtras,
                           onExit: widget.onCloseWorkspace,
                           onLogOut: widget.onLogOut,
+                          onGoOnline: widget.onGoOnline,
                           onOpenOnlineRateList: widget.onOpenOnlineRateList,
                         ),
                         AppRoutes.appointments: (_) =>

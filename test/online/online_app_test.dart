@@ -161,8 +161,8 @@ void main() {
         await tester.pump(const Duration(seconds: 16));
         await waitForOnlineDashboard(tester);
         expect(find.text('Rate List'), findsOneWidget);
-        expect(find.text('Join requests'), findsOneWidget);
-        expect(find.text('QR codes'), findsOneWidget);
+        expect(find.text('Join Requests'), findsOneWidget);
+        expect(find.byTooltip('QR codes'), findsOneWidget);
         expect(find.text('Contracts'), findsNothing);
         expect(find.text('Invite replies'), findsNothing);
         expect(find.text('Sales today'), findsNothing);

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../data/business_workspace.dart';
@@ -121,6 +122,13 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         onCloseWorkspace:
             widget.onClose ?? () => Navigator.of(context).maybePop(),
         onLogOut: widget.repository.signOut,
+        onGoOnline: () {
+          setState(() {
+            workspace.inPos = false;
+            _showSync = true;
+          });
+          unawaited(workspace.synchronize());
+        },
         dashboardExtras: (_) => OnlineDashboardTools(
           workspace: workspace,
           onClose: widget.onClose ?? () => Navigator.of(context).maybePop(),

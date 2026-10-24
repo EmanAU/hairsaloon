@@ -1,4 +1,5 @@
 import '../../../online/data/business_workspace.dart';
+import 'business_dashboard_home.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
@@ -19,8 +20,16 @@ import 'package:hairsaloon/src/features/services/presentation/categories_screen.
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key, this.extraShortcuts, this.onOpenRateList});
+  const DashboardScreen({
+    super.key,
+    this.extraShortcuts,
+    this.onOpenRateList,
+    this.onGoOnline,
+    this.onLogOut,
+  });
   final Widget? extraShortcuts;
+  final VoidCallback? onGoOnline;
+  final Future<void> Function()? onLogOut;
 
   /// When set (hosted online), Rate List opens the customer catalogue.
   final VoidCallback? onOpenRateList;
@@ -59,6 +68,13 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   Widget build(BuildContext context) {
     final onlineWorkspace = context.watch<BusinessWorkspace?>();
+    if (onlineWorkspace != null) {
+      return BusinessDashboardHome(
+        workspace: onlineWorkspace,
+        onGoOnline: widget.onGoOnline,
+        onLogOut: widget.onLogOut,
+      );
+    }
     final compactHome = onlineWorkspace != null;
     final profile = context.watch<BusinessProfileNotifier>().profile;
     final owner = context.watch<AuthStore>().currentUser?.name.trim() ?? '';

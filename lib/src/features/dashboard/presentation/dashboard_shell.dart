@@ -17,11 +17,13 @@ class DashboardShell extends StatefulWidget {
     this.onExit,
     this.onLogOut,
     this.onOpenOnlineRateList,
+    this.onGoOnline,
   });
   final WidgetBuilder? homeExtras;
   final VoidCallback? onExit;
   final Future<void> Function()? onLogOut;
   final VoidCallback? onOpenOnlineRateList;
+  final VoidCallback? onGoOnline;
 
   @override
   State<DashboardShell> createState() => _DashboardShellState();
@@ -42,6 +44,8 @@ class _DashboardShellState extends State<DashboardShell> {
       0 => DashboardScreen(
         extraShortcuts: widget.homeExtras?.call(context),
         onOpenRateList: widget.onOpenOnlineRateList,
+        onGoOnline: widget.onGoOnline,
+        onLogOut: widget.onLogOut,
       ),
       1 => const BillingScreen(),
       2 => const ExpensesScreen(),
@@ -52,9 +56,7 @@ class _DashboardShellState extends State<DashboardShell> {
     };
 
     final tablet = AdaptivePage.isTablet(context);
-    final canvas = _currentIndex == 0
-        ? const Color(0xFFF6F7F9)
-        : AppColors.background;
+    final canvas = _currentIndex == 0 ? Colors.white : AppColors.background;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
         statusBarColor: const Color(0x00000000),
@@ -72,7 +74,7 @@ class _DashboardShellState extends State<DashboardShell> {
         },
         child: Scaffold(
           backgroundColor: canvas,
-          extendBody: !tablet,
+          extendBody: false,
           drawer: const AppDrawer(),
           body: tablet
               ? Row(
@@ -114,7 +116,9 @@ class _DashboardShellState extends State<DashboardShell> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Leave salon?'),
-        content: const Text('Exit the salon workspace, or sign out of TrimMatrix.'),
+        content: const Text(
+          'Exit the salon workspace, or sign out of TrimMatrix.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -203,14 +207,14 @@ class _SideRail extends StatelessWidget {
         onDestinationSelected: onTap,
         labelType: NavigationRailLabelType.all,
         backgroundColor: AppColors.surface,
-        indicatorColor: AppColors.textPrimary,
+        indicatorColor: Colors.transparent,
         indicatorShape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
         ),
         minWidth: 84,
         groupAlignment: -0.85,
         selectedIconTheme: const IconThemeData(
-          color: AppColors.surface,
+          color: AppColors.textPrimary,
           size: 25,
         ),
         unselectedIconTheme: const IconThemeData(
@@ -315,34 +319,20 @@ class _NavTile extends StatelessWidget {
   final bool isActive;
   @override
   Widget build(BuildContext context) {
-    final color = isActive ? AppColors.primary : AppColors.textSecondary;
+    final color = isActive ? AppColors.textPrimary : AppColors.textSecondary;
     return Center(
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+      child: SizedBox(
         height: 50,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.textPrimary : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-          boxShadow: isActive
-              ? const [
-                  BoxShadow(
-                    color: Color(0x26000000),
-                    blurRadius: 9,
-                    offset: Offset(0, 3),
-                  ),
-                ]
-              : const [],
-        ),
-        child: Row(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               isActive ? item.activeIcon : item.icon,
-              size: 23,
+              size: 21,
               color: color,
             ),
-            const SizedBox(width: 5),
+            const SizedBox(height: 5),
             Flexible(
               child: Text(
                 item.label,

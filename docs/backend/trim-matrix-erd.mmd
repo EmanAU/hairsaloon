@@ -1,0 +1,119 @@
+---
+title: TrimMatrix backend — live PostgreSQL schema
+---
+erDiagram
+  direction TB
+  AUTH_USERS {
+    uuid id PK
+  }
+  BUSINESS_EMPLOYEES {
+    uuid id PK
+    uuid business_id FK
+    uuid profile_id FK
+    uuid requested_by FK
+    text join_status
+    uuid join_reviewed_by FK "nullable"
+    bool is_manager
+  }
+  BUSINESS_INVITES {
+    uuid business_id PK,FK
+    uuid code UK
+  }
+  BUSINESS_SNAPSHOTS {
+    uuid business_id PK,FK
+    int8 revision
+    jsonb payload
+  }
+  BUSINESSES {
+    uuid id PK
+    uuid owner_id FK
+    text name
+    text phone
+    text logo_path "nullable"
+    bool is_active
+    uuid reviewed_by FK "nullable"
+  }
+  DEFAULT_EXPENSE_TYPES {
+    text name PK
+  }
+  DEFAULT_PAYMENT_ACCOUNTS {
+    text label PK
+  }
+  DEFAULT_SERVICES {
+    uuid id PK
+    text name
+    numeric price
+  }
+  EMPLOYEE_CONTRACTS {
+    uuid id PK
+    uuid employee_id FK
+    uuid profile_id FK
+    text kind
+    timestamptz starts_at
+    timestamptz ends_at "nullable"
+    numeric salary
+    numeric commission_percent
+    text status
+    uuid released_by FK "nullable"
+  }
+  EMPLOYEE_INVITES {
+    uuid id PK
+    uuid business_id FK
+    text cnic
+    text phone
+    text display_name
+    uuid invited_by FK
+    text status
+  }
+  PROFILES {
+    uuid user_id PK,FK
+    uuid code UK
+    text cnic UK "nullable"
+    text phone
+    text photo_path "nullable"
+  }
+  REVIEWS {
+    uuid id PK
+    uuid business_id FK
+    uuid employee_id FK "nullable"
+    uuid author_id FK
+    int2 rating
+  }
+  SERVICE_MEDIA {
+    uuid id PK
+    uuid service_id FK
+    text kind
+    text storage_path
+  }
+  SERVICES {
+    uuid id PK
+    uuid business_id FK
+    text name
+    numeric price
+    bool is_active
+    jsonb content_json
+  }
+  USERS {
+    uuid id PK,FK
+    text display_name
+    text role
+  }
+  BUSINESSES ||--o{ BUSINESS_EMPLOYEES : "business_id"
+  USERS o|--o{ BUSINESS_EMPLOYEES : "join_reviewed_by"
+  PROFILES ||--o{ BUSINESS_EMPLOYEES : "profile_id"
+  USERS ||--o{ BUSINESS_EMPLOYEES : "requested_by"
+  BUSINESSES ||--o| BUSINESS_INVITES : "business_id"
+  BUSINESSES ||--o| BUSINESS_SNAPSHOTS : "business_id"
+  USERS ||--o{ BUSINESSES : "owner_id"
+  USERS o|--o{ BUSINESSES : "reviewed_by"
+  BUSINESS_EMPLOYEES ||--o{ EMPLOYEE_CONTRACTS : "employee_id + profile_id"
+  USERS o|--o{ EMPLOYEE_CONTRACTS : "released_by"
+  BUSINESSES ||--o{ EMPLOYEE_INVITES : "business_id"
+  USERS ||--o{ EMPLOYEE_INVITES : "invited_by"
+  USERS ||--o| PROFILES : "user_id"
+  USERS ||--o{ REVIEWS : "author_id"
+  BUSINESSES ||--o{ REVIEWS : "business_id"
+  BUSINESS_EMPLOYEES o|--o{ REVIEWS : "employee_id"
+  SERVICES ||--o{ SERVICE_MEDIA : "service_id"
+  BUSINESSES ||--o{ SERVICES : "business_id"
+  AUTH_USERS ||--o| USERS : "id"

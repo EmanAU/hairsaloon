@@ -1,0 +1,1386 @@
+{
+  "source": "Live PostgreSQL catalog; public schema + auth.users identity FK",
+  "captured": "2026-10-24",
+  "columns": [
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "business_employees",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "business_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "business_employees",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "profile_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "business_employees",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "requested_by",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "business_employees",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "table_name": "business_employees",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "'pending'::text",
+      "column_name": "join_status",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "business_employees",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "join_reviewed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "table_name": "business_employees",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "join_reviewed_by",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "table_name": "business_employees",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "false",
+      "column_name": "is_manager",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "table_name": "business_employees",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": null,
+      "column_name": "manager_pin_hash",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "table_name": "business_employees",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "business_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "business_invites",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "code",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "business_invites",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "business_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "business_snapshots",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "1",
+      "column_name": "revision",
+      "data_type": "bigint",
+      "is_nullable": "NO",
+      "table_name": "business_snapshots",
+      "udt_name": "int8"
+    },
+    {
+      "column_default": null,
+      "column_name": "operation_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "business_snapshots",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "payload",
+      "data_type": "jsonb",
+      "is_nullable": "NO",
+      "table_name": "business_snapshots",
+      "udt_name": "jsonb"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "table_name": "business_snapshots",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "businesses",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "owner_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "businesses",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "businesses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "phone",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "businesses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "business_type",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "businesses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "city",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "businesses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "area",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "businesses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "address",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "businesses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "logo_path",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "table_name": "businesses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "false",
+      "column_name": "is_active",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "table_name": "businesses",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": null,
+      "column_name": "reviewed_by",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "table_name": "businesses",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "reviewed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "table_name": "businesses",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "table_name": "businesses",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "17",
+      "column_name": "tax_rate",
+      "data_type": "numeric",
+      "is_nullable": "NO",
+      "table_name": "businesses",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": "'PKR'::text",
+      "column_name": "currency_code",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "businesses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'{}'::text[]",
+      "column_name": "expense_types",
+      "data_type": "ARRAY",
+      "is_nullable": "NO",
+      "table_name": "businesses",
+      "udt_name": "_text"
+    },
+    {
+      "column_default": "'{}'::text[]",
+      "column_name": "payment_accounts",
+      "data_type": "ARRAY",
+      "is_nullable": "NO",
+      "table_name": "businesses",
+      "udt_name": "_text"
+    },
+    {
+      "column_default": null,
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "table_name": "contract_reminders",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "employee_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "table_name": "contract_reminders",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "profile_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "table_name": "contract_reminders",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "ends_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "table_name": "contract_reminders",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "default_expense_types",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "0",
+      "column_name": "sort_order",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "table_name": "default_expense_types",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "label",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "default_payment_accounts",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "0",
+      "column_name": "sort_order",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "table_name": "default_payment_accounts",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "default_services",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "default_services",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "category",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "default_services",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "description",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "default_services",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "price",
+      "data_type": "numeric",
+      "is_nullable": "NO",
+      "table_name": "default_services",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": "0",
+      "column_name": "sort_order",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "table_name": "default_services",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "subcategory",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "default_services",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "gender",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "default_services",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "age_group",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "default_services",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "employee_contracts",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "employee_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "employee_contracts",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "profile_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "employee_contracts",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "kind",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "employee_contracts",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "starts_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "table_name": "employee_contracts",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "ends_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "table_name": "employee_contracts",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "0",
+      "column_name": "salary",
+      "data_type": "numeric",
+      "is_nullable": "NO",
+      "table_name": "employee_contracts",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": "0",
+      "column_name": "commission_percent",
+      "data_type": "numeric",
+      "is_nullable": "NO",
+      "table_name": "employee_contracts",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "terms",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "employee_contracts",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'draft'::text",
+      "column_name": "status",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "employee_contracts",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "accepted_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "table_name": "employee_contracts",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "released_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "table_name": "employee_contracts",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "released_by",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "table_name": "employee_contracts",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "release_reason",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "table_name": "employee_contracts",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "table_name": "employee_contracts",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "employee_invites",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "business_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "employee_invites",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "cnic",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "employee_invites",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "phone",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "employee_invites",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "email",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "employee_invites",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "display_name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "employee_invites",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "invited_by",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "employee_invites",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "'pending'::text",
+      "column_name": "status",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "employee_invites",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "table_name": "employee_invites",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "responded_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "table_name": "employee_invites",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "profiles",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "code",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "profiles",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "cnic",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "table_name": "profiles",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "date_of_birth",
+      "data_type": "date",
+      "is_nullable": "YES",
+      "table_name": "profiles",
+      "udt_name": "date"
+    },
+    {
+      "column_default": null,
+      "column_name": "phone",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "profiles",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "photo_path",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "table_name": "profiles",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "table_name": "profiles",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "work_started_on",
+      "data_type": "date",
+      "is_nullable": "YES",
+      "table_name": "profiles",
+      "udt_name": "date"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "reviews",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "business_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "reviews",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "employee_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "table_name": "reviews",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "auth.uid()",
+      "column_name": "author_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "reviews",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "rating",
+      "data_type": "smallint",
+      "is_nullable": "NO",
+      "table_name": "reviews",
+      "udt_name": "int2"
+    },
+    {
+      "column_default": null,
+      "column_name": "body",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "reviews",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "table_name": "reviews",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "service_media",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "service_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "service_media",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "kind",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "service_media",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "storage_path",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "service_media",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "0",
+      "column_name": "position",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "table_name": "service_media",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "pair_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "table_name": "service_media",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "services",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "business_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "services",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "services",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "category",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "services",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "subcategory",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "services",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "gender",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "services",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "age_group",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "services",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "description",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "services",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "price",
+      "data_type": "numeric",
+      "is_nullable": "NO",
+      "table_name": "services",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": "true",
+      "column_name": "is_active",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "table_name": "services",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "table_name": "services",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "'[]'::jsonb",
+      "column_name": "content_json",
+      "data_type": "jsonb",
+      "is_nullable": "NO",
+      "table_name": "services",
+      "udt_name": "jsonb"
+    },
+    {
+      "column_default": null,
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "table_name": "users",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "display_name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "users",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'user'::text",
+      "column_name": "role",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "table_name": "users",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "table_name": "users",
+      "udt_name": "timestamptz"
+    }
+  ],
+  "constraints": [
+    {
+      "definition": "CHECK ((join_status = ANY (ARRAY['pending'::text, 'accepted'::text, 'declined'::text])))",
+      "name": "business_employees_join_status_check",
+      "table_name": "business_employees",
+      "type": "c"
+    },
+    {
+      "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id)",
+      "name": "business_employees_business_id_fkey",
+      "table_name": "business_employees",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (join_reviewed_by) REFERENCES users(id)",
+      "name": "business_employees_join_reviewed_by_fkey",
+      "table_name": "business_employees",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (profile_id) REFERENCES profiles(user_id)",
+      "name": "business_employees_profile_id_fkey",
+      "table_name": "business_employees",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (requested_by) REFERENCES users(id)",
+      "name": "business_employees_requested_by_fkey",
+      "table_name": "business_employees",
+      "type": "f"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "business_employees_pkey",
+      "table_name": "business_employees",
+      "type": "p"
+    },
+    {
+      "definition": "UNIQUE (business_id, profile_id)",
+      "name": "business_employees_business_id_profile_id_key",
+      "table_name": "business_employees",
+      "type": "u"
+    },
+    {
+      "definition": "UNIQUE (id, profile_id)",
+      "name": "business_employees_id_profile_id_key",
+      "table_name": "business_employees",
+      "type": "u"
+    },
+    {
+      "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id)",
+      "name": "business_invites_business_id_fkey",
+      "table_name": "business_invites",
+      "type": "f"
+    },
+    {
+      "definition": "PRIMARY KEY (business_id)",
+      "name": "business_invites_pkey",
+      "table_name": "business_invites",
+      "type": "p"
+    },
+    {
+      "definition": "UNIQUE (code)",
+      "name": "business_invites_code_key",
+      "table_name": "business_invites",
+      "type": "u"
+    },
+    {
+      "definition": "CHECK (((jsonb_typeof(payload) = 'object'::text) AND (octet_length((payload)::text) <= 20971520)))",
+      "name": "business_snapshots_payload_check",
+      "table_name": "business_snapshots",
+      "type": "c"
+    },
+    {
+      "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id)",
+      "name": "business_snapshots_business_id_fkey",
+      "table_name": "business_snapshots",
+      "type": "f"
+    },
+    {
+      "definition": "PRIMARY KEY (business_id)",
+      "name": "business_snapshots_pkey",
+      "table_name": "business_snapshots",
+      "type": "p"
+    },
+    {
+      "definition": "CHECK (((logo_path IS NULL) OR (split_part(logo_path, '/'::text, 1) = (id)::text)))",
+      "name": "business_photo_path",
+      "table_name": "businesses",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK ((currency_code ~ '^[A-Z]{3}$'::text))",
+      "name": "businesses_currency_code_check",
+      "table_name": "businesses",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK (((length(TRIM(BOTH FROM name)) >= 1) AND (length(TRIM(BOTH FROM name)) <= 160)))",
+      "name": "businesses_name_check",
+      "table_name": "businesses",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK ((phone ~ '^\\+?[0-9]{10,15}$'::text))",
+      "name": "businesses_phone_check",
+      "table_name": "businesses",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK (((tax_rate >= (0)::numeric) AND (tax_rate <= (100)::numeric)))",
+      "name": "businesses_tax_rate_check",
+      "table_name": "businesses",
+      "type": "c"
+    },
+    {
+      "definition": "FOREIGN KEY (owner_id) REFERENCES users(id)",
+      "name": "businesses_owner_id_fkey",
+      "table_name": "businesses",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (reviewed_by) REFERENCES users(id)",
+      "name": "businesses_reviewed_by_fkey",
+      "table_name": "businesses",
+      "type": "f"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "businesses_pkey",
+      "table_name": "businesses",
+      "type": "p"
+    },
+    {
+      "definition": "CHECK (((length(TRIM(BOTH FROM name)) >= 1) AND (length(TRIM(BOTH FROM name)) <= 80)))",
+      "name": "default_expense_types_name_check",
+      "table_name": "default_expense_types",
+      "type": "c"
+    },
+    {
+      "definition": "PRIMARY KEY (name)",
+      "name": "default_expense_types_pkey",
+      "table_name": "default_expense_types",
+      "type": "p"
+    },
+    {
+      "definition": "CHECK (((length(TRIM(BOTH FROM label)) >= 1) AND (length(TRIM(BOTH FROM label)) <= 120)))",
+      "name": "default_payment_accounts_label_check",
+      "table_name": "default_payment_accounts",
+      "type": "c"
+    },
+    {
+      "definition": "PRIMARY KEY (label)",
+      "name": "default_payment_accounts_pkey",
+      "table_name": "default_payment_accounts",
+      "type": "p"
+    },
+    {
+      "definition": "CHECK (((length(TRIM(BOTH FROM name)) >= 1) AND (length(TRIM(BOTH FROM name)) <= 160)))",
+      "name": "default_services_name_check",
+      "table_name": "default_services",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK ((price >= (0)::numeric))",
+      "name": "default_services_price_check",
+      "table_name": "default_services",
+      "type": "c"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "default_services_pkey",
+      "table_name": "default_services",
+      "type": "p"
+    },
+    {
+      "definition": "CHECK (((ends_at IS NULL) OR (ends_at > starts_at)))",
+      "name": "employee_contracts_check",
+      "table_name": "employee_contracts",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK ((((kind = 'permanent'::text) AND (ends_at IS NULL)) OR ((kind <> 'permanent'::text) AND (ends_at IS NOT NULL))))",
+      "name": "employee_contracts_check1",
+      "table_name": "employee_contracts",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK (((kind <> 'daily'::text) OR (ends_at <= (starts_at + '24:00:00'::interval))))",
+      "name": "employee_contracts_check2",
+      "table_name": "employee_contracts",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK (((status = ANY (ARRAY['accepted'::text, 'released'::text])) = (accepted_at IS NOT NULL)))",
+      "name": "employee_contracts_check3",
+      "table_name": "employee_contracts",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK (((status = 'released'::text) = (released_at IS NOT NULL)))",
+      "name": "employee_contracts_check4",
+      "table_name": "employee_contracts",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK (((status <> 'released'::text) OR ((released_by IS NOT NULL) AND (length(TRIM(BOTH FROM release_reason)) > 0))))",
+      "name": "employee_contracts_check5",
+      "table_name": "employee_contracts",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK (((commission_percent >= (0)::numeric) AND (commission_percent <= (100)::numeric)))",
+      "name": "employee_contracts_commission_percent_check",
+      "table_name": "employee_contracts",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK ((kind = ANY (ARRAY['daily'::text, 'fixed'::text, 'permanent'::text])))",
+      "name": "employee_contracts_kind_check",
+      "table_name": "employee_contracts",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK ((salary >= (0)::numeric))",
+      "name": "employee_contracts_salary_check",
+      "table_name": "employee_contracts",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'accepted'::text, 'declined'::text, 'released'::text])))",
+      "name": "employee_contracts_status_check",
+      "table_name": "employee_contracts",
+      "type": "c"
+    },
+    {
+      "definition": "FOREIGN KEY (employee_id, profile_id) REFERENCES business_employees(id, profile_id)",
+      "name": "employee_contracts_employee_id_profile_id_fkey",
+      "table_name": "employee_contracts",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (released_by) REFERENCES users(id)",
+      "name": "employee_contracts_released_by_fkey",
+      "table_name": "employee_contracts",
+      "type": "f"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "employee_contracts_pkey",
+      "table_name": "employee_contracts",
+      "type": "p"
+    },
+    {
+      "definition": "EXCLUDE USING gist (profile_id WITH =, tstzrange(starts_at,\nCASE\n    WHEN ((ends_at IS NULL) AND (released_at IS NULL)) THEN NULL::timestamp with time zone\n    ELSE GREATEST(starts_at, LEAST(ends_at, released_at))\nEND, '[)'::text) WITH &&) WHERE ((status = ANY (ARRAY['accepted'::text, 'released'::text])))",
+      "name": "employee_contracts_profile_id_tstzrange_excl",
+      "table_name": "employee_contracts",
+      "type": "x"
+    },
+    {
+      "definition": "CHECK ((cnic ~ '^[0-9]{13}$'::text))",
+      "name": "employee_invites_cnic_check",
+      "table_name": "employee_invites",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK (((length(TRIM(BOTH FROM email)) >= 3) AND (length(TRIM(BOTH FROM email)) <= 254)))",
+      "name": "employee_invites_email_check",
+      "table_name": "employee_invites",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK ((phone ~ '^\\+?[0-9]{10,15}$'::text))",
+      "name": "employee_invites_phone_check",
+      "table_name": "employee_invites",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'declined'::text, 'cancelled'::text])))",
+      "name": "employee_invites_status_check",
+      "table_name": "employee_invites",
+      "type": "c"
+    },
+    {
+      "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE",
+      "name": "employee_invites_business_id_fkey",
+      "table_name": "employee_invites",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (invited_by) REFERENCES users(id)",
+      "name": "employee_invites_invited_by_fkey",
+      "table_name": "employee_invites",
+      "type": "f"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "employee_invites_pkey",
+      "table_name": "employee_invites",
+      "type": "p"
+    },
+    {
+      "definition": "UNIQUE (business_id, cnic)",
+      "name": "employee_invites_business_id_cnic_key",
+      "table_name": "employee_invites",
+      "type": "u"
+    },
+    {
+      "definition": "CHECK (((photo_path IS NULL) OR (split_part(photo_path, '/'::text, 1) = (user_id)::text)))",
+      "name": "profile_photo_owner",
+      "table_name": "profiles",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK (((work_started_on IS NULL) OR ((work_started_on <= CURRENT_DATE) AND ((date_of_birth IS NULL) OR (work_started_on >= date_of_birth)))))",
+      "name": "profile_work_dates",
+      "table_name": "profiles",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK ((cnic ~ '^[0-9]{13}$'::text))",
+      "name": "profiles_cnic_check",
+      "table_name": "profiles",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK ((phone ~ '^\\+?[0-9]{10,15}$'::text))",
+      "name": "profiles_phone_check",
+      "table_name": "profiles",
+      "type": "c"
+    },
+    {
+      "definition": "FOREIGN KEY (user_id) REFERENCES users(id)",
+      "name": "profiles_user_id_fkey",
+      "table_name": "profiles",
+      "type": "f"
+    },
+    {
+      "definition": "PRIMARY KEY (user_id)",
+      "name": "profiles_pkey",
+      "table_name": "profiles",
+      "type": "p"
+    },
+    {
+      "definition": "UNIQUE (cnic)",
+      "name": "profiles_cnic_key",
+      "table_name": "profiles",
+      "type": "u"
+    },
+    {
+      "definition": "UNIQUE (code)",
+      "name": "profiles_code_key",
+      "table_name": "profiles",
+      "type": "u"
+    },
+    {
+      "definition": "CHECK (((length(TRIM(BOTH FROM body)) >= 1) AND (length(TRIM(BOTH FROM body)) <= 2000)))",
+      "name": "reviews_body_check",
+      "table_name": "reviews",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK (((rating >= 1) AND (rating <= 5)))",
+      "name": "reviews_rating_check",
+      "table_name": "reviews",
+      "type": "c"
+    },
+    {
+      "definition": "FOREIGN KEY (author_id) REFERENCES users(id)",
+      "name": "reviews_author_id_fkey",
+      "table_name": "reviews",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id)",
+      "name": "reviews_business_id_fkey",
+      "table_name": "reviews",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (employee_id) REFERENCES business_employees(id)",
+      "name": "reviews_employee_id_fkey",
+      "table_name": "reviews",
+      "type": "f"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "reviews_pkey",
+      "table_name": "reviews",
+      "type": "p"
+    },
+    {
+      "definition": "UNIQUE NULLS NOT DISTINCT (business_id, employee_id, author_id)",
+      "name": "reviews_business_id_employee_id_author_id_key",
+      "table_name": "reviews",
+      "type": "u"
+    },
+    {
+      "definition": "CHECK (((pair_id IS NULL) OR (kind = ANY (ARRAY['before'::text, 'after'::text]))))",
+      "name": "media_pair_kind",
+      "table_name": "service_media",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK ((kind = ANY (ARRAY['photo'::text, 'video'::text, 'before'::text, 'after'::text])))",
+      "name": "service_media_kind_check",
+      "table_name": "service_media",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK ((\"position\" >= 0))",
+      "name": "service_media_position_check",
+      "table_name": "service_media",
+      "type": "c"
+    },
+    {
+      "definition": "FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE",
+      "name": "service_media_service_id_fkey",
+      "table_name": "service_media",
+      "type": "f"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "service_media_pkey",
+      "table_name": "service_media",
+      "type": "p"
+    },
+    {
+      "definition": "CHECK (((length(TRIM(BOTH FROM name)) >= 1) AND (length(TRIM(BOTH FROM name)) <= 160)))",
+      "name": "services_name_check",
+      "table_name": "services",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK ((price >= (0)::numeric))",
+      "name": "services_price_check",
+      "table_name": "services",
+      "type": "c"
+    },
+    {
+      "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id)",
+      "name": "services_business_id_fkey",
+      "table_name": "services",
+      "type": "f"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "services_pkey",
+      "table_name": "services",
+      "type": "p"
+    },
+    {
+      "definition": "CHECK (((length(TRIM(BOTH FROM display_name)) >= 1) AND (length(TRIM(BOTH FROM display_name)) <= 120)))",
+      "name": "users_display_name_check",
+      "table_name": "users",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK ((role = ANY (ARRAY['user'::text, 'superadmin'::text])))",
+      "name": "users_role_check",
+      "table_name": "users",
+      "type": "c"
+    },
+    {
+      "definition": "FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "name": "users_id_fkey",
+      "table_name": "users",
+      "type": "f"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "users_pkey",
+      "table_name": "users",
+      "type": "p"
+    }
+  ]
+}
