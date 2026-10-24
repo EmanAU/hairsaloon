@@ -303,6 +303,22 @@ Constraints:
 - `FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE`
 - `PRIMARY KEY (id)`
 
+## Employee onboarding and leaving
+
+Owners can create complete employee records on the device. These synchronize to
+`employee_invites.employee_data`; `local_employee_id` preserves the POS employee
+identity when a verified Google account accepts the invitation. The JSON includes
+personal details and an optional employee photo; it is restricted to the owner and
+matching invite recipient. Google email identifies the recipient, with CNIC checked
+against any existing profile. Existing personal photos and contact details are preserved.
+
+`business_employees.is_active` records the owner's active/inactive switch separately
+from `join_status`. Leaving sets status to `left`, deactivates employment, revokes
+manager access, and releases accepted contracts. Accepted employees cannot create a
+business until they leave. Code/QR **Join a salon** remains available for self-service
+joining, including a fresh request after leaving. Owner approval activates that request.
+The latest columns and constraints are in `schema.json` and the full bootstrap SQL.
+
 ## View
 
 `public.contract_reminders`: `id`, `employee_id`, `profile_id`, `ends_at`.

@@ -12,6 +12,7 @@ import 'package:hairsaloon/src/features/employees/presentation/state/employees_s
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../../../online/domain/online_repository.dart';
+import '../../../online/domain/online_models.dart';
 import '../../../online/data/business_workspace.dart';
 import 'employee_photo.dart';
 
@@ -53,12 +54,16 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
   bool _saving = false;
   String? _saveError;
   final _managerPin = TextEditingController();
+  late final _email = TextEditingController(text: widget.item.email);
+  DateTime? _birth, _started;
 
   @override
   void initState() {
     super.initState();
     _editing = widget.requireCompletion;
     _hydrateFrom(widget.item);
+    _birth = widget.item.dateOfBirth;
+    _started = widget.item.workStartedOn;
   }
 
   void _hydrateFrom(EmployeeItem item) {
@@ -94,6 +99,9 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
 
   void _resetFromItem() {
     final item = widget.item;
+    _email.text = item.email;
+    _birth = item.dateOfBirth;
+    _started = item.workStartedOn;
     _firstNameCtrl.text = item.firstName;
     _lastNameCtrl.text = item.lastName;
     _phoneCtrl.text = PkPhone.localNumber(item.phoneNumber);
@@ -133,6 +141,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     _specialityCtrl.dispose();
     _otherCategoryCtrl.dispose();
     _managerPin.dispose();
+    _email.dispose();
     super.dispose();
   }
 
@@ -274,6 +283,16 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
                 ),
                 const SizedBox(height: 12),
                 _editField(_addressCtrl, 'Home address'),
+                if (widget.item.email.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _editField(
+                    _email,
+                    'Google email',
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  _dateEditor('Date of birth', _birth, (v) => _birth = v),
+                  _dateEditor('Work started on', _started, (v) => _started = v),
+                ],
                 const SizedBox(height: 12),
                 _labeledDropdown(
                   label: 'Specialist category',
@@ -404,6 +423,22 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
                 _viewRow('Phone number', _phoneCtrl.text),
                 _viewRow('CNIC number', _cnicCtrl.text),
                 _viewRow('Home address', _addressCtrl.text),
+                if (widget.item.email.isNotEmpty)
+                  _viewRow('Google email', _email.text),
+                if (_birth != null)
+                  _viewRow(
+                    'Date of birth',
+                    '${_birth!.day}/${_birth!.month}/${_birth!.year}',
+                  ),
+                if (_started != null)
+                  _viewRow(
+                    'Experience',
+                    PersonalProfile(
+                      code: '',
+                      phone: '',
+                      workStartedOn: _started,
+                    ).experienceAt(DateTime.now()),
+                  ),
                 _viewRow('Specialist category', _resolvedCategory),
                 _viewRow('Speciality', _specialityCtrl.text),
                 _viewRow('Role', _isManager ? 'Manager' : 'Employee'),
@@ -531,6 +566,8 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
 
   Future<void> _save(EmployeesStore store) async {
     if (_saving) return;
+    final workspace = context.read<BusinessWorkspace?>();
+    final repository = widget.repository ?? workspace?.repository;
     final first = _firstNameCtrl.text.trim();
     final last = _lastNameCtrl.text.trim();
     final phone = PkPhone.normalize(_phoneCtrl.text);
@@ -549,6 +586,13 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
       return _fail('Enter the employee’s 13-digit CNIC.');
     }
     if (address.isEmpty) return _fail('Enter the employee’s home address.');
+    if (_email.text.trim().isNotEmpty &&
+        !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(_email.text.trim())) {
+      return _fail('Enter a valid Google email address.');
+    }
+    if (_birth != null && _started != null && !_started!.isAfter(_birth!)) {
+      return _fail('Work started must be after the date of birth.');
+    }
     final managerChanged =
         widget.item.onlineSynced && _isManager != widget.item.isManager;
     if (managerChanged &&
@@ -591,9 +635,14 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
       _saveError = null;
     });
     try {
+      if (widget.item.onlineSynced && _isActive != widget.item.isActive) {
+        if (repository == null) {
+          throw StateError('Online workspace unavailable');
+        }
+        await repository.setEmployeeActive(widget.item.id, _isActive);
+        if (!_isActive) _isManager = false;
+      }
       if (managerChanged) {
-        final repository =
-            widget.repository ?? context.read<BusinessWorkspace?>()?.repository;
         if (repository == null) {
           throw StateError('Online workspace unavailable');
         }
@@ -604,6 +653,9 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
         );
       }
       final updated = widget.item.copyWith(
+        email: _email.text.trim().toLowerCase(),
+        dateOfBirth: _birth,
+        workStartedOn: _started,
         firstName: first,
         lastName: last,
         phoneNumber: phone,
@@ -617,6 +669,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
         clearPhoto: _photoBase64 == null,
       );
       await store.update(updated);
+      if (workspace != null) await workspace.syncEmployeeRecords();
       if (!mounted) return;
       setState(() {
         _completed = true;
@@ -629,10 +682,12 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
         context,
       );
       Navigator.of(context).pop(updated);
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
         _fail(
-          'Could not save the employee profile. Your changes are still here; please try again.',
+          error is OnlineFailure
+              ? error.message
+              : 'Could not save the employee profile. Your changes are still here; please try again.',
         );
       }
     } finally {
@@ -646,5 +701,28 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
   }
 
   String _displayCnic(String value) => PkCnic.display(value);
+  Widget _dateEditor(
+    String label,
+    DateTime? value,
+    ValueChanged<DateTime> change,
+  ) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    title: Text(label, style: const TextStyle(fontSize: 12)),
+    subtitle: Text(
+      value == null
+          ? 'Select date'
+          : '${value.day}/${value.month}/${value.year}',
+    ),
+    trailing: const Icon(CupertinoIcons.calendar, size: 20),
+    onTap: () async {
+      final date = await showDatePicker(
+        context: context,
+        initialDate: value ?? DateTime(2000),
+        firstDate: DateTime(1940),
+        lastDate: DateTime.now(),
+      );
+      if (date != null && mounted) setState(() => change(date));
+    },
+  );
   bool _isValidCnic(String value) => PkCnic.isValid(value);
 }

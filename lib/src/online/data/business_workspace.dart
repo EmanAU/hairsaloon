@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -30,6 +31,70 @@ class BusinessWorkspace extends ChangeNotifier {
   String status = 'Stored on this device';
   Timer? _timer;
   bool _disposed = false;
+  bool _syncingTeam = false;
+  static const _employeeFields = [
+    'id',
+    'firstName',
+    'lastName',
+    'email',
+    'phoneNumber',
+    'cnicNumber',
+    'homeAddress',
+    'isActive',
+    'photoBase64',
+    'speciality',
+    'employeeType',
+    'dateOfBirth',
+    'workStartedOn',
+  ];
+  Map<String, dynamic> _employeeData(Map row) => {
+    for (final field in _employeeFields) field: row[field],
+  };
+  String _employeeSignature(Map row) =>
+      sha256.convert(utf8.encode(jsonEncode(_employeeData(row)))).toString();
+  bool employeeRecordSynced(String id) {
+    final row = maps['employees']?.get(id);
+    return row != null &&
+        journal.get('employee_record_$id') == _employeeSignature(row);
+  }
+
+  /// Device-first outbox; publish only changed records, retaining failures locally.
+  Future<bool> syncEmployeeRecords() async {
+    final box = maps['employees'];
+    if (box == null || _disposed) return false;
+    var synced = true;
+    for (final row in box.values.toList()) {
+      if ((row['email']?.toString() ?? '').isEmpty ||
+          row['dateOfBirth'] == null ||
+          row['workStartedOn'] == null) {
+        continue;
+      }
+      final id = row['id'].toString();
+      final signature = _employeeSignature(row);
+      if (journal.get('employee_record_$id') == signature) continue;
+      try {
+        await repository.saveEmployeeRecord(business.id, _employeeData(row));
+        await journal.put('employee_record_$id', signature);
+      } catch (_) {
+        synced = false;
+      }
+    }
+    try {
+      for (final remote in await repository.employeeRecords(business.id)) {
+        final id = remote['id']?.toString();
+        if (id == null || id.isEmpty) continue;
+        final current = box.get(id);
+        if (current != null && !employeeRecordSynced(id)) continue;
+        final merged = <String, dynamic>{...?current, ...remote};
+        await box.put(id, merged);
+        await journal.put('employee_record_$id', _employeeSignature(merged));
+      }
+    } catch (_) {
+      synced = false;
+    }
+    return synced;
+  }
+
   static const collections = [
     'bills',
     'contacts',
@@ -139,71 +204,93 @@ class BusinessWorkspace extends ChangeNotifier {
 
   /// Copies accepted online staff into the local employees box used by billing.
   Future<void> syncOnlineTeam() async {
-    if (_disposed) return;
-    final List<SalonStaff> team;
+    if (_disposed || _syncingTeam) return;
+    _syncingTeam = true;
     try {
-      team = await repository.team(business.id);
-    } catch (_) {
-      return;
-    }
-    final box = maps['employees'];
-    if (box == null) return;
-    final accepted = team.where((e) => e.joinStatus == 'accepted').toList();
-    final acceptedIds = accepted.map((e) => e.id).toSet();
-    for (final member in accepted) {
-      final parts = member.name.trim().split(RegExp(r'\s+'));
-      final first = parts.isEmpty || parts.first.isEmpty
-          ? 'Staff'
-          : parts.first;
-      final last = parts.length <= 1 ? '' : parts.sublist(1).join(' ');
-      final existing = box.get(member.id);
-      final phone = member.phone.trim();
-      final cnic = member.cnic.trim();
-      if (existing == null) {
-        await box.put(member.id, <String, dynamic>{
-          'id': member.id,
-          'firstName': first,
-          'lastName': last,
-          'phoneNumber': phone,
-          'cnicNumber': cnic,
-          'homeAddress': '',
-          'isActive': true,
-          'isManager': member.isManager,
-          'onlineSynced': true,
-          'commission': '',
-          'basicSalary': '',
-          'employeeType': 'General',
-        });
-      } else {
-        final map = Map<String, dynamic>.from(existing);
-        map['firstName'] = first;
-        map['lastName'] = last;
-        map['isActive'] = true;
-        map['isManager'] = member.isManager;
-        map['onlineSynced'] = true;
-        // Prefill blanks from online profile; never overwrite owner edits.
-        if ((map['phoneNumber'] as String?)?.trim().isNotEmpty != true &&
-            phone.isNotEmpty) {
-          map['phoneNumber'] = phone;
-        }
-        if ((map['cnicNumber'] as String?)?.trim().isNotEmpty != true &&
-            cnic.isNotEmpty) {
-          map['cnicNumber'] = cnic;
-        }
-        await box.put(member.id, map);
+      await syncEmployeeRecords();
+      final List<SalonStaff> team;
+      try {
+        team = await repository.team(business.id);
+      } catch (_) {
+        return;
       }
-    }
-    for (final key in box.keys.toList()) {
-      final row = box.get(key);
-      if (row == null) continue;
-      final map = Map<String, dynamic>.from(row);
-      if (map['onlineSynced'] == true &&
-          !acceptedIds.contains(key.toString())) {
-        map['isActive'] = false;
-        await box.put(key, map);
+      final box = maps['employees'];
+      if (box == null) return;
+      final accepted = team.where((e) => e.joinStatus == 'accepted').toList();
+      final acceptedIds = accepted.map((e) => e.id).toSet();
+      for (final member in accepted) {
+        final parts = member.name.trim().split(RegExp(r'\s+'));
+        final first = parts.isEmpty || parts.first.isEmpty
+            ? 'Staff'
+            : parts.first;
+        final last = parts.length <= 1 ? '' : parts.sublist(1).join(' ');
+        final existing = box.get(member.id) ?? box.get(member.localEmployeeId);
+        final phone = member.phone.trim();
+        final cnic = member.cnic.trim();
+        if (existing == null) {
+          await box.put(member.id, <String, dynamic>{
+            'id': member.id,
+            'firstName': first,
+            'lastName': last,
+            'phoneNumber': phone,
+            'cnicNumber': cnic,
+            'homeAddress': '',
+            'isActive': member.isActive,
+            'isManager': member.isManager,
+            'onlineSynced': true,
+            'commission': '',
+            'basicSalary': '',
+            'employeeType': 'General',
+          });
+        } else {
+          final map = Map<String, dynamic>.from(existing);
+          map['firstName'] = first;
+          map['lastName'] = last;
+          map['id'] = member.id;
+          map['isActive'] = member.isActive;
+          map['isManager'] = member.isManager;
+          map['onlineSynced'] = true;
+          // Prefill blanks from online profile; never overwrite owner edits.
+          if ((map['phoneNumber'] as String?)?.trim().isNotEmpty != true &&
+              phone.isNotEmpty) {
+            map['phoneNumber'] = phone;
+          }
+          if ((map['cnicNumber'] as String?)?.trim().isNotEmpty != true &&
+              cnic.isNotEmpty) {
+            map['cnicNumber'] = cnic;
+          }
+          await box.put(member.id, map);
+        }
+        if (member.localEmployeeId != null &&
+            member.localEmployeeId != member.id &&
+            box.containsKey(member.localEmployeeId)) {
+          for (final collection in ['bills', 'payouts']) {
+            final records = maps[collection]!;
+            for (final key in records.keys.toList()) {
+              final record = records.get(key);
+              if (record?['employeeId'] == member.localEmployeeId) {
+                await records.put(key, {...record!, 'employeeId': member.id});
+              }
+            }
+          }
+          await box.delete(member.localEmployeeId);
+        }
       }
+      for (final key in box.keys.toList()) {
+        final row = box.get(key);
+        if (row == null) continue;
+        final map = Map<String, dynamic>.from(row);
+        if (map['onlineSynced'] == true &&
+            !acceptedIds.contains(key.toString())) {
+          map['isActive'] = false;
+          map['isManager'] = false;
+          await box.put(key, map);
+        }
+      }
+      if (!_disposed) notifyListeners();
+    } finally {
+      _syncingTeam = false;
     }
-    if (!_disposed) notifyListeners();
   }
 
   Map<String, dynamic> snapshot() => {

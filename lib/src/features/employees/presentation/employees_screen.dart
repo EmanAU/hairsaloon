@@ -19,6 +19,7 @@ import 'package:hairsaloon/src/online/data/business_workspace.dart';
 import 'package:hairsaloon/src/online/presentation/employee_invite_flows.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import 'employee_photo.dart';
 import '../../../core/widgets/app_sheet.dart';
 import '../../../online/domain/online_models.dart';
@@ -37,6 +38,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   String? _photoBase64;
   String? _specialistCategory;
   bool _newActive = true;
+  bool _savingNew = false;
+  DateTime? _dateOfBirth, _workStartedOn;
+  final _emailCtrl = TextEditingController();
 
   final _firstNameCtrl = TextEditingController();
   final _lastNameCtrl = TextEditingController();
@@ -55,6 +59,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     _addressCtrl.dispose();
     _specialityCtrl.dispose();
     _otherCategoryCtrl.dispose();
+    _emailCtrl.dispose();
     super.dispose();
   }
 
@@ -94,11 +99,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         actions: [
           IconButton(
             onPressed: () async {
-              final online = context.read<BusinessWorkspace?>();
-              if (online != null) {
-                await showEmployeeInviteOptions(context);
-                return;
-              }
               setState(() => _showAddForm = !_showAddForm);
             },
             icon: Icon(
@@ -118,6 +118,18 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         ),
         children: [
           _buildStatusTabs(),
+          const SizedBox(height: 10),
+          if (!_showAddForm)
+            OutlinedButton.icon(
+              onPressed: () => setState(() => _showAddForm = true),
+              icon: const Icon(CupertinoIcons.person_add),
+              label: const Text('Create employee'),
+            ),
+          if (context.read<BusinessWorkspace?>() != null)
+            TextButton(
+              onPressed: () => showEmployeeInviteOptions(context),
+              child: const Text('Invite an existing profile or scan QR'),
+            ),
           const SizedBox(height: 10),
           if (_showAddForm) ...[_addForm(store), const SizedBox(height: 12)],
           if (items.isEmpty)
@@ -418,6 +430,41 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             _field(_firstNameCtrl, 'First Name'),
             const SizedBox(height: 8),
             _field(_lastNameCtrl, 'Last Name'),
+            if (context.read<BusinessWorkspace?>() != null) ...[
+              const SizedBox(height: 8),
+              _field(
+                _emailCtrl,
+                'Google Email',
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 6),
+                child: Text(
+                  'Use the email they will select with Continue with Google.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+            _dateField(
+              'Date of birth',
+              _dateOfBirth,
+              (date) => _dateOfBirth = date,
+            ),
+            _dateField(
+              'Work started on',
+              _workStartedOn,
+              (date) => _workStartedOn = date,
+            ),
+            if (_workStartedOn != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Experience: ${PersonalProfile(code: '', phone: '', workStartedOn: _workStartedOn).experienceAt(DateTime.now())}',
+                ),
+              ),
             const SizedBox(height: 8),
             _field(
               _phoneCtrl,
@@ -507,7 +554,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed: () => _save(store),
+                onPressed: _savingNew ? null : () => _save(store),
                 child: const Text(
                   'Save Employee',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
@@ -571,7 +618,12 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       ),
       validator: (v) {
         final value = (v ?? '').trim();
+        if (hint == 'Last Name') return null;
         if (value.isEmpty) return 'Required';
+        if (hint == 'Google Email' &&
+            !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value)) {
+          return 'Enter their Google email';
+        }
         if (hint == 'Phone Number') {
           return PkPhone.validationError(value);
         }
@@ -584,53 +636,133 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   }
 
   Future<void> _save(EmployeesStore store) async {
+    if (_savingNew) return;
     final state = _formKey.currentState;
     if (state == null || !state.validate()) return;
+    final workspace = context.read<BusinessWorkspace?>();
+    if (workspace != null &&
+        (_dateOfBirth == null ||
+            _workStartedOn == null ||
+            _workStartedOn!.isBefore(_dateOfBirth!))) {
+      ToastService.error(
+        'Select a valid birth date and work start date.',
+        context,
+      );
+      return;
+    }
+    if (store.employees.any(
+      (e) => PkCnic.digits(e.cnicNumber) == PkCnic.digits(_cnicCtrl.text),
+    )) {
+      ToastService.error(
+        'This employee already exists. Open their details to edit.',
+        context,
+      );
+      return;
+    }
+    setState(() => _savingNew = true);
+    try {
+      var category = _specialistCategory?.trim();
+      if (category == 'Other') {
+        final other = _otherCategoryCtrl.text.trim();
+        if (other.isEmpty) {
+          ToastService.error('Enter the other category name');
+          return;
+        }
+        category = other;
+        await store.addSpecialistCategory(other);
+      }
 
-    var category = _specialistCategory?.trim();
-    if (category == 'Other') {
-      final other = _otherCategoryCtrl.text.trim();
-      if (other.isEmpty) {
-        ToastService.error('Enter the other category name');
+      final employee = EmployeeItem(
+        id: const Uuid().v4(),
+        firstName: _firstNameCtrl.text.trim(),
+        lastName: _lastNameCtrl.text.trim(),
+        phoneNumber: PkPhone.normalize(_phoneCtrl.text),
+        cnicNumber: _cnicCtrl.text.trim(),
+        homeAddress: _addressCtrl.text.trim(),
+        isActive: _newActive,
+        photoBase64: _photoBase64,
+        speciality: _specialityCtrl.text.trim(),
+        employeeType: category,
+        email: _emailCtrl.text.trim().toLowerCase(),
+        dateOfBirth: _dateOfBirth,
+        workStartedOn: _workStartedOn,
+      );
+      await store.add(employee);
+      final synced = workspace == null || await workspace.syncEmployeeRecords();
+      if (!mounted) return;
+
+      setState(() {
+        _showAddForm = false;
+        _resetFormFields();
+      });
+      if (synced) {
+        ToastService.success(
+          workspace == null
+              ? 'Employee saved'
+              : 'Employee saved. They can accept your invitation with Google.',
+          context,
+        );
+      } else {
+        ToastService.info(
+          'Employee saved on this device. Invitation will sync when connected.',
+          context,
+        );
+      }
+      if (workspace != null) {
+        await workspace.synchronize();
         return;
       }
-      category = other;
-      await store.addSpecialistCategory(other);
+
+      if (!mounted) return;
+      final saved = store.byId(employee.id) ?? employee;
+      final updated = await Navigator.of(context).push<EmployeeItem>(
+        MaterialPageRoute(
+          builder: (_) =>
+              EmployeeAgreementScreen(employee: saved, requireCompletion: true),
+        ),
+      );
+      if (updated == null || !mounted) return;
+      await store.update(updated);
+    } catch (_) {
+      if (mounted) {
+        ToastService.error(
+          'Could not save this employee. Your details are still here.',
+          context,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingNew = false);
     }
-
-    final employee = EmployeeItem(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      firstName: _firstNameCtrl.text.trim(),
-      lastName: _lastNameCtrl.text.trim(),
-      phoneNumber: PkPhone.normalize(_phoneCtrl.text),
-      cnicNumber: _cnicCtrl.text.trim(),
-      homeAddress: _addressCtrl.text.trim(),
-      isActive: _newActive,
-      photoBase64: _photoBase64,
-      speciality: _specialityCtrl.text.trim(),
-      employeeType: category,
-    );
-    await store.add(employee);
-
-    setState(() {
-      _showAddForm = false;
-      _resetFormFields();
-    });
-    ToastService.success('Employee saved');
-
-    if (!mounted) return;
-    final saved = store.byId(employee.id) ?? employee;
-    final updated = await Navigator.of(context).push<EmployeeItem>(
-      MaterialPageRoute(
-        builder: (_) =>
-            EmployeeAgreementScreen(employee: saved, requireCompletion: true),
-      ),
-    );
-    if (updated == null || !mounted) return;
-    await store.update(updated);
   }
 
+  Widget _dateField(
+    String label,
+    DateTime? value,
+    ValueChanged<DateTime> change,
+  ) => ListTile(
+    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+    title: Text(label, style: const TextStyle(fontSize: 12)),
+    subtitle: Text(
+      value == null
+          ? 'Select date'
+          : '${value.day}/${value.month}/${value.year}',
+    ),
+    trailing: const Icon(CupertinoIcons.calendar, size: 20),
+    onTap: () async {
+      final date = await showDatePicker(
+        context: context,
+        initialDate: value ?? DateTime(label == 'Date of birth' ? 2000 : 2020),
+        firstDate: DateTime(1940),
+        lastDate: DateTime.now(),
+      );
+      if (date != null && mounted) setState(() => change(date));
+    },
+  );
+
   void _resetFormFields() {
+    _emailCtrl.clear();
+    _dateOfBirth = null;
+    _workStartedOn = null;
     _firstNameCtrl.clear();
     _lastNameCtrl.clear();
     _phoneCtrl.text = PkPhone.inputPrefix;

@@ -1,6 +1,7 @@
 import 'package:hairsaloon/src/core/utils/pk_phone.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../core/widgets/app_confirm_dialog.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../domain/online_models.dart';
@@ -48,10 +49,25 @@ class _EmployeeHomeState extends State<EmployeeHome> {
     if (!mounted) return;
     if (accept) {
       showMessage(context, 'Joined ${invite.businessName}');
-      await widget.session.reload();
     } else {
       showMessage(context, 'Invite declined');
     }
+    await widget.session.reload();
+    if (mounted) _refresh();
+  }
+
+  Future<void> _leave(SalonJoinRequest membership) async {
+    final confirm = await showAppConfirmDialog(
+      context: context,
+      title: 'Leave this business?',
+      message:
+          'Leave ${membership.businessName}? Your employee and manager access will end. Your previous work records will stay saved.',
+      confirmLabel: 'Leave business',
+      isDestructive: true,
+    );
+    if (confirm != true || !mounted) return;
+    await widget.session.repository.leaveBusiness(membership.businessId);
+    await widget.session.reload();
     if (mounted) _refresh();
   }
 
@@ -268,6 +284,20 @@ class _EmployeeHomeState extends State<EmployeeHome> {
                         photoFuture: widget.session.repository.profilePhoto(),
                       ),
                       const SizedBox(height: AppSpacing.md),
+                      for (final membership in acceptedMemberships) ...[
+                        _BannerPanel(
+                          title: membership.businessName,
+                          subtitle: membership.isActive
+                              ? 'Active employee'
+                              : 'Inactive employee',
+                          child: ActionButton(
+                            label: 'Leave business',
+                            icon: Icons.logout,
+                            onPressed: () => _leave(membership),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                      ],
                       if (invites.isNotEmpty) ...[
                         Text('Salon invites', style: text.titleMedium),
                         const SizedBox(height: AppSpacing.sm),

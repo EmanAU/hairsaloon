@@ -83,6 +83,14 @@
       "udt_name": "text"
     },
     {
+      "column_default": "true",
+      "column_name": "is_active",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "table_name": "business_employees",
+      "udt_name": "bool"
+    },
+    {
       "column_default": null,
       "column_name": "business_id",
       "data_type": "uuid",
@@ -612,6 +620,22 @@
     },
     {
       "column_default": null,
+      "column_name": "local_employee_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "table_name": "employee_invites",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "'{}'::jsonb",
+      "column_name": "employee_data",
+      "data_type": "jsonb",
+      "is_nullable": "NO",
+      "table_name": "employee_invites",
+      "udt_name": "jsonb"
+    },
+    {
+      "column_default": null,
       "column_name": "user_id",
       "data_type": "uuid",
       "is_nullable": "NO",
@@ -909,8 +933,8 @@
   ],
   "constraints": [
     {
-      "definition": "CHECK ((join_status = ANY (ARRAY['pending'::text, 'accepted'::text, 'declined'::text])))",
-      "name": "business_employees_join_status_check",
+      "definition": "CHECK (((NOT is_manager) OR (is_active AND (join_status = 'accepted'::text))))",
+      "name": "business_employees_active_manager_check",
       "table_name": "business_employees",
       "type": "c"
     },
@@ -919,30 +943,6 @@
       "name": "business_employees_business_id_fkey",
       "table_name": "business_employees",
       "type": "f"
-    },
-    {
-      "definition": "FOREIGN KEY (join_reviewed_by) REFERENCES users(id)",
-      "name": "business_employees_join_reviewed_by_fkey",
-      "table_name": "business_employees",
-      "type": "f"
-    },
-    {
-      "definition": "FOREIGN KEY (profile_id) REFERENCES profiles(user_id)",
-      "name": "business_employees_profile_id_fkey",
-      "table_name": "business_employees",
-      "type": "f"
-    },
-    {
-      "definition": "FOREIGN KEY (requested_by) REFERENCES users(id)",
-      "name": "business_employees_requested_by_fkey",
-      "table_name": "business_employees",
-      "type": "f"
-    },
-    {
-      "definition": "PRIMARY KEY (id)",
-      "name": "business_employees_pkey",
-      "table_name": "business_employees",
-      "type": "p"
     },
     {
       "definition": "UNIQUE (business_id, profile_id)",
@@ -957,16 +957,40 @@
       "type": "u"
     },
     {
+      "definition": "FOREIGN KEY (join_reviewed_by) REFERENCES users(id)",
+      "name": "business_employees_join_reviewed_by_fkey",
+      "table_name": "business_employees",
+      "type": "f"
+    },
+    {
+      "definition": "CHECK ((join_status = ANY (ARRAY['pending'::text, 'accepted'::text, 'declined'::text, 'left'::text])))",
+      "name": "business_employees_join_status_check",
+      "table_name": "business_employees",
+      "type": "c"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "business_employees_pkey",
+      "table_name": "business_employees",
+      "type": "p"
+    },
+    {
+      "definition": "FOREIGN KEY (profile_id) REFERENCES profiles(user_id)",
+      "name": "business_employees_profile_id_fkey",
+      "table_name": "business_employees",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (requested_by) REFERENCES users(id)",
+      "name": "business_employees_requested_by_fkey",
+      "table_name": "business_employees",
+      "type": "f"
+    },
+    {
       "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id)",
       "name": "business_invites_business_id_fkey",
       "table_name": "business_invites",
       "type": "f"
-    },
-    {
-      "definition": "PRIMARY KEY (business_id)",
-      "name": "business_invites_pkey",
-      "table_name": "business_invites",
-      "type": "p"
     },
     {
       "definition": "UNIQUE (code)",
@@ -975,16 +999,22 @@
       "type": "u"
     },
     {
-      "definition": "CHECK (((jsonb_typeof(payload) = 'object'::text) AND (octet_length((payload)::text) <= 20971520)))",
-      "name": "business_snapshots_payload_check",
-      "table_name": "business_snapshots",
-      "type": "c"
+      "definition": "PRIMARY KEY (business_id)",
+      "name": "business_invites_pkey",
+      "table_name": "business_invites",
+      "type": "p"
     },
     {
       "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id)",
       "name": "business_snapshots_business_id_fkey",
       "table_name": "business_snapshots",
       "type": "f"
+    },
+    {
+      "definition": "CHECK (((jsonb_typeof(payload) = 'object'::text) AND (octet_length((payload)::text) <= 20971520)))",
+      "name": "business_snapshots_payload_check",
+      "table_name": "business_snapshots",
+      "type": "c"
     },
     {
       "definition": "PRIMARY KEY (business_id)",
@@ -1011,22 +1041,22 @@
       "type": "c"
     },
     {
+      "definition": "FOREIGN KEY (owner_id) REFERENCES users(id)",
+      "name": "businesses_owner_id_fkey",
+      "table_name": "businesses",
+      "type": "f"
+    },
+    {
       "definition": "CHECK ((phone ~ '^\\+?[0-9]{10,15}$'::text))",
       "name": "businesses_phone_check",
       "table_name": "businesses",
       "type": "c"
     },
     {
-      "definition": "CHECK (((tax_rate >= (0)::numeric) AND (tax_rate <= (100)::numeric)))",
-      "name": "businesses_tax_rate_check",
+      "definition": "PRIMARY KEY (id)",
+      "name": "businesses_pkey",
       "table_name": "businesses",
-      "type": "c"
-    },
-    {
-      "definition": "FOREIGN KEY (owner_id) REFERENCES users(id)",
-      "name": "businesses_owner_id_fkey",
-      "table_name": "businesses",
-      "type": "f"
+      "type": "p"
     },
     {
       "definition": "FOREIGN KEY (reviewed_by) REFERENCES users(id)",
@@ -1035,10 +1065,10 @@
       "type": "f"
     },
     {
-      "definition": "PRIMARY KEY (id)",
-      "name": "businesses_pkey",
+      "definition": "CHECK (((tax_rate >= (0)::numeric) AND (tax_rate <= (100)::numeric)))",
+      "name": "businesses_tax_rate_check",
       "table_name": "businesses",
-      "type": "p"
+      "type": "c"
     },
     {
       "definition": "CHECK (((length(TRIM(BOTH FROM name)) >= 1) AND (length(TRIM(BOTH FROM name)) <= 80)))",
@@ -1071,16 +1101,16 @@
       "type": "c"
     },
     {
-      "definition": "CHECK ((price >= (0)::numeric))",
-      "name": "default_services_price_check",
-      "table_name": "default_services",
-      "type": "c"
-    },
-    {
       "definition": "PRIMARY KEY (id)",
       "name": "default_services_pkey",
       "table_name": "default_services",
       "type": "p"
+    },
+    {
+      "definition": "CHECK ((price >= (0)::numeric))",
+      "name": "default_services_price_check",
+      "table_name": "default_services",
+      "type": "c"
     },
     {
       "definition": "CHECK (((ends_at IS NULL) OR (ends_at > starts_at)))",
@@ -1125,34 +1155,16 @@
       "type": "c"
     },
     {
-      "definition": "CHECK ((kind = ANY (ARRAY['daily'::text, 'fixed'::text, 'permanent'::text])))",
-      "name": "employee_contracts_kind_check",
-      "table_name": "employee_contracts",
-      "type": "c"
-    },
-    {
-      "definition": "CHECK ((salary >= (0)::numeric))",
-      "name": "employee_contracts_salary_check",
-      "table_name": "employee_contracts",
-      "type": "c"
-    },
-    {
-      "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'accepted'::text, 'declined'::text, 'released'::text])))",
-      "name": "employee_contracts_status_check",
-      "table_name": "employee_contracts",
-      "type": "c"
-    },
-    {
       "definition": "FOREIGN KEY (employee_id, profile_id) REFERENCES business_employees(id, profile_id)",
       "name": "employee_contracts_employee_id_profile_id_fkey",
       "table_name": "employee_contracts",
       "type": "f"
     },
     {
-      "definition": "FOREIGN KEY (released_by) REFERENCES users(id)",
-      "name": "employee_contracts_released_by_fkey",
+      "definition": "CHECK ((kind = ANY (ARRAY['daily'::text, 'fixed'::text, 'permanent'::text])))",
+      "name": "employee_contracts_kind_check",
       "table_name": "employee_contracts",
-      "type": "f"
+      "type": "c"
     },
     {
       "definition": "PRIMARY KEY (id)",
@@ -1167,6 +1179,36 @@
       "type": "x"
     },
     {
+      "definition": "FOREIGN KEY (released_by) REFERENCES users(id)",
+      "name": "employee_contracts_released_by_fkey",
+      "table_name": "employee_contracts",
+      "type": "f"
+    },
+    {
+      "definition": "CHECK ((salary >= (0)::numeric))",
+      "name": "employee_contracts_salary_check",
+      "table_name": "employee_contracts",
+      "type": "c"
+    },
+    {
+      "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'accepted'::text, 'declined'::text, 'released'::text])))",
+      "name": "employee_contracts_status_check",
+      "table_name": "employee_contracts",
+      "type": "c"
+    },
+    {
+      "definition": "UNIQUE (business_id, cnic)",
+      "name": "employee_invites_business_id_cnic_key",
+      "table_name": "employee_invites",
+      "type": "u"
+    },
+    {
+      "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE",
+      "name": "employee_invites_business_id_fkey",
+      "table_name": "employee_invites",
+      "type": "f"
+    },
+    {
       "definition": "CHECK ((cnic ~ '^[0-9]{13}$'::text))",
       "name": "employee_invites_cnic_check",
       "table_name": "employee_invites",
@@ -1179,22 +1221,10 @@
       "type": "c"
     },
     {
-      "definition": "CHECK ((phone ~ '^\\+?[0-9]{10,15}$'::text))",
-      "name": "employee_invites_phone_check",
+      "definition": "CHECK (((jsonb_typeof(employee_data) = 'object'::text) AND (octet_length((employee_data)::text) <= 3000000)))",
+      "name": "employee_invites_employee_data_check",
       "table_name": "employee_invites",
       "type": "c"
-    },
-    {
-      "definition": "CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'declined'::text, 'cancelled'::text])))",
-      "name": "employee_invites_status_check",
-      "table_name": "employee_invites",
-      "type": "c"
-    },
-    {
-      "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE",
-      "name": "employee_invites_business_id_fkey",
-      "table_name": "employee_invites",
-      "type": "f"
     },
     {
       "definition": "FOREIGN KEY (invited_by) REFERENCES users(id)",
@@ -1203,16 +1233,28 @@
       "type": "f"
     },
     {
+      "definition": "UNIQUE (local_employee_id)",
+      "name": "employee_invites_local_employee_id_key",
+      "table_name": "employee_invites",
+      "type": "u"
+    },
+    {
+      "definition": "CHECK ((phone ~ '^\\+?[0-9]{10,15}$'::text))",
+      "name": "employee_invites_phone_check",
+      "table_name": "employee_invites",
+      "type": "c"
+    },
+    {
       "definition": "PRIMARY KEY (id)",
       "name": "employee_invites_pkey",
       "table_name": "employee_invites",
       "type": "p"
     },
     {
-      "definition": "UNIQUE (business_id, cnic)",
-      "name": "employee_invites_business_id_cnic_key",
+      "definition": "CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'declined'::text, 'cancelled'::text])))",
+      "name": "employee_invites_status_check",
       "table_name": "employee_invites",
-      "type": "u"
+      "type": "c"
     },
     {
       "definition": "CHECK (((photo_path IS NULL) OR (split_part(photo_path, '/'::text, 1) = (user_id)::text)))",
@@ -1233,24 +1275,6 @@
       "type": "c"
     },
     {
-      "definition": "CHECK ((phone ~ '^\\+?[0-9]{10,15}$'::text))",
-      "name": "profiles_phone_check",
-      "table_name": "profiles",
-      "type": "c"
-    },
-    {
-      "definition": "FOREIGN KEY (user_id) REFERENCES users(id)",
-      "name": "profiles_user_id_fkey",
-      "table_name": "profiles",
-      "type": "f"
-    },
-    {
-      "definition": "PRIMARY KEY (user_id)",
-      "name": "profiles_pkey",
-      "table_name": "profiles",
-      "type": "p"
-    },
-    {
       "definition": "UNIQUE (cnic)",
       "name": "profiles_cnic_key",
       "table_name": "profiles",
@@ -1263,22 +1287,40 @@
       "type": "u"
     },
     {
-      "definition": "CHECK (((length(TRIM(BOTH FROM body)) >= 1) AND (length(TRIM(BOTH FROM body)) <= 2000)))",
-      "name": "reviews_body_check",
-      "table_name": "reviews",
+      "definition": "CHECK ((phone ~ '^\\+?[0-9]{10,15}$'::text))",
+      "name": "profiles_phone_check",
+      "table_name": "profiles",
       "type": "c"
     },
     {
-      "definition": "CHECK (((rating >= 1) AND (rating <= 5)))",
-      "name": "reviews_rating_check",
-      "table_name": "reviews",
-      "type": "c"
+      "definition": "PRIMARY KEY (user_id)",
+      "name": "profiles_pkey",
+      "table_name": "profiles",
+      "type": "p"
+    },
+    {
+      "definition": "FOREIGN KEY (user_id) REFERENCES users(id)",
+      "name": "profiles_user_id_fkey",
+      "table_name": "profiles",
+      "type": "f"
     },
     {
       "definition": "FOREIGN KEY (author_id) REFERENCES users(id)",
       "name": "reviews_author_id_fkey",
       "table_name": "reviews",
       "type": "f"
+    },
+    {
+      "definition": "CHECK (((length(TRIM(BOTH FROM body)) >= 1) AND (length(TRIM(BOTH FROM body)) <= 2000)))",
+      "name": "reviews_body_check",
+      "table_name": "reviews",
+      "type": "c"
+    },
+    {
+      "definition": "UNIQUE NULLS NOT DISTINCT (business_id, employee_id, author_id)",
+      "name": "reviews_business_id_employee_id_author_id_key",
+      "table_name": "reviews",
+      "type": "u"
     },
     {
       "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id)",
@@ -1299,10 +1341,10 @@
       "type": "p"
     },
     {
-      "definition": "UNIQUE NULLS NOT DISTINCT (business_id, employee_id, author_id)",
-      "name": "reviews_business_id_employee_id_author_id_key",
+      "definition": "CHECK (((rating >= 1) AND (rating <= 5)))",
+      "name": "reviews_rating_check",
       "table_name": "reviews",
-      "type": "u"
+      "type": "c"
     },
     {
       "definition": "CHECK (((pair_id IS NULL) OR (kind = ANY (ARRAY['before'::text, 'after'::text]))))",
@@ -1317,6 +1359,12 @@
       "type": "c"
     },
     {
+      "definition": "PRIMARY KEY (id)",
+      "name": "service_media_pkey",
+      "table_name": "service_media",
+      "type": "p"
+    },
+    {
       "definition": "CHECK ((\"position\" >= 0))",
       "name": "service_media_position_check",
       "table_name": "service_media",
@@ -1329,10 +1377,10 @@
       "type": "f"
     },
     {
-      "definition": "PRIMARY KEY (id)",
-      "name": "service_media_pkey",
-      "table_name": "service_media",
-      "type": "p"
+      "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id)",
+      "name": "services_business_id_fkey",
+      "table_name": "services",
+      "type": "f"
     },
     {
       "definition": "CHECK (((length(TRIM(BOTH FROM name)) >= 1) AND (length(TRIM(BOTH FROM name)) <= 160)))",
@@ -1341,32 +1389,20 @@
       "type": "c"
     },
     {
-      "definition": "CHECK ((price >= (0)::numeric))",
-      "name": "services_price_check",
-      "table_name": "services",
-      "type": "c"
-    },
-    {
-      "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id)",
-      "name": "services_business_id_fkey",
-      "table_name": "services",
-      "type": "f"
-    },
-    {
       "definition": "PRIMARY KEY (id)",
       "name": "services_pkey",
       "table_name": "services",
       "type": "p"
     },
     {
-      "definition": "CHECK (((length(TRIM(BOTH FROM display_name)) >= 1) AND (length(TRIM(BOTH FROM display_name)) <= 120)))",
-      "name": "users_display_name_check",
-      "table_name": "users",
+      "definition": "CHECK ((price >= (0)::numeric))",
+      "name": "services_price_check",
+      "table_name": "services",
       "type": "c"
     },
     {
-      "definition": "CHECK ((role = ANY (ARRAY['user'::text, 'superadmin'::text])))",
-      "name": "users_role_check",
+      "definition": "CHECK (((length(TRIM(BOTH FROM display_name)) >= 1) AND (length(TRIM(BOTH FROM display_name)) <= 120)))",
+      "name": "users_display_name_check",
       "table_name": "users",
       "type": "c"
     },
@@ -1381,6 +1417,12 @@
       "name": "users_pkey",
       "table_name": "users",
       "type": "p"
+    },
+    {
+      "definition": "CHECK ((role = ANY (ARRAY['user'::text, 'superadmin'::text])))",
+      "name": "users_role_check",
+      "table_name": "users",
+      "type": "c"
     }
   ]
 }

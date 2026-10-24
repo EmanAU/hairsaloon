@@ -15,6 +15,9 @@ class EmployeeItem {
     this.basicSalary,
     this.commission,
     this.agreementDescription,
+    this.email = '',
+    this.dateOfBirth,
+    this.workStartedOn,
   });
 
   final String id;
@@ -37,6 +40,24 @@ class EmployeeItem {
   final String? basicSalary;
   final String? commission;
   final String? agreementDescription;
+  final String email;
+  final DateTime? dateOfBirth;
+  final DateTime? workStartedOn;
+  Map<String, dynamic> get onboardingData => {
+    'id': id,
+    'firstName': firstName,
+    'lastName': lastName,
+    'email': email,
+    'phoneNumber': phoneNumber,
+    'cnicNumber': cnicNumber,
+    'homeAddress': homeAddress,
+    'isActive': isActive,
+    'photoBase64': photoBase64,
+    'speciality': speciality,
+    'employeeType': employeeType,
+    'dateOfBirth': dateOfBirth?.toIso8601String().substring(0, 10),
+    'workStartedOn': workStartedOn?.toIso8601String().substring(0, 10),
+  };
 
   String get fullName => '$firstName $lastName'.trim();
 
@@ -57,6 +78,9 @@ class EmployeeItem {
     String? basicSalary,
     String? commission,
     String? agreementDescription,
+    String? email,
+    DateTime? dateOfBirth,
+    DateTime? workStartedOn,
   }) {
     return EmployeeItem(
       id: id ?? this.id,
@@ -74,6 +98,9 @@ class EmployeeItem {
       basicSalary: basicSalary ?? this.basicSalary,
       commission: commission ?? this.commission,
       agreementDescription: agreementDescription ?? this.agreementDescription,
+      email: email ?? this.email,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      workStartedOn: workStartedOn ?? this.workStartedOn,
     );
   }
 }

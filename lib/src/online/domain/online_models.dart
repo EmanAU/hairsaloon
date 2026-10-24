@@ -24,6 +24,8 @@ class SalonStaff {
     this.isManager = false,
     this.phone = '',
     this.cnic = '',
+    this.isActive = true,
+    this.localEmployeeId,
   });
   final String id;
   final String name;
@@ -32,6 +34,8 @@ class SalonStaff {
   final bool isManager;
   final String phone;
   final String cnic;
+  final bool isActive;
+  final String? localEmployeeId;
   factory SalonStaff.fromJson(Map<String, dynamic> json) => SalonStaff(
     id: json['membership_id'] as String,
     name: json['display_name'] as String,
@@ -40,6 +44,8 @@ class SalonStaff {
     isManager: json['is_manager'] as bool? ?? false,
     phone: json['phone'] as String? ?? '',
     cnic: json['cnic'] as String? ?? '',
+    isActive: json['is_active'] as bool? ?? true,
+    localEmployeeId: json['local_employee_id'] as String?,
   );
 }
 
@@ -127,8 +133,12 @@ class SalonJoinRequest {
     required this.id,
     required this.businessName,
     required this.status,
+    this.businessId = '',
+    this.isActive = true,
   });
   final String id, businessName, status;
+  final String businessId;
+  final bool isActive;
   factory SalonJoinRequest.fromJson(Map<String, dynamic> json) =>
       SalonJoinRequest(
         id: json['id'] as String,
@@ -136,6 +146,8 @@ class SalonJoinRequest {
             (json['businesses'] as Map?)?['name'] as String? ??
             'Salon unavailable',
         status: json['join_status'] as String,
+        businessId: json['business_id'] as String? ?? '',
+        isActive: json['is_active'] as bool? ?? true,
       );
 }
 
@@ -227,10 +239,7 @@ class EmployeeWorkJob {
 }
 
 class EmployeeDayWork {
-  const EmployeeDayWork({
-    required this.date,
-    required this.jobs,
-  });
+  const EmployeeDayWork({required this.date, required this.jobs});
   final DateTime date;
   final List<EmployeeWorkJob> jobs;
 
@@ -368,8 +377,8 @@ class BusinessSettings {
   factory BusinessSettings.fromJson(Map<String, dynamic> json) =>
       BusinessSettings(
         taxRate: (json['tax_rate'] as num?)?.toDouble() ?? 17,
-        currencyCode: (json['currency_code'] as String?)?.trim().isNotEmpty ==
-                true
+        currencyCode:
+            (json['currency_code'] as String?)?.trim().isNotEmpty == true
             ? (json['currency_code'] as String).trim().toUpperCase()
             : 'PKR',
         expenseTypes: _stringList(json['expense_types']),

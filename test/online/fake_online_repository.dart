@@ -4,6 +4,41 @@ import 'package:hairsaloon/src/online/domain/online_models.dart';
 import 'package:hairsaloon/src/online/domain/online_repository.dart';
 
 class FakeOnlineRepository implements OnlineRepository {
+  final Map<String, Map<String, dynamic>> employeeRecordRows = {};
+  bool failEmployeeRecords = false;
+  String? leftBusiness;
+  @override
+  Future<void> saveEmployeeRecord(
+    String businessId,
+    Map<String, dynamic> employee,
+  ) async {
+    if (failEmployeeRecords) throw const OnlineFailure('No connection');
+    employeeRecordRows[employee['id'] as String] = Map.of(employee);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> employeeRecords(String businessId) async =>
+      employeeRecordRows.values.toList();
+  @override
+  Future<void> setEmployeeActive(String employeeId, bool active) async {}
+  @override
+  Future<void> leaveBusiness(String businessId) async {
+    leftBusiness = businessId;
+    joinRequestRows = joinRequestRows
+        .map(
+          (m) => m.businessId != businessId
+              ? m
+              : SalonJoinRequest(
+                  id: m.id,
+                  businessId: m.businessId,
+                  businessName: m.businessName,
+                  status: 'left',
+                  isActive: false,
+                ),
+        )
+        .toList();
+  }
+
   int reviewSaves = 0;
   String? savedReviewEmployee;
   String? savedReviewBody;
@@ -105,6 +140,19 @@ class FakeOnlineRepository implements OnlineRepository {
 
   @override
   Future<void> respondToEmployeeInvite(String inviteId, bool accept) async {
+    final match = pendingInviteRows.where((i) => i.id == inviteId);
+    if (accept && match.isNotEmpty) {
+      final invite = match.first;
+      joinRequestRows = [
+        ...joinRequestRows,
+        SalonJoinRequest(
+          id: 'joined-$inviteId',
+          businessId: invite.businessId,
+          businessName: invite.businessName,
+          status: 'accepted',
+        ),
+      ];
+    }
     pendingInviteRows = pendingInviteRows
         .where((invite) => invite.id != inviteId)
         .toList();
@@ -113,8 +161,7 @@ class FakeOnlineRepository implements OnlineRepository {
   @override
   Future<List<OwnerEmployeeInvite>> ownerEmployeeInvites(
     String businessId,
-  ) async =>
-      const <OwnerEmployeeInvite>[];
+  ) async => const <OwnerEmployeeInvite>[];
 
   @override
   Future<void> setEmployeeManager({
@@ -312,9 +359,7 @@ class FakeOnlineRepository implements OnlineRepository {
   ) async {
     businessPhotoUploads++;
     if (failBusinessPhoto) {
-      throw const PhotoUploadFailure(
-        'Could not upload photo. Please retry.',
-      );
+      throw const PhotoUploadFailure('Could not upload photo. Please retry.');
     }
   }
 

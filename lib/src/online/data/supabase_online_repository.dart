@@ -221,7 +221,9 @@ class SupabaseOnlineRepository implements OnlineRepository {
       } catch (error) {
         lastError = error;
         if (attempt < 2) {
-          await Future<void>.delayed(Duration(milliseconds: 200 * (attempt + 1)));
+          await Future<void>.delayed(
+            Duration(milliseconds: 200 * (attempt + 1)),
+          );
         }
       }
     }
@@ -421,12 +423,111 @@ class SupabaseOnlineRepository implements OnlineRepository {
   @override
   Future<void> respondToEmployeeInvite(String inviteId, bool accept) async {
     try {
-      await _client.rpc(
-        'respond_to_employee_invite',
+      final raw = await _client.rpc(
+        'respond_to_employee_invite_profile',
         params: {'invite': inviteId, 'accept': accept},
       );
+      // The membership is already committed. Photo upload is a separate retryable
+      // action and must not report that joining failed after it succeeded.
+      if (accept && raw is Map && raw['photoBase64'] is String) {
+        try {
+          final preferences = await SharedPreferences.getInstance();
+          await preferences.setString(
+            'employee_pending_photo_$_requiredUserId',
+            raw['photoBase64'] as String,
+          );
+          await _retryEmployeePhoto();
+        } catch (_) {
+          /* Membership succeeded; photo retry must not report join failure. */
+        }
+      }
     } catch (error) {
       _throwJoinFailure(error);
+    }
+  }
+
+  Future<void> _retryEmployeePhoto() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final key = 'employee_pending_photo_$_requiredUserId';
+      final encoded = preferences.getString(key);
+      if (encoded == null) return;
+      final profile = await _client
+          .from('profiles')
+          .select('photo_path')
+          .eq('user_id', _requiredUserId)
+          .maybeSingle();
+      if (profile?['photo_path'] == null) {
+        final bytes = base64Decode(encoded);
+        final extension = bytes.length >= 8 && bytes[0] == 137 && bytes[1] == 80
+            ? 'png'
+            : 'jpg';
+        await uploadProfilePhoto(bytes, extension);
+      }
+      await preferences.remove(key);
+    } catch (_) {
+      // Keep the photo queued; the next workspace load retries it.
+    }
+  }
+
+  @override
+  Future<void> saveEmployeeRecord(
+    String businessId,
+    Map<String, dynamic> employee,
+  ) async {
+    try {
+      await _client.rpc(
+        'save_employee_record',
+        params: {'business': businessId, 'employee': employee},
+      );
+    } catch (error) {
+      _throwWriteFailure(
+        error,
+        fallback:
+            'Employee is saved on this device. Invitation will sync when connected.',
+      );
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> employeeRecords(String businessId) async {
+    final rows = await _client
+        .from('employee_invites')
+        .select('local_employee_id,employee_data,status')
+        .eq('business_id', businessId)
+        .not('local_employee_id', 'is', null);
+    return rows
+        .map(
+          (r) => <String, dynamic>{
+            ...Map<String, dynamic>.from(r['employee_data'] as Map),
+            'id': (r['employee_data'] as Map)['id'] ?? r['local_employee_id'],
+            'inviteStatus': r['status'],
+          },
+        )
+        .toList();
+  }
+
+  @override
+  Future<void> setEmployeeActive(String employeeId, bool active) async {
+    try {
+      await _client.rpc(
+        'set_employee_active',
+        params: {'employee': employeeId, 'active': active},
+      );
+    } catch (error) {
+      _throwWriteFailure(error, fallback: 'Could not update employee status.');
+    }
+  }
+
+  @override
+  Future<void> leaveBusiness(String businessId) async {
+    try {
+      await _client.rpc('leave_business', params: {'business': businessId});
+    } catch (error) {
+      _throwWriteFailure(
+        error,
+        fallback: 'Could not leave this business. Please retry.',
+      );
     }
   }
 
@@ -461,11 +562,7 @@ class SupabaseOnlineRepository implements OnlineRepository {
     try {
       await _client.rpc(
         'set_employee_manager',
-        params: {
-          'employee': employeeId,
-          'make_manager': isManager,
-          'pin': pin,
-        },
+        params: {'employee': employeeId, 'make_manager': isManager, 'pin': pin},
       );
     } catch (error) {
       _throwWriteFailure(error, fallback: 'Could not update manager access.');
@@ -645,11 +742,18 @@ class SupabaseOnlineRepository implements OnlineRepository {
         if (raw is! Map) continue;
         final bill = Map<String, dynamic>.from(raw);
         final employeeName = (bill['employeeName'] ?? '').toString().trim();
-        if (employeeName.toLowerCase() != name) continue;
+        final billEmployeeId = (bill['employeeId'] ?? '').toString();
+        if (billEmployeeId.isNotEmpty
+            ? billEmployeeId != contract.employeeId
+            : employeeName.toLowerCase() != name) {
+          continue;
+        }
         final lines = (bill['lines'] as List?) ?? const [];
         final services = lines
             .whereType<Map>()
-            .map((line) => (line['serviceName'] ?? line['name'] ?? '').toString())
+            .map(
+              (line) => (line['serviceName'] ?? line['name'] ?? '').toString(),
+            )
             .where((label) => label.isNotEmpty)
             .toList();
         jobs.add(
@@ -841,6 +945,7 @@ class SupabaseOnlineRepository implements OnlineRepository {
           .eq('id', id)
           .single();
     }
+    await _retryEmployeePhoto();
     final profile = await _client
         .from('profiles')
         .select()
@@ -1000,6 +1105,13 @@ class SupabaseOnlineRepository implements OnlineRepository {
     };
     try {
       if (id == null) {
+        if ((await joinRequests()).any(
+          (membership) => membership.status == 'accepted',
+        )) {
+          throw const OnlineFailure(
+            'Leave your current business before creating your own.',
+          );
+        }
         final existing = await _client
             .from('businesses')
             .select('id')
@@ -1118,9 +1230,8 @@ class SupabaseOnlineRepository implements OnlineRepository {
       );
     }
     if (error is PostgrestException) {
-      final text =
-          '${error.message} ${error.details ?? ''} ${error.hint ?? ''}'
-              .toLowerCase();
+      final text = '${error.message} ${error.details ?? ''} ${error.hint ?? ''}'
+          .toLowerCase();
       if (text.contains('duplicate') || error.code == '23505') {
         if (text.contains('cnic')) {
           throw const OnlineFailure('This CNIC is already registered.');
@@ -1147,9 +1258,8 @@ class SupabaseOnlineRepository implements OnlineRepository {
       );
     }
     if (error is PostgrestException) {
-      final text =
-          '${error.message} ${error.details ?? ''} ${error.hint ?? ''}'
-              .toLowerCase();
+      final text = '${error.message} ${error.details ?? ''} ${error.hint ?? ''}'
+          .toLowerCase();
       if (text.contains('create your profile')) {
         throw const OnlineFailure(
           'Create your personal profile first, then try again.',
@@ -1237,7 +1347,7 @@ class SupabaseOnlineRepository implements OnlineRepository {
   Future<List<SalonJoinRequest>> joinRequests() async {
     final rows = await _client
         .from('business_employees')
-        .select('id,join_status,businesses(name)')
+        .select('id,business_id,join_status,is_active,businesses(name)')
         .eq('profile_id', _requiredUserId)
         .order('created_at', ascending: false);
     return rows.map(SalonJoinRequest.fromJson).toList();

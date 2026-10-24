@@ -236,6 +236,14 @@ class _OnlineAppState extends State<OnlineApp> {
             onSignOut: session.repository.signOut,
           );
         }
+        if (session.hasEmployment || session.invitations.isNotEmpty) {
+          return ManagerEntry(
+            key: ValueKey(
+              '${session.repository.userId}:${session.hasEmployment}',
+            ),
+            session: session,
+          );
+        }
         if (session.workspace!.profile?.isComplete != true) {
           return ProfileForm(
             repository: session.repository,

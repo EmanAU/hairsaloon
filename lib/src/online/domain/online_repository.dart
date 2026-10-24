@@ -37,6 +37,13 @@ abstract interface class OnlineRepository {
   Future<List<SalonStaff>> staff(String businessId);
   Future<List<SalonStaff>> team(String businessId);
   Future<void> reviewJoin(String employeeId, bool accept);
+  Future<void> saveEmployeeRecord(
+    String businessId,
+    Map<String, dynamic> employee,
+  );
+  Future<List<Map<String, dynamic>>> employeeRecords(String businessId);
+  Future<void> setEmployeeActive(String employeeId, bool active);
+  Future<void> leaveBusiness(String businessId);
   Future<void> inviteEmployee(String businessId, String profileCode);
   Future<String> inviteEmployeeByIdentity({
     required String businessId,

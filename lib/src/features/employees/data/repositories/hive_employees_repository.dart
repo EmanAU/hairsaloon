@@ -11,6 +11,7 @@ class HiveEmployeesRepository {
 
   final Box<Map> _box;
   final Box<dynamic> _metaBox;
+  Stream<BoxEvent> watch() => _box.watch();
 
   List<EmployeeItem> getAll() {
     return _box.values
@@ -61,6 +62,9 @@ Map<String, dynamic> _employeeToMap(EmployeeItem item) {
     'basicSalary': item.basicSalary,
     'commission': item.commission,
     'agreementDescription': item.agreementDescription,
+    'email': item.email,
+    'dateOfBirth': item.dateOfBirth?.toIso8601String().substring(0, 10),
+    'workStartedOn': item.workStartedOn?.toIso8601String().substring(0, 10),
   };
 }
 
@@ -82,5 +86,8 @@ EmployeeItem _employeeFromMap(Map<String, dynamic> map) {
     basicSalary: map['basicSalary']?.toString(),
     commission: map['commission']?.toString(),
     agreementDescription: map['agreementDescription']?.toString(),
+    email: map['email']?.toString() ?? '',
+    dateOfBirth: DateTime.tryParse(map['dateOfBirth']?.toString() ?? ''),
+    workStartedOn: DateTime.tryParse(map['workStartedOn']?.toString() ?? ''),
   );
 }

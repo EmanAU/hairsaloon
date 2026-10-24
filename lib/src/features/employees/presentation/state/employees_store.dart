@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'package:hairsaloon/src/features/employees/data/repositories/hive_employees_repository.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 
@@ -6,6 +7,7 @@ class EmployeesStore extends ChangeNotifier {
   EmployeesStore({required HiveEmployeesRepository repository})
     : _repository = repository {
     _reload();
+    _changes = _repository.watch().listen((_) => _reload());
   }
 
   static const List<String> defaultSpecialistCategories = <String>[
@@ -17,6 +19,12 @@ class EmployeesStore extends ChangeNotifier {
   ];
 
   final HiveEmployeesRepository _repository;
+  StreamSubscription<dynamic>? _changes;
+  @override
+  void dispose() {
+    _changes?.cancel();
+    super.dispose();
+  }
 
   List<EmployeeItem> _all = const <EmployeeItem>[];
   List<String> _customCategories = const <String>[];

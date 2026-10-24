@@ -299,8 +299,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Accept contract'), findsNothing);
     expect(find.text('Decline contract'), findsNothing);
-    expect(find.textContaining('Your owner set these terms'), findsOneWidget);
-    expect(find.text('PERMANENT · scheduled'), findsOneWidget);
+    expect(find.text('Employment type'), findsOneWidget);
+    expect(find.text('Permanent'), findsOneWidget);
+    expect(find.text('Scheduled'), findsOneWidget);
   });
   testWidgets('unconfigured business app shows setup without offline entry', (
     tester,

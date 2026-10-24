@@ -81,6 +81,16 @@ void main() {
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Add business photo'));
       await tester.tap(find.text('Add business photo'));
+      for (
+        var i = 0;
+        i < 30 && find.text('Change business photo').evaluate().isEmpty;
+        i++
+      ) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump();
+      }
       await tester.pumpAndSettle();
       expect(find.text('Change business photo'), findsOneWidget);
       final save = find
@@ -102,12 +112,14 @@ void main() {
       expect(repository.workspace.businesses.single.type, 'Beauty Parlour');
       expect(repository.workspace.businesses.single.city, 'Lahore');
       repository.failBusinessPhoto = false;
-      await tester.tap(find.byTooltip('Dismiss notification'));
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(save);
-      await tester.tap(save);
+      expect(find.byKey(const Key('business-photo-error')), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+      final retry = find.text('Retry photo');
+      await tester.ensureVisible(retry);
+      await tester.tap(retry);
       await tester.pumpAndSettle();
       expect(repository.businessPhotoUploads, 2);
+      expect(repository.businessSaves, 1);
       expect(repository.workspace.businesses, hasLength(1));
       expect(find.byType(BusinessForm), findsNothing);
     },

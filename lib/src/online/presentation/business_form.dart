@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:ui' as ui;
+import 'dart:convert';
 import '../../theme/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -48,6 +50,17 @@ class _BusinessFormState extends State<BusinessForm> {
   String? _extension;
   bool _saving = false;
   bool _picking = false;
+  String? _photoError;
+  String? _savedDetails;
+  bool _remembered = false;
+  String get _detailsStamp => jsonEncode([
+    _name.text,
+    _phone.text,
+    _type,
+    _city,
+    _area.text,
+    _address.text,
+  ]);
 
   @override
   void dispose() {
@@ -66,18 +79,27 @@ class _BusinessFormState extends State<BusinessForm> {
         imageQuality: 85,
       );
       if (file == null) return;
-      final extension = file.name.split('.').last.toLowerCase();
-      if (!['jpg', 'jpeg', 'png', 'webp'].contains(extension) ||
-          await file.length() > 2 * 1024 * 1024) {
+      if (await file.length() > 20 * 1024 * 1024) {
         throw const OnlineFailure(
           'Choose a JPG, PNG or WebP photo up to 2 MB.',
         );
       }
       final bytes = await file.readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes, targetWidth: 512);
+      final frame = await codec.getNextFrame();
+      final normalized = await frame.image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+      frame.image.dispose();
+      codec.dispose();
+      if (normalized == null || normalized.lengthInBytes > 2 * 1024 * 1024) {
+        throw const OnlineFailure('Choose a smaller photo up to 2 MB.');
+      }
       if (mounted) {
         setState(() {
-          _photo = bytes;
-          _extension = extension;
+          _photo = normalized.buffer.asUint8List();
+          _extension = 'png';
+          _photoError = null;
         });
       }
     } catch (error) {
@@ -99,15 +121,18 @@ class _BusinessFormState extends State<BusinessForm> {
     setState(() => _saving = true);
     try {
       // Retain the ID if a photo upload fails, so retry updates this business.
-      _savedId = await widget.repository.saveBusiness(
-        id: _savedId,
-        name: _name.text,
-        phone: _phone.text,
-        type: _type,
-        city: _city!,
-        area: _area.text,
-        address: _address.text,
-      );
+      if (_savedId == null || _savedDetails != _detailsStamp) {
+        _savedId = await widget.repository.saveBusiness(
+          id: _savedId,
+          name: _name.text,
+          phone: _phone.text,
+          type: _type,
+          city: _city!,
+          area: _area.text,
+          address: _address.text,
+        );
+        _savedDetails = _detailsStamp;
+      }
       var photoFailed = false;
       if (_photo != null) {
         try {
@@ -118,22 +143,23 @@ class _BusinessFormState extends State<BusinessForm> {
           );
         } on PhotoUploadFailure catch (error) {
           photoFailed = true;
-          if (mounted) ToastService.error(error.message, context);
+          if (mounted) setState(() => _photoError = error.message);
         } on OnlineFailure catch (error) {
           photoFailed = true;
-          if (mounted) ToastService.error(error.message, context);
+          if (mounted) setState(() => _photoError = error.message);
         } catch (_) {
           photoFailed = true;
           if (mounted) {
-            ToastService.error(
-              'Business was saved, but the photo could not be uploaded. Try again.',
-              context,
+            setState(
+              () => _photoError =
+                  'Business details saved. Photo upload is unavailable; retry it or continue without a photo.',
             );
           }
         }
       }
       if (!mounted) return;
-      if (widget.business == null) {
+      if (widget.business == null && !_remembered) {
+        _remembered = true;
         widget.onRegistered?.call(
           SalonBusiness(
             id: _savedId!,
@@ -380,8 +406,27 @@ class _BusinessFormState extends State<BusinessForm> {
                     },
                   ),
                   const SizedBox(height: 24),
+                  if (_photoError != null) ...[
+                    Text(
+                      _photoError!,
+                      key: const Key('business-photo-error'),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _saving
+                          ? null
+                          : () => Navigator.pop(context, true),
+                      child: const Text('Continue without photo'),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   ActionButton(
-                    label: 'Save business',
+                    label: _photoError == null
+                        ? 'Save business'
+                        : 'Retry photo',
                     onPressed: _save,
                     icon: Icons.check,
                     style: FilledButton.styleFrom(

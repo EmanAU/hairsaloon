@@ -75,7 +75,9 @@ class _EmployeePhotoState extends State<EmployeePhoto> {
               builder: (context, snapshot) {
                 final url = snapshot.data;
                 return url == null
-                    ? _placeholder()
+                    ? (widget.employee.email.isNotEmpty
+                          ? _localPhoto()
+                          : _placeholder())
                     : Image.network(
                         url,
                         fit: BoxFit.cover,

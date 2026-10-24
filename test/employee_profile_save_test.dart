@@ -21,6 +21,8 @@ class _FailingEmployeeRepository extends HiveEmployeesRepository {
 }
 
 class _MemoryBox<T> extends Fake implements Box<T> {
+  @override
+  Stream<BoxEvent> watch({dynamic key}) => const Stream.empty();
   final Map<dynamic, T> data = {};
   @override
   Iterable<T> get values => data.values;

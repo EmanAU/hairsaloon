@@ -96,6 +96,7 @@ class BusinessLogoPicker extends StatefulWidget {
 class _BusinessLogoPickerState extends State<BusinessLogoPicker> {
   late final ImagePicker _picker;
   bool _busy = false;
+
   /// Local preview so the photo shows immediately after pick.
   Uint8List? _previewBytes;
 
@@ -146,19 +147,27 @@ class _BusinessLogoPickerState extends State<BusinessLogoPicker> {
     if (bytes.isEmpty) {
       throw const FormatException('Could not read this image.');
     }
-    if (bytes.length > 2 * 1024 * 1024) {
+    if (bytes.length > 20 * 1024 * 1024) {
       throw const FormatException(
         'Logo is too large. Choose an image under 2 MB.',
       );
     }
 
-    // Validate decode before saving.
+    // Normalize camera/gallery formats into a small, correctly typed PNG.
     final codec = await ui.instantiateImageCodec(bytes, targetWidth: 512);
+    final frame = await codec.getNextFrame();
+    final normalized = await frame.image.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
+    frame.image.dispose();
     codec.dispose();
-
-    final encoded = base64Encode(bytes);
+    if (normalized == null || normalized.lengthInBytes > 2 * 1024 * 1024) {
+      throw const FormatException('Choose a smaller image under 2 MB.');
+    }
+    final photo = normalized.buffer.asUint8List();
+    final encoded = base64Encode(photo);
     if (!mounted) return;
-    setState(() => _previewBytes = bytes);
+    setState(() => _previewBytes = photo);
     widget.onChanged(encoded);
   }
 
@@ -178,7 +187,8 @@ class _BusinessLogoPickerState extends State<BusinessLogoPicker> {
       if (mounted) ToastService.error(error.message);
     } on PlatformException catch (error) {
       if (!mounted) return;
-      final denied = error.code.toLowerCase().contains('permission') ||
+      final denied =
+          error.code.toLowerCase().contains('permission') ||
           (error.message?.toLowerCase().contains('permission') ?? false);
       ToastService.error(
         denied
@@ -198,7 +208,8 @@ class _BusinessLogoPickerState extends State<BusinessLogoPicker> {
 
   Future<void> _showSourceSheet() async {
     if (_busy || !widget.enabled) return;
-    final hasPhoto = _previewBytes != null ||
+    final hasPhoto =
+        _previewBytes != null ||
         (widget.value != null && widget.value!.isNotEmpty);
 
     final action = await showAppSheet<String>(
@@ -275,24 +286,24 @@ class _BusinessLogoPickerState extends State<BusinessLogoPicker> {
                           ),
                         )
                       : hasPhoto
-                          ? Image.memory(
-                              _previewBytes!,
-                              width: size,
-                              height: size,
-                              fit: BoxFit.cover,
-                              gaplessPlayback: true,
-                              filterQuality: FilterQuality.medium,
-                              errorBuilder: (_, _, _) => const Icon(
-                                Icons.storefront_rounded,
-                                size: 34,
-                                color: AppColors.textSecondary,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.storefront_rounded,
-                              size: 34,
-                              color: AppColors.textSecondary,
-                            ),
+                      ? Image.memory(
+                          _previewBytes!,
+                          width: size,
+                          height: size,
+                          fit: BoxFit.cover,
+                          gaplessPlayback: true,
+                          filterQuality: FilterQuality.medium,
+                          errorBuilder: (_, _, _) => const Icon(
+                            Icons.storefront_rounded,
+                            size: 34,
+                            color: AppColors.textSecondary,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.storefront_rounded,
+                          size: 34,
+                          color: AppColors.textSecondary,
+                        ),
                 ),
                 if (widget.enabled)
                   Positioned(
@@ -328,7 +339,10 @@ class _BusinessLogoPickerState extends State<BusinessLogoPicker> {
             children: [
               Text(
                 widget.title,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
@@ -357,8 +371,8 @@ class _BusinessLogoPickerState extends State<BusinessLogoPicker> {
                     _busy
                         ? 'Opening…'
                         : hasPhoto
-                            ? widget.changeLabel
-                            : widget.addLabel,
+                        ? widget.changeLabel
+                        : widget.addLabel,
                   ),
                 ),
               ],

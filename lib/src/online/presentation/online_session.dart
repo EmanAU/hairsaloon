@@ -21,6 +21,9 @@ class OnlineSession extends ChangeNotifier {
   OnlineWorkspace? workspace;
   String? error;
   bool loading = false;
+  List<SalonJoinRequest> memberships = const [];
+  List<PendingEmployeeInvite> invitations = const [];
+  bool get hasEmployment => memberships.any((m) => m.status == 'accepted');
   bool _disposed = false;
   int _generation = 0;
   String? _workspaceUser;
@@ -59,11 +62,17 @@ class OnlineSession extends ChangeNotifier {
     if (id == null) {
       workspace = null;
       _workspaceUser = null;
+      memberships = const [];
+      invitations = const [];
       return;
     }
     try {
       final result = await repository.loadWorkspace();
+      final roles = await repository.joinRequests();
+      final pending = await repository.pendingInvitesForMe();
       if (!_disposed && generation == _generation && repository.userId == id) {
+        memberships = roles;
+        invitations = pending;
         // Keep just-registered (or cached) salons if the live fetch is empty/stale.
         workspace = previous == null
             ? result

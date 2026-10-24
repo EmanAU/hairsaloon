@@ -130,6 +130,24 @@ void main() {
           image.dispose();
         });
       }
+      await tester.tap(find.byTooltip('Open menu').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Contracts'), findsOneWidget);
+      expect(find.text('Employees'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      if (const bool.fromEnvironment('EXPORT_SCREENSHOTS')) {
+        await tester.runAsync(() async {
+          final boundary = boundaryKey.currentContext!.findRenderObject()!
+              as RenderRepaintBoundary;
+          final image = await boundary.toImage(pixelRatio: 2);
+          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+          await File('build/mobile-fix/business-drawer-${size.width.toInt()}.png')
+              .writeAsBytes(bytes!.buffer.asUint8List());
+          image.dispose();
+        });
+      }
+      await tester.tap(find.byTooltip('Close menu'));
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('QR codes'));
       await tester.pumpAndSettle();
       expect(find.byType(InviteQrScreen), findsOneWidget);

@@ -25,9 +25,9 @@ class AppDrawer extends StatelessWidget {
   );
 
   static const Color _divider = Color(0xFFEEEEEE);
-  static const Color _iconBg = Color(0xFFF7F8F4);
-  static const Color _iconColor = Color(0xFF7A7A7A);
-  static const Color _headerBg = Color(0xFFFBFCF7);
+  static const Color _iconBg = Color(0xFFF7F8F7);
+  static const Color _iconColor = Color(0xFF4A6355);
+  static const Color _headerBg = Color(0xFFCDFA4A);
 
   @override
   Widget build(BuildContext context) {
@@ -41,11 +41,11 @@ class AppDrawer extends StatelessWidget {
       backgroundColor: AppColors.surface,
       surfaceTintColor: const Color(0x00000000),
       elevation: 0,
-      width: 300,
+      width: (MediaQuery.sizeOf(context).width * .86).clamp(280.0, 340.0),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
-          topRight: Radius.circular(18),
-          bottomRight: Radius.circular(18),
+          topRight: Radius.zero,
+          bottomRight: Radius.zero,
         ),
       ),
       child: SafeArea(
@@ -148,6 +148,24 @@ class AppDrawer extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   const _SectionLabel('FINANCE'),
+                  _Item(
+                    icon: CupertinoIcons.chart_bar,
+                    title: 'Sales History',
+                    onTap: () {
+                      final navigator = Navigator.of(context);
+                      navigator.pop();
+                      navigator.pushNamed(AppRoutes.financeSales);
+                    },
+                  ),
+                  _Item(
+                    icon: CupertinoIcons.chart_pie,
+                    title: 'Finance Overview',
+                    onTap: () {
+                      final navigator = Navigator.of(context);
+                      navigator.pop();
+                      navigator.pushNamed(AppRoutes.financeOverview);
+                    },
+                  ),
                   _Item(
                     icon: CupertinoIcons.creditcard,
                     title: 'Payment Accounts',
@@ -307,50 +325,63 @@ class _Header extends StatelessWidget {
         color: AppDrawer._headerBg,
         border: Border(bottom: BorderSide(color: AppDrawer._divider, width: 1)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              CupertinoIcons.building_2_fill,
-              size: 20,
-              color: AppColors.onPrimary,
-            ),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'TrimMatrix',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w400),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Close menu',
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(CupertinoIcons.xmark, size: 18),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'BUSINESS',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.1,
-                  ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(
+                CupertinoIcons.person_crop_circle,
+                size: 38,
+                color: AppColors.textPrimary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'YOUR BUSINESS',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      businessName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -0.2,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  businessName,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                    height: 1.25,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
@@ -375,14 +406,12 @@ class _Footer extends StatelessWidget {
             height: 42,
             child: TextButton(
               style: TextButton.styleFrom(
-                backgroundColor: AppColors.danger.withValues(alpha: 0.07),
+                backgroundColor: Colors.white,
                 foregroundColor: AppColors.danger,
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
-                  side: BorderSide(
-                    color: AppColors.danger.withValues(alpha: 0.18),
-                  ),
+                  side: BorderSide(color: AppDrawer._divider),
                 ),
               ),
               onPressed: onLogout,
@@ -453,31 +482,26 @@ class _Item extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(4),
             splashColor: AppColors.primary.withValues(alpha: 0.12),
             highlightColor: AppColors.primary.withValues(alpha: 0.06),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
               child: Row(
                 children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: AppDrawer._iconBg,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppDrawer._divider),
-                    ),
-                    child: Icon(icon, size: 16, color: AppDrawer._iconColor),
+                  SizedBox(
+                    width: 28,
+                    height: 24,
+                    child: Icon(icon, size: 20, color: AppDrawer._iconColor),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Text(
                       title,
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w400,
                         letterSpacing: -0.1,
                       ),
                     ),

@@ -7,8 +7,12 @@ class ToastService {
   static final navigatorKey = GlobalKey<NavigatorState>();
   static final messengerKey = GlobalKey<ScaffoldMessengerState>();
 
-  static void success(String message, [BuildContext? context]) =>
-      _show(message, AppColors.success, Icons.check_circle_outline_rounded, context);
+  static void success(String message, [BuildContext? context]) => _show(
+    message,
+    AppColors.success,
+    Icons.check_circle_outline_rounded,
+    context,
+  );
   static void error(String message, [BuildContext? context]) =>
       _show(message, AppColors.danger, Icons.error_outline_rounded, context);
   static void info(String message, [BuildContext? context]) =>
@@ -34,7 +38,7 @@ class ToastService {
         SnackBar(
           behavior: SnackBarBehavior.floating,
           backgroundColor: colors.surface,
-          elevation: 6,
+          elevation: 2,
           width: MediaQuery.sizeOf(messenger.context).shortestSide >= 600
               ? 560
               : null,
@@ -45,18 +49,16 @@ class ToastService {
           duration: const Duration(seconds: 4),
           dismissDirection: DismissDirection.horizontal,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: accent.withValues(alpha: 0.35)),
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(
+              color: colors.outlineVariant.withValues(alpha: .5),
+            ),
           ),
           content: Row(
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(10),
-                ),
+              SizedBox(
+                width: 22,
+                height: 22,
                 child: Icon(
                   icon,
                   size: 21,
@@ -71,7 +73,8 @@ class ToastService {
                   message,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colors.onSurface,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w400,
+                    fontSize: 12,
                     height: 1.4,
                   ),
                 ),
