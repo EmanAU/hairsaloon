@@ -139,7 +139,7 @@ void main() {
             onSignOut: repository.signOut,
           ),
         );
-        expect(find.text('Find your next look'), findsOneWidget);
+        expect(find.text('Scanned salons'), findsOneWidget);
         await capture(tester, 'customer', '01_directory');
 
         await pumpFrame(

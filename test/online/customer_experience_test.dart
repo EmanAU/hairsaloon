@@ -25,6 +25,7 @@ const salon = SalonBusiness(
 );
 
 class CustomerRepository extends FakeOnlineRepository {
+  int discoveryCalls = 0;
   bool unavailable = false, failReview = false;
   String? lastBarber;
   final List<Map<String, dynamic>> reviewRows = [];
@@ -66,7 +67,11 @@ class CustomerRepository extends FakeOnlineRepository {
   Future<List<SalonBusiness>> discoverBusinesses({
     String search = '',
     int page = 0,
-  }) async => [salon];
+  }) async {
+    discoveryCalls++;
+    return [salon];
+  }
+
   @override
   Future<List<SalonStaff>> staff(String id) async => const [
     SalonStaff(id: 'barber', name: 'Hassan Ali', isWorking: true),
@@ -213,6 +218,10 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        expect(repo.discoveryCalls, 0);
+        expect(find.text('Discover'), findsNothing);
+        expect(find.text('Find your next look'), findsNothing);
+        expect(find.text('Ali Hair Studio'), findsNothing);
         await capture(tester, boundary, 'home-${width.toInt()}');
         await tester.tap(find.text('Scan salon QR'));
         await tester.pumpAndSettle();
@@ -274,8 +283,7 @@ void main() {
         await tester.pageBack();
         await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('Scanned salons'));
-        await tester.tap(find.text('Scanned salons'));
-        await tester.pumpAndSettle();
+        expect(repo.discoveryCalls, 0);
         expect(find.textContaining('Scanned 2 times'), findsOneWidget);
         expect(find.text('Ali Hair Studio'), findsOneWidget);
         await capture(tester, boundary, 'history-${width.toInt()}');
