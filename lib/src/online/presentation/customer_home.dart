@@ -32,18 +32,10 @@ class CustomerDirectory extends StatefulWidget {
 }
 
 class _CustomerDirectoryState extends State<CustomerDirectory> {
-  late Future<List<SalonBusiness>> _businesses = widget.repository
-      .discoverBusinesses();
   late final _history = CustomerHistory(widget.repository.userId ?? 'guest');
   late Future<List<ScannedSalon>> _recent = _history.load();
-  String _search = '';
-  bool _historyOnly = false, _opening = false, _scanning = false;
-  int _page = 0;
+  bool _opening = false, _scanning = false;
   void _load() => setState(() {
-    _businesses = widget.repository.discoverBusinesses(
-      search: _search,
-      page: _page,
-    );
     _recent = _history.load();
   });
   Future<void> _open(
@@ -157,7 +149,7 @@ class _CustomerDirectoryState extends State<CustomerDirectory> {
           onSelected: (v) async {
             if (v == 'scan') await _scanQr();
             if (v == 'refresh') _load();
-            if (v == 'history') setState(() => _historyOnly = true);
+            if (v == 'history') _load();
             if (v == 'signout') await widget.onSignOut();
           },
           itemBuilder: (_) => [
@@ -172,7 +164,7 @@ class _CustomerDirectoryState extends State<CustomerDirectory> {
     body: RefreshIndicator(
       onRefresh: () async {
         _load();
-        await _businesses;
+        await _recent;
       },
       child: _PageList(
         children: [
@@ -237,36 +229,27 @@ class _CustomerDirectoryState extends State<CustomerDirectory> {
               ],
             ),
           ),
-          Row(
-            children: [
-              Expanded(
-                child: _Tab(
-                  label: 'Discover',
-                  selected: !_historyOnly,
-                  onTap: () => setState(() => _historyOnly = false),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _Tab(
-                  label: 'Scanned salons',
-                  selected: _historyOnly,
-                  onTap: () => setState(() => _historyOnly = true),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 22),
           FutureBuilder<List<ScannedSalon>>(
             future: _recent,
             builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                );
+              }
+              if (snap.hasError) {
+                return TextButton(
+                  onPressed: _load,
+                  child: const Text('Retry scanned salons'),
+                );
+              }
               final rows = snap.data ?? [];
-              if (!_historyOnly && rows.isEmpty) return const SizedBox.shrink();
+
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _SectionTitle(
-                    _historyOnly ? 'Your scan history' : 'Welcome back',
+                  const _SectionTitle(
+                    'Scanned salons',
                     subtitle: 'QR scans saved on this device',
                   ),
                   if (rows.isEmpty)
@@ -275,7 +258,7 @@ class _CustomerDirectoryState extends State<CustomerDirectory> {
                       'Scan a salon QR and find it here next time.',
                       CupertinoIcons.clock,
                     ),
-                  for (final row in (_historyOnly ? rows : rows.take(3)))
+                  for (final row in rows)
                     _SalonTile(
                       repository: widget.repository,
                       salon: row.business,
@@ -283,77 +266,10 @@ class _CustomerDirectoryState extends State<CustomerDirectory> {
                           '${row.scans == 1 ? 'Scanned once' : 'Scanned ${row.scans} times'} · ${_date(row.lastScanned)}',
                       onTap: () => _open(row.business),
                     ),
-                  if (!_historyOnly) const SizedBox(height: 18),
                 ],
               );
             },
           ),
-          if (!_historyOnly) ...[
-            const _SectionTitle(
-              'Find your next look',
-              subtitle: 'Explore salons and their latest services',
-            ),
-            TextField(
-              onSubmitted: (v) {
-                _search = v.trim();
-                _page = 0;
-                _load();
-              },
-              decoration: _searchDecoration('Search salon name'),
-            ),
-            const SizedBox(height: 14),
-            RemoteContent<List<SalonBusiness>>(
-              future: _businesses,
-              onRetry: _load,
-              builder: (rows) => Column(
-                children: [
-                  if (rows.isEmpty)
-                    const _Empty(
-                      'No salons found',
-                      'Try another name or scan the salon’s QR.',
-                      CupertinoIcons.search,
-                    ),
-                  for (final salon in rows)
-                    _SalonTile(
-                      repository: widget.repository,
-                      salon: salon,
-                      subtitle: '${salon.area}, ${salon.city}',
-                      onTap: () => _open(salon),
-                    ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      TextButton(
-                        onPressed: _page == 0
-                            ? null
-                            : () {
-                                _page--;
-                                _load();
-                              },
-                        child: const Text('Previous'),
-                      ),
-                      Text(
-                        'Page ${_page + 1}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: rows.length < 25
-                            ? null
-                            : () {
-                                _page++;
-                                _load();
-                              },
-                        child: const Text('Next'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     ),
@@ -944,28 +860,6 @@ class _SectionTitle extends StatelessWidget {
         ],
       ],
     ),
-  );
-}
-
-class _Tab extends StatelessWidget {
-  const _Tab({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => OutlinedButton(
-    onPressed: onTap,
-    style: OutlinedButton.styleFrom(
-      backgroundColor: selected ? _ink : Colors.white,
-      foregroundColor: selected ? Colors.white : _ink,
-      side: BorderSide(color: selected ? _ink : _line),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-    ),
-    child: Text(label, style: const TextStyle(fontSize: 12)),
   );
 }
 
