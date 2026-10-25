@@ -1,15 +1,15 @@
-import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 import '../../../core/utils/pk_phone.dart';
 import '../../../core/widgets/app_confirm_dialog.dart';
 import '../../../online/data/business_workspace.dart';
-import '../../../online/domain/online_repository.dart';
+import '../../../online/data/business_inbox.dart';
 import '../../../online/presentation/business_owner_details_screen.dart';
 import '../../../online/presentation/invite_qr_screen.dart';
 import '../../../online/presentation/join_requests_screen.dart';
-import '../../../online/presentation/employee_invite_flows.dart';
+import '../../../online/presentation/business_notifications_screen.dart';
 import '../../router/app_routes.dart';
 import '../../services/presentation/categories_screen.dart';
 
@@ -93,6 +93,7 @@ class BusinessDashboardHome extends StatelessWidget {
                                   ],
                                 ),
                               ),
+                              BusinessNotificationBell(workspace: workspace),
                               IconButton(
                                 tooltip: 'Log out',
                                 padding: EdgeInsets.zero,
@@ -322,10 +323,11 @@ class BusinessDashboardHome extends StatelessWidget {
                             padding: EdgeInsets.zero,
                             children: [
                               _HomeTile(
-                                label: 'Scan QR',
-                                icon: 'qr',
-                                onTap: () =>
-                                    scanEmployeeProfile(context, workspace),
+                                label: 'Finance overview',
+                                icon: 'sales',
+                                onTap: () => Navigator.of(
+                                  context,
+                                ).pushNamed(AppRoutes.financeOverview),
                               ),
                               _HomeTile(
                                 label: 'Rate List',
@@ -346,8 +348,7 @@ class BusinessDashboardHome extends StatelessWidget {
                                 label: 'Join Requests',
                                 icon: 'join',
                                 badge: _JoinRequestBadge(
-                                  repository: workspace.repository,
-                                  businessId: business.id,
+                                  inbox: workspace.inbox,
                                 ),
                                 onTap: () => _open(
                                   context,
@@ -467,55 +468,25 @@ class _VectorIcon extends StatelessWidget {
   );
 }
 
-/// Keep pending requests visible without blocking Home when the network is down.
-class _JoinRequestBadge extends StatefulWidget {
-  const _JoinRequestBadge({required this.repository, required this.businessId});
-  final OnlineRepository repository;
-  final String businessId;
-  @override
-  State<_JoinRequestBadge> createState() => _JoinRequestBadgeState();
-}
+/// The queue count stays pending until an owner accepts or declines it.
+class _JoinRequestBadge extends StatelessWidget {
+  const _JoinRequestBadge({required this.inbox});
+  final BusinessInbox inbox;
 
-class _JoinRequestBadgeState extends State<_JoinRequestBadge> {
-  Timer? _poll;
-  int _count = 0;
-  bool _loading = false;
   @override
-  void initState() {
-    super.initState();
-    _refresh();
-    _poll = Timer.periodic(const Duration(seconds: 15), (_) {
-      if (ModalRoute.of(context)?.isCurrent == true) _refresh();
-    });
-  }
-
-  Future<void> _refresh() async {
-    if (_loading) return;
-    _loading = true;
-    try {
-      final staff = await widget.repository.team(widget.businessId);
-      if (mounted) {
-        setState(
-          () => _count = staff.where((e) => e.joinStatus == 'pending').length,
+  Widget build(BuildContext context) => ChangeNotifierProvider.value(
+    value: inbox,
+    child: Builder(
+      builder: (context) {
+        final count = context.select<BusinessInbox, int>(
+          (inbox) => inbox.pending.length,
         );
-      }
-    } catch (_) {
-      // Retain the last count offline; the request page offers retry details.
-    } finally {
-      _loading = false;
-    }
-  }
-
-  @override
-  void dispose() {
-    _poll?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Badge(
-    isLabelVisible: _count > 0,
-    label: Text('$_count'),
-    child: const _VectorIcon('join'),
+        return Badge(
+          isLabelVisible: count > 0,
+          label: Text('$count'),
+          child: const _VectorIcon('join'),
+        );
+      },
+    ),
   );
 }

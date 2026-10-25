@@ -28,6 +28,7 @@ class SalonStaff {
     this.cnic = '',
     this.isActive = true,
     this.localEmployeeId,
+    this.requestedAt,
   });
   final String id;
   final String name;
@@ -38,6 +39,7 @@ class SalonStaff {
   final String cnic;
   final bool isActive;
   final String? localEmployeeId;
+  final DateTime? requestedAt;
   factory SalonStaff.fromJson(Map<String, dynamic> json) => SalonStaff(
     id: json['membership_id'] as String,
     name: json['display_name'] as String,
@@ -48,6 +50,7 @@ class SalonStaff {
     cnic: json['cnic'] as String? ?? '',
     isActive: json['is_active'] as bool? ?? true,
     localEmployeeId: json['local_employee_id'] as String?,
+    requestedAt: DateTime.tryParse(json['join_requested_at']?.toString() ?? ''),
   );
 }
 

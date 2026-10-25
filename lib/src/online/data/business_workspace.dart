@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
+import 'business_inbox.dart';
 
 /// Every connected salon uses separate boxes, including on shared devices.
 /// The journal survives process termination and ambiguous network responses.
@@ -21,6 +22,11 @@ class BusinessWorkspace extends ChangeNotifier {
     this.journal,
   );
   final OnlineRepository repository;
+  late final BusinessInbox inbox = BusinessInbox(
+    repository: repository,
+    businessId: business.id,
+    accountId: account.id,
+  );
   SalonBusiness _business;
   SalonBusiness get business => _business;
   Future<void> updateBusiness(SalonBusiness updated) async {
@@ -165,6 +171,7 @@ class BusinessWorkspace extends ChangeNotifier {
     }
     await workspace.ensureBusinessDefaults();
     await workspace.syncOnlineTeam();
+    workspace.inbox.start();
     workspace._timer = Timer.periodic(
       const Duration(seconds: 30),
       (_) => workspace.synchronize(),
@@ -502,6 +509,7 @@ class BusinessWorkspace extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    inbox.dispose();
     _timer?.cancel();
     super.dispose();
   }

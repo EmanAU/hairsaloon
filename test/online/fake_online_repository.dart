@@ -3,7 +3,11 @@ import 'dart:typed_data';
 import 'package:hairsaloon/src/online/domain/online_models.dart';
 import 'package:hairsaloon/src/online/domain/online_repository.dart';
 
-class FakeOnlineRepository implements OnlineRepository {
+class FakeOnlineRepository implements OnlineRepository, BusinessActivitySource {
+  final activityEvents = StreamController<void>.broadcast();
+  @override
+  Stream<void> businessActivityChanges(String businessId) =>
+      activityEvents.stream;
   final Map<String, Map<String, dynamic>> employeeRecordRows = {};
   bool failEmployeeRecords = false;
   String? leftBusiness;

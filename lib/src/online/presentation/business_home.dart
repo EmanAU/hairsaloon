@@ -1021,10 +1021,14 @@ class _JoinSalonState extends State<JoinSalon> {
   Widget build(BuildContext context) => PopScope(
     canPop: !_requesting,
     child: Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.homeCanvas,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        title: const Text('Join a salon'),
+        backgroundColor: AppColors.homeCanvas,
+        surfaceTintColor: Colors.transparent,
+        title: const Text(
+          'Join a salon',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
         actions: [
           IconButton(
             tooltip: 'My contracts',
@@ -1038,148 +1042,191 @@ class _JoinSalonState extends State<JoinSalon> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
             children: [
-              const SizedBox(height: 20),
-              if (_requested)
-                Column(
-                  children: [
-                    const Icon(
-                      Icons.check_circle_outline,
-                      size: 56,
-                      color: AppColors.homeOlive,
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Request sent',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Check your request status below.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                    const SizedBox(height: 24),
-                    ActionButton(
-                      label: 'View my contracts',
-                      onPressed: () async => _contracts(),
-                      style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-              else
-                Form(
-                  key: _form,
-                  child: Column(
-                    children: [
-                      const Icon(
-                        Icons.group_add_outlined,
-                        size: 48,
-                        color: AppColors.homeInk,
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Enter your salon’s code or scan its QR.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(height: 28),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: _requesting ? null : _scan,
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.all(16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.homeBorder),
+                ),
+                child: _requested
+                    ? Column(
+                        children: [
+                          const Icon(
+                            Icons.check_circle_outline,
+                            size: 56,
+                            color: AppColors.homeOlive,
+                          ),
+                          const SizedBox(height: 20),
+                          const Text(
+                            'Request sent',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                          icon: const Icon(Icons.qr_code_scanner),
-                          label: const Text('Scan salon QR'),
-                        ),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 22),
-                        child: Row(
-                          children: [
-                            Expanded(child: Divider()),
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                              child: Text(
-                                'or',
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Check your request status below.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(height: 24),
+                          ActionButton(
+                            label: 'View my contracts',
+                            onPressed: () async => _contracts(),
+                            style: FilledButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            Expanded(child: Divider()),
+                          ),
+                        ],
+                      )
+                    : Form(
+                        key: _form,
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: AppColors.homeSage,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Icon(
+                                Icons.storefront_outlined,
+                                size: 30,
+                                color: AppColors.homeOlive,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Find your next salon',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.homeInk,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Scan the salon’s QR or enter its joining code to send your request to the owner.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                height: 1.5,
+                              ),
+                            ),
+                            const SizedBox(height: 28),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: _requesting ? null : _scan,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.homeInk,
+                                  backgroundColor: AppColors.homeSage,
+                                  side: const BorderSide(
+                                    color: AppColors.homeBorder,
+                                  ),
+                                  padding: const EdgeInsets.all(16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.qr_code_scanner),
+                                label: const Text('Scan salon QR'),
+                              ),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 22),
+                              child: Row(
+                                children: [
+                                  Expanded(child: Divider()),
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                    child: Text(
+                                      'OR ENTER CODE',
+                                      style: TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(child: Divider()),
+                                ],
+                              ),
+                            ),
+                            TextFormField(
+                              controller: _code,
+                              enabled: !_requesting,
+                              decoration: InputDecoration(
+                                labelText: 'Salon joining code',
+                                hintText: 'Paste salon code',
+                                filled: true,
+                                fillColor: AppColors.homeCanvas,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.border,
+                                  ),
+                                ),
+                                suffixIcon: IconButton(
+                                  tooltip: 'Paste code',
+                                  icon: const Icon(
+                                    Icons.content_paste,
+                                    size: 20,
+                                  ),
+                                  onPressed: _requesting
+                                      ? null
+                                      : () async {
+                                          final data = await Clipboard.getData(
+                                            Clipboard.kTextPlain,
+                                          );
+                                          if (mounted && data?.text != null) {
+                                            _code.text = data!.text!.trim();
+                                          }
+                                        },
+                                ),
+                              ),
+                              autocorrect: false,
+                              validator: (value) =>
+                                  RegExp(
+                                    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+                                  ).hasMatch(value?.trim() ?? '')
+                                  ? null
+                                  : 'Paste a valid salon code',
+                            ),
+                            const SizedBox(height: 18),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ActionButton(
+                                label: 'Send my join request',
+                                style: FilledButton.styleFrom(
+                                  minimumSize: const Size(double.infinity, 50),
+                                  backgroundColor: AppColors.homeInk,
+                                  foregroundColor: AppColors.surface,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                onPressed: _request,
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                      TextFormField(
-                        controller: _code,
-                        enabled: !_requesting,
-                        decoration: InputDecoration(
-                          labelText: 'Salon joining code',
-                          hintText: 'Paste salon code',
-                          filled: true,
-                          fillColor: AppColors.homeCanvas,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: AppColors.border,
-                            ),
-                          ),
-                          suffixIcon: IconButton(
-                            tooltip: 'Paste code',
-                            icon: const Icon(Icons.content_paste, size: 20),
-                            onPressed: _requesting
-                                ? null
-                                : () async {
-                                    final data = await Clipboard.getData(
-                                      Clipboard.kTextPlain,
-                                    );
-                                    if (mounted && data?.text != null) {
-                                      _code.text = data!.text!.trim();
-                                    }
-                                  },
-                          ),
-                        ),
-                        autocorrect: false,
-                        validator: (value) =>
-                            RegExp(
-                              r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
-                            ).hasMatch(value?.trim() ?? '')
-                            ? null
-                            : 'Paste a valid salon code',
-                      ),
-                      const SizedBox(height: 18),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ActionButton(
-                          label: 'Request to join',
-                          style: FilledButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          onPressed: _request,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              ),
               const SizedBox(height: 24),
               _requestHistory(),
             ],
@@ -1201,33 +1248,124 @@ class _JoinSalonState extends State<JoinSalon> {
         );
       }
       final rows = snapshot.data ?? [];
-      if (rows.isEmpty) return const SizedBox.shrink();
+      if (rows.isEmpty && snapshot.connectionState == ConnectionState.waiting) {
+        return const Padding(
+          padding: EdgeInsets.all(20),
+          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        );
+      }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'My join requests',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          for (final request in rows)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(request.businessName),
-              subtitle: Text(switch (request.status) {
-                'accepted' => 'Joined · view your contracts',
-                'declined' => 'Request declined',
-                _ => 'Waiting for owner approval',
-              }),
-              trailing: Icon(
-                request.status == 'accepted'
-                    ? Icons.check_circle_outline
-                    : request.status == 'declined'
-                    ? Icons.close
-                    : Icons.schedule,
-                size: 22,
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'My join requests',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.homeInk,
+                  ),
+                ),
               ),
-              onTap: request.status == 'accepted' ? _contracts : null,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.homeSage,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${rows.length}',
+                  style: const TextStyle(
+                    color: AppColors.homeOlive,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (rows.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.homeBorder),
+              ),
+              child: const Text(
+                'No requests yet. Your salon requests and their status will appear here.',
+                style: TextStyle(color: AppColors.textSecondary, height: 1.5),
+              ),
+            ),
+          for (final request in rows)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Material(
+                color: AppColors.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: const BorderSide(color: AppColors.homeBorder),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  leading: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.homeSage,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.storefront_outlined,
+                      color: AppColors.homeOlive,
+                      size: 23,
+                    ),
+                  ),
+                  title: Text(
+                    request.businessName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.homeInk,
+                    ),
+                  ),
+                  subtitle: Text(
+                    switch (request.status) {
+                      'accepted' => 'Joined · view your contracts',
+                      'declined' => 'Request declined',
+                      _ => 'Waiting for owner approval',
+                    },
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.5,
+                    ),
+                  ),
+                  trailing: Icon(
+                    request.status == 'accepted'
+                        ? Icons.check_circle_outline
+                        : request.status == 'declined'
+                        ? Icons.close
+                        : Icons.schedule,
+                    size: 22,
+                    color: request.status == 'accepted'
+                        ? AppColors.homeOlive
+                        : request.status == 'declined'
+                        ? AppColors.homeTerracotta
+                        : AppColors.homeBronze,
+                  ),
+                  onTap: request.status == 'accepted' ? _contracts : null,
+                ),
+              ),
             ),
         ],
       );

@@ -10,9 +10,47 @@ import '../../core/utils/pk_phone.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
 
-class SupabaseOnlineRepository implements OnlineRepository {
+class SupabaseOnlineRepository
+    implements OnlineRepository, BusinessActivitySource {
   SupabaseOnlineRepository(this._client);
   final SupabaseClient _client;
+
+  @override
+  Stream<void> businessActivityChanges(String businessId) {
+    late StreamController<void> events;
+    RealtimeChannel? channel;
+    events = StreamController<void>(
+      onListen: () {
+        channel = _client
+            .channel('business-inbox:$businessId:${const Uuid().v4()}')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'business_employees',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'business_id',
+                value: businessId,
+              ),
+              callback: (_) {
+                if (!events.isClosed) events.add(null);
+              },
+            )
+            .subscribe((status, error) {
+              // Also catch anything missed while disconnected.
+              if (status == RealtimeSubscribeStatus.subscribed &&
+                  !events.isClosed) {
+                events.add(null);
+              }
+            });
+      },
+      onCancel: () async {
+        final active = channel;
+        if (active != null) await _client.removeChannel(active);
+      },
+    );
+    return events.stream;
+  }
 
   @override
   Future<Map<String, dynamic>?> businessSnapshot(String businessId) => _client
@@ -672,9 +710,19 @@ class SupabaseOnlineRepository implements OnlineRepository {
       final rows =
           await _client.rpc('business_team', params: {'business': businessId})
               as List;
+      final requests = await _client
+          .from('business_employees')
+          .select('id,created_at')
+          .eq('business_id', businessId);
+      final requestedAt = {
+        for (final row in requests) row['id']: row['created_at'],
+      };
       return rows
           .map(
-            (row) => SalonStaff.fromJson(Map<String, dynamic>.from(row as Map)),
+            (row) => SalonStaff.fromJson({
+              ...Map<String, dynamic>.from(row as Map),
+              'join_requested_at': requestedAt[row['membership_id']],
+            }),
           )
           .toList();
     } on PostgrestException catch (error) {

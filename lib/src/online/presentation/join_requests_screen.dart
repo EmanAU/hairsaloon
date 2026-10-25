@@ -9,6 +9,7 @@ import '../../features/employees/presentation/state/employees_store.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../data/business_workspace.dart';
+import '../data/business_inbox.dart';
 import '../domain/online_models.dart';
 import '../domain/online_repository.dart';
 import 'contracts_screen.dart';
@@ -31,37 +32,33 @@ class JoinRequestsScreen extends StatefulWidget {
 }
 
 class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
-  late Future<List<SalonStaff>> _staff = _load();
-  late final Timer _poll;
+  late final BusinessInbox _inbox;
   String? _reviewing;
   static final _tileShape = RoundedRectangleBorder(
     borderRadius: BorderRadius.circular(14),
     side: const BorderSide(color: AppColors.homeBorder),
   );
 
-  Future<List<SalonStaff>> _load() => widget.repository.team(widget.businessId);
-
   @override
   void initState() {
     super.initState();
-    _poll = Timer.periodic(const Duration(seconds: 15), (_) {
-      if (mounted &&
-          _reviewing == null &&
-          ModalRoute.of(context)?.isCurrent == true) {
-        _refresh();
-      }
-    });
+    _inbox =
+        widget.workspace?.inbox ??
+        BusinessInbox(
+          repository: widget.repository,
+          businessId: widget.businessId,
+          accountId: widget.repository.userId ?? 'signed-out',
+        );
+    _inbox.start();
   }
 
   @override
   void dispose() {
-    _poll.cancel();
+    if (widget.workspace == null) _inbox.dispose();
     super.dispose();
   }
 
-  void _refresh() => setState(() {
-    _staff = _load();
-  });
+  void _refresh() => unawaited(_inbox.refresh());
 
   Future<void> _syncLocal() async {
     try {
@@ -95,6 +92,8 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
       return;
     }
 
+    // Publish the decision immediately, even while local synchronization is slow.
+    _inbox.resolve(employee.id);
     // Accept/decline already committed — never surface follow-up noise as failure.
     await _syncLocal();
     if (!mounted) return;
@@ -211,47 +210,61 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => OnlinePage(
-    title: 'Join requests',
-    actions: [
-      IconButton(
-        tooltip: 'Refresh',
-        onPressed: _reviewing == null ? _refresh : null,
-        icon: const Icon(Icons.refresh),
-      ),
-    ],
-    children: [
-      RemoteContent<List<SalonStaff>>(
-        future: _staff,
-        onRetry: _refresh,
-        builder: (staff) {
-          final pending = staff
-              .where((e) => e.joinStatus == 'pending')
-              .toList();
-          return AbsorbPointer(
-            absorbing: _reviewing != null,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (pending.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40),
-                    child: Text(
-                      'No pending join requests.',
-                      textAlign: TextAlign.center,
-                    ),
-                  )
-                else
-                  for (var i = 0; i < pending.length; i++) ...[
-                    if (i > 0) const SizedBox(height: AppSpacing.md),
-                    _tile(pending[i]),
-                  ],
-              ],
+  Widget build(BuildContext context) => ChangeNotifierProvider.value(
+    value: _inbox,
+    child: Builder(
+      builder: (context) {
+        final state = context
+            .select<
+              BusinessInbox,
+              ({List<SalonStaff> pending, bool loaded, String? error})
+            >(
+              (inbox) => (
+                pending: inbox.pending,
+                loaded: inbox.loaded,
+                error: inbox.error,
+              ),
+            );
+        return OnlinePage(
+          title: 'Join requests',
+          actions: [
+            IconButton(
+              tooltip: 'Refresh',
+              onPressed: _reviewing == null ? _refresh : null,
+              icon: const Icon(Icons.refresh),
             ),
-          );
-        },
-      ),
-    ],
+          ],
+          children: [
+            if (!state.loaded && state.error == null)
+              const Center(child: CircularProgressIndicator()),
+            if (state.error != null)
+              TextButton(onPressed: _refresh, child: Text(state.error!)),
+            if (state.loaded)
+              AbsorbPointer(
+                absorbing: _reviewing != null,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (state.pending.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
+                        child: Text(
+                          'No pending join requests.',
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    else
+                      for (var i = 0; i < state.pending.length; i++) ...[
+                        if (i > 0) const SizedBox(height: AppSpacing.md),
+                        _tile(state.pending[i]),
+                      ],
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    ),
   );
 }
 

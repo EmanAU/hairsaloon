@@ -16,6 +16,7 @@ import 'package:hairsaloon/src/online/presentation/business_owner_details_screen
 import 'package:hairsaloon/src/online/presentation/business_form.dart';
 import 'package:hairsaloon/src/features/dashboard/presentation/business_dashboard_home.dart';
 import 'package:hairsaloon/src/features/finance/presentation/sales_screen.dart';
+import 'package:hairsaloon/src/features/finance/presentation/finance_overview_screen.dart';
 import 'package:hairsaloon/src/theme/app_theme.dart';
 import 'fake_online_repository.dart';
 import 'workspace_test_environment.dart';
@@ -111,7 +112,48 @@ void main() {
         ),
       );
       await waitForOnlineDashboard(tester);
-      expect(find.text('Scan QR'), findsOneWidget);
+      await tester.tap(find.text('Finance overview'));
+      await tester.pumpAndSettle();
+      expect(find.byType(FinanceOverviewScreen), findsOneWidget);
+      await tester.tap(find.byIcon(CupertinoIcons.back));
+      await tester.pumpAndSettle();
+      repository.teamRows = const [
+        SalonStaff(
+          id: 'new-request',
+          name: 'New Employee',
+          isWorking: false,
+          joinStatus: 'pending',
+        ),
+      ];
+      repository.activityEvents.add(null);
+      await tester.pump();
+      await tester.pumpAndSettle();
+      final bellBadge = find.descendant(
+        of: find.byTooltip('Notifications'),
+        matching: find.byType(Badge),
+      );
+      expect(tester.widget<Badge>(bellBadge).isLabelVisible, isTrue);
+      await tester.tap(find.byTooltip('Notifications'));
+      await tester.pumpAndSettle();
+      expect(find.text('New join request'), findsOneWidget);
+      await tester.tap(find.byTooltip('Mark as read'));
+      await tester.pumpAndSettle();
+      expect(find.text('New join request'), findsNothing);
+      expect(find.text('You’re all caught up'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(tester.widget<Badge>(bellBadge).isLabelVisible, isFalse);
+      final liveWorkspace = tester
+          .widget<BusinessDashboardHome>(find.byType(BusinessDashboardHome))
+          .workspace;
+      expect(liveWorkspace.inbox.pending.length, 1);
+      repository.teamRows = [];
+      repository.activityEvents.add(null);
+      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(liveWorkspace.inbox.pending, isEmpty);
+      expect(find.text('Finance overview'), findsOneWidget);
+      expect(find.byTooltip('Notifications'), findsOneWidget);
       expect(find.text('Rate List'), findsOneWidget);
       expect(find.text('Sales History'), findsOneWidget);
       expect(find.text('Join Requests'), findsOneWidget);
@@ -244,7 +286,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Sync status'), findsNothing);
       expect(find.text('Sync now'), findsOneWidget);
-      expect(find.text('Scan QR'), findsOneWidget);
+      expect(find.text('Finance overview'), findsOneWidget);
       await waitForOnlineDashboard(tester);
       await tester.tap(find.text('Sales History'));
       await tester.pumpAndSettle();
@@ -264,7 +306,7 @@ void main() {
       expect(find.byType(ExpensesScreen), findsOneWidget);
       await tester.tap(find.text('Home'));
       await tester.pumpAndSettle();
-      expect(find.text('Scan QR'), findsOneWidget);
+      expect(find.text('Finance overview'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       await closeOnlineWorkspace(tester);

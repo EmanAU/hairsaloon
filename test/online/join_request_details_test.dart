@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hairsaloon/src/online/domain/online_models.dart';
 import 'package:hairsaloon/src/online/presentation/join_requests_screen.dart';
 import 'package:hairsaloon/src/online/presentation/contracts_screen.dart';
@@ -8,6 +9,7 @@ import 'fake_online_repository.dart';
 import 'customer_experience_test.dart' show loadFonts, capture;
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   for (final width in [320.0, 390.0, 900.0]) {
     testWidgets('review join request details then set contract at $width', (
       tester,

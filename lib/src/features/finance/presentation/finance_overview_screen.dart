@@ -1,5 +1,8 @@
-﻿import 'package:flutter/cupertino.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
+import 'package:hairsaloon/src/features/expenses/domain/entities/expense_item.dart';
+import 'package:hairsaloon/src/features/finance/domain/entities/salary_payout.dart';
 import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
@@ -45,19 +48,27 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bills = context.watch<BillingStore>().bills;
-    final expenses = context.watch<ExpensesStore>().items;
-    final payoutsStore = context.watch<PayoutsStore>();
+    final bills = context.select<BillingStore, List<Bill>>(
+      (store) => store.bills,
+    );
+    final expenses = context.select<ExpensesStore, List<ExpenseItem>>(
+      (store) => store.items,
+    );
+    final payouts = context.select<PayoutsStore, List<SalaryPayout>>(
+      (store) => store.payouts,
+    );
+    final payoutsById = context.select<PayoutsStore, Map<String, SalaryPayout>>(
+      (store) => store.payoutsById,
+    );
     final employees = context
-        .watch<EmployeesStore>()
-        .employees
+        .select<EmployeesStore, List<EmployeeItem>>((store) => store.employees)
         .where((e) => e.isActive)
         .toList(growable: false);
 
     final totals = FinanceCalculator.totals(
       bills: bills,
       expenses: expenses,
-      payouts: payoutsStore.payouts,
+      payouts: payouts,
       anchor: _selectedDate,
       period: _period,
     );
@@ -71,7 +82,7 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
                 employee: employee,
                 bills: bills,
                 expenses: expenses,
-                payoutsById: payoutsStore.payoutsById,
+                payoutsById: payoutsById,
                 include: include,
               );
               return _EmployeeRow(
@@ -356,7 +367,9 @@ class _EmployeeTile extends StatelessWidget {
                 Text(
                   settled ? 'Settled' : 'Due',
                   style: TextStyle(
-                    color: settled ? AppColors.success : AppColors.textSecondary,
+                    color: settled
+                        ? AppColors.success
+                        : AppColors.textSecondary,
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
                   ),

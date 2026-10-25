@@ -1,6 +1,11 @@
 import 'online_models.dart';
 import 'dart:typed_data';
 
+/// Optional live invalidations. Consumers reload authorized data after an event.
+abstract interface class BusinessActivitySource {
+  Stream<void> businessActivityChanges(String businessId);
+}
+
 abstract interface class OnlineRepository {
   Future<Map<String, dynamic>?> businessSnapshot(String businessId);
   Future<Map<String, dynamic>> syncBusiness(

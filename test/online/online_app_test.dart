@@ -20,19 +20,36 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(home: JoinSalon(repository: repository)),
       );
-      await tester.tap(find.text('Request to join'));
+      await Scrollable.ensureVisible(
+        tester.element(find.text('Send my join request')),
+        alignment: 0.4,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Send my join request'));
       await tester.pumpAndSettle();
       expect(find.text('Paste a valid salon code'), findsOneWidget);
       expect(repository.requestedJoinCode, isNull);
       const code = '00000000-0000-4000-8000-000000000001';
       await tester.enterText(find.byType(TextFormField), code);
+      tester.testTextInput.hide();
+      await tester.pumpAndSettle();
       repository.rejectJoin = true;
-      await tester.tap(find.text('Request to join'));
+      await Scrollable.ensureVisible(
+        tester.element(find.text('Send my join request')),
+        alignment: 0.4,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Send my join request'));
       await tester.pumpAndSettle();
       expect(find.text('Invite unavailable'), findsOneWidget);
       expect(find.text('Request sent'), findsNothing);
       repository.rejectJoin = false;
-      await tester.tap(find.text('Request to join'));
+      await Scrollable.ensureVisible(
+        tester.element(find.text('Send my join request')),
+        alignment: 0.4,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Send my join request'));
       await tester.pumpAndSettle();
       expect(repository.requestedJoinCode, code);
       expect(find.text('Request sent'), findsOneWidget);

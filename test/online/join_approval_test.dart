@@ -52,7 +52,10 @@ void main() {
       ),
     );
     await waitForOnlineDashboard(tester);
-    expect(tester.widget<Badge>(find.byType(Badge)).isLabelVisible, isFalse);
+    expect(
+      tester.widget<Badge>(find.byType(Badge).last).isLabelVisible,
+      isFalse,
+    );
     repository.teamRows = const [
       SalonStaff(
         id: 'employee',
@@ -61,9 +64,10 @@ void main() {
         joinStatus: 'pending',
       ),
     ];
-    await tester.pump(const Duration(seconds: 16));
+    repository.activityEvents.add(null);
+    await tester.pump();
     await tester.pumpAndSettle();
-    final badge = tester.widget<Badge>(find.byType(Badge));
+    final badge = tester.widget<Badge>(find.byType(Badge).last);
     expect(badge.isLabelVisible, isTrue);
     expect((badge.label as Text).data, '1');
     await tester.ensureVisible(find.text('Join Requests'));
@@ -156,6 +160,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: JoinSalon(repository: repository)),
     );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
     await tester.pumpAndSettle();
     expect(find.text('Waiting for owner approval'), findsOneWidget);
     expect(find.text('Request declined'), findsOneWidget);
