@@ -765,6 +765,11 @@ a.record-name:hover, .text-link:hover { color: #4b6c28; text-decoration: underli
 .approval-panel p { font-size: 13px; margin-top: 6px; max-width: 66ch; }
 .btn-danger { background: var(--danger-soft); color: #a03232; border: 1px solid #edcaca; border-radius: 8px; box-shadow: none; }
 .btn-danger:hover { background: #f7dfdf; box-shadow: none; }
+.btn-activate { background: #edf5e8; color: #356b32; border: 1px solid #cfe2c8; border-radius: 8px; box-shadow: none; }
+.btn-activate:hover { background: #dfedd8; box-shadow: none; }
+.business-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.business-actions button { white-space: nowrap; }
+.business-header-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
 .capitalize { text-transform: capitalize; }
 .block { display: block; }
 .preserve-lines { white-space: pre-line; }

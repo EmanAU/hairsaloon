@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
 import { supabaseConfig } from '@/lib/supabase/config';
 import { AdminShell } from '@/components/admin-shell';
+import { BusinessActions } from '@/components/business-actions';
 import {
   BusinessBadge,
   Identity,
@@ -346,7 +347,7 @@ export default async function Home({
                 <thead>
                   <tr>
                     {(view === 'businesses'
-                      ? ['Business', 'Owner', 'Status', 'Details']
+                      ? ['Business', 'Owner', 'Status', 'Actions', 'Details']
                       : view === 'contracts'
                         ? [
                             'Employee / salon',
@@ -390,6 +391,9 @@ export default async function Home({
                             <p className="secondary-text">
                               Registered {date(row.created_at)}
                             </p>
+                          </td>
+                          <td>
+                            <BusinessActions business={row as BusinessRecord} returnTo={href(page)} />
                           </td>
                           <td>
                             <Link

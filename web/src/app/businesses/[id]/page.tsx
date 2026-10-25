@@ -10,7 +10,7 @@ import {
   Rating,
   ReviewCards,
 } from '@/components/admin-details';
-import { reviewBusiness } from '@/app/actions';
+import { BusinessActions } from '@/components/business-actions';
 import { allRows, people, reviewContext } from '@/lib/admin-data';
 import type {
   BusinessRecord,
@@ -143,7 +143,10 @@ export default async function Business({
           subtitle={`${business.business_type} · ${[business.city, business.area].filter(Boolean).join(', ')}`}
           photo={photoResult?.data?.signedUrl}
         />
-        <BusinessBadge business={business} />
+        <div className="business-header-actions">
+          <BusinessBadge business={business} />
+          <BusinessActions business={business} returnTo={returnTo} />
+        </div>
       </header>
       {filters.message && (
         <p
@@ -265,38 +268,6 @@ export default async function Business({
           )}
         </section>
       </div>
-      <section className="approval-panel">
-        <div>
-          <h2>
-            {business.is_active
-              ? 'Business is active'
-              : business.reviewed_at
-                ? 'Reactivate this business'
-                : 'Ready to review this registration?'}
-          </h2>
-          <p className="muted">
-            {business.is_active
-              ? 'Deactivating removes this salon from customer discovery.'
-              : 'Check the business and owner information above before activating the salon.'}
-          </p>
-        </div>
-        <form action={reviewBusiness}>
-          <input type="hidden" name="business" value={id} />
-          <input
-            type="hidden"
-            name="active"
-            value={String(!business.is_active)}
-          />
-          <input type="hidden" name="returnTo" value={`/businesses/${id}`} />
-          <button
-            className={business.is_active ? 'btn-danger' : ''}
-            type="submit"
-          >
-            {business.is_active ? 'Deactivate business' : 'Approve & activate'}
-          </button>
-        </form>
-      </section>
-
       <section className="panel" id="team">
         <div className="panel-head">
           <h2>Team & join requests</h2>
