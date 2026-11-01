@@ -1,4 +1,10 @@
 import 'online/data/business_workspace.dart';
+import 'features/printing/data/android_receipt_printer.dart';
+import 'features/printing/data/local_printer_preferences.dart';
+import 'features/printing/data/receipt_encoder.dart';
+import 'features/printing/domain/receipt_printer.dart';
+import 'features/printing/presentation/receipt_printer_store.dart';
+import 'features/settings/presentation/business_settings_screen.dart';
 import 'core/layout/app_orientation.dart';
 import 'online/data/workspace_adapters.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
@@ -145,6 +151,17 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                 ),
                 ChangeNotifierProvider<BusinessWorkspace?>.value(
                   value: widget.workspace,
+                ),
+                ChangeNotifierProvider<ReceiptPrinterStore>(
+                  create: (_) => ReceiptPrinterStore(
+                    actions: ReceiptPrinterActions(
+                      LocalPrinterPreferences(),
+                      AndroidReceiptPrinter(FlutterReceiptEncoder()),
+                    ),
+                    scope: () => widget.workspace == null
+                        ? 'offline/${bootstrap.authStore.currentUser?.id ?? 'guest'}'
+                        : '${widget.workspace!.account.id}/${widget.workspace!.business.id}',
+                  ),
                 ),
                 // Created on first use (lazy) so splash stays light.
                 ChangeNotifierProvider<BillingStore>(
@@ -314,6 +331,8 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                         AppRoutes.customers: (_) => const CustomersScreen(),
                         AppRoutes.profileSettings: (_) =>
                             const ProfileSettingsScreen(),
+                        AppRoutes.businessSettings: (_) =>
+                            const BusinessSettingsScreen(),
                         AppRoutes.accountProfile: (_) =>
                             const AccountProfileScreen(),
                         AppRoutes.savedBills: (_) => const SavedBillsScreen(),
