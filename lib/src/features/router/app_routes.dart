@@ -33,6 +33,7 @@ class AppRoutes {
 
   static const customers = '/customers';
   static const profileSettings = '/profile-settings';
+  static const businessSettings = '/business-settings';
   static const accountProfile = '/account-profile';
 
   static const expenseTypes = '/expense-types';

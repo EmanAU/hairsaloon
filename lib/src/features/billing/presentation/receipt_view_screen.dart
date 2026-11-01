@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import '../../printing/presentation/receipt_print_button.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/core/widgets/app_sheet.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
@@ -96,20 +97,30 @@ class _ReceiptViewScreenState extends State<ReceiptViewScreen>
                   minimum: const EdgeInsets.only(bottom: 12),
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                    child: Builder(
-                      builder: (buttonContext) => FilledButton.icon(
-                        onPressed: sharing
-                            ? null
-                            : () => shareBill(
-                                buttonContext: buttonContext,
-                                bill: bill,
-                                business: business,
-                                currencyCode: currency,
-                              ),
-                        style: appPrimaryButtonStyle(),
-                        icon: const Icon(CupertinoIcons.share, size: 17),
-                        label: Text(sharing ? 'Preparing…' : 'Share Receipt'),
-                      ),
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 12,
+                      runSpacing: 8,
+                      children: [
+                        ReceiptPrintButton(bill: bill),
+                        Builder(
+                          builder: (buttonContext) => FilledButton.icon(
+                            onPressed: sharing
+                                ? null
+                                : () => shareBill(
+                                    buttonContext: buttonContext,
+                                    bill: bill,
+                                    business: business,
+                                    currencyCode: currency,
+                                  ),
+                            style: appPrimaryButtonStyle(),
+                            icon: const Icon(CupertinoIcons.share, size: 17),
+                            label: Text(
+                              sharing ? 'Preparing…' : 'Share Receipt',
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

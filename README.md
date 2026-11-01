@@ -9,6 +9,10 @@ See [Flutter setup](docs/flutter-online.md), [admin setup](web/README.md), and
 [backend setup](supabase/README.md). The existing Supabase project is configured in the Flutter bootstrap.
 See [release handoff](docs/final-release.md) for code verification and backend instructions.
 
+Receipt printers are configured under **Business Settings → Receipt printer**.
+See [receipt printing](docs/receipt-printing.md) for supported connections, setup,
+verification results and physical-printer acceptance checks.
+
 ## Existing offline workspace
 
 Android-only Flutter salon management app with local storage. Registration and phone/password login use accounts saved on this device; no SMS verification or cloud services are required.

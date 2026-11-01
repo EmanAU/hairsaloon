@@ -57,6 +57,15 @@ dependencies:
   google_sign_in: 7.2.0
   flutter_quill: 11.4.2
   flutter_svg: ^2.3.0
+  printing: 5.14.3
+  pdf: 3.12.0
+  permission_handler: 13.0.2
+  image: 4.8.0
+  unified_esc_pos_printer: 3.4.0
+  # Keep the optional desktop USB transport on its Flutter-plugin release;
+  # newer releases build C assets even during Android-only widget tests.
+  libserialport_plus: 0.1.1
+  network_info_plus: 7.0.0
 
 dev_dependencies:
   flutter_test:

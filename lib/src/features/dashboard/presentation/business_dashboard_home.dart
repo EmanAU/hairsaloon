@@ -323,7 +323,7 @@ class BusinessDashboardHome extends StatelessWidget {
                             padding: EdgeInsets.zero,
                             children: [
                               _HomeTile(
-                                label: 'Finance overview',
+                                label: 'Finances',
                                 icon: 'sales',
                                 onTap: () => Navigator.of(
                                   context,

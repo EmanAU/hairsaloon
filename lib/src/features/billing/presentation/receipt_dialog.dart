@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../printing/presentation/receipt_print_button.dart';
 import '../domain/entities/bill.dart';
 import 'receipt_share_mixin.dart';
 import 'widgets/pos_receipt_card.dart';
@@ -69,6 +70,7 @@ class _ReceiptDialogState extends State<ReceiptDialog> with ReceiptShareMixin {
               runSpacing: 8,
               alignment: WrapAlignment.center,
               children: [
+                ReceiptPrintButton(bill: widget.bill),
                 OutlinedButton.icon(
                   onPressed: () => Navigator.pop(context, true),
                   icon: const Icon(Icons.open_in_new, size: 18),

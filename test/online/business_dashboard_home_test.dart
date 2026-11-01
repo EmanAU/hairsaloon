@@ -112,7 +112,7 @@ void main() {
         ),
       );
       await waitForOnlineDashboard(tester);
-      await tester.tap(find.text('Finance overview'));
+      await tester.tap(find.text('Finances'));
       await tester.pumpAndSettle();
       expect(find.byType(FinanceOverviewScreen), findsOneWidget);
       await tester.tap(find.byIcon(CupertinoIcons.back));
@@ -152,7 +152,7 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
       expect(liveWorkspace.inbox.pending, isEmpty);
-      expect(find.text('Finance overview'), findsOneWidget);
+      expect(find.text('Finances'), findsOneWidget);
       expect(find.byTooltip('Notifications'), findsOneWidget);
       expect(find.text('Rate List'), findsOneWidget);
       expect(find.text('Sales History'), findsOneWidget);
@@ -192,7 +192,18 @@ void main() {
           image.dispose();
         });
       }
-      await tester.tap(find.byTooltip('Close menu'));
+      await tester.tap(find.text('Business Settings'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Receipt printer'));
+      await tester.pumpAndSettle();
+      expect(find.text('Printer for this device'), findsOneWidget);
+      await tester.ensureVisible(find.text('Save printer'));
+      await tester.tap(find.text('Save printer'));
+      await tester.pumpAndSettle();
+      expect(find.text('Printer saved for this device.'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.pageBack();
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('QR codes'));
       await tester.pumpAndSettle();
@@ -286,7 +297,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Sync status'), findsNothing);
       expect(find.text('Sync now'), findsOneWidget);
-      expect(find.text('Finance overview'), findsOneWidget);
+      expect(find.text('Finances'), findsOneWidget);
       await waitForOnlineDashboard(tester);
       await tester.tap(find.text('Sales History'));
       await tester.pumpAndSettle();
@@ -306,7 +317,7 @@ void main() {
       expect(find.byType(ExpensesScreen), findsOneWidget);
       await tester.tap(find.text('Home'));
       await tester.pumpAndSettle();
-      expect(find.text('Finance overview'), findsOneWidget);
+      expect(find.text('Finances'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       await closeOnlineWorkspace(tester);
