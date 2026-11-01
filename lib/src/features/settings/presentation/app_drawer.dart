@@ -58,6 +58,16 @@ class AppDrawer extends StatelessWidget {
                 children: [
                   const _SectionLabel('GENERAL'),
                   _Item(
+                    icon: CupertinoIcons.settings,
+                    title: 'Business Settings',
+                    showDivider: true,
+                    onTap: () {
+                      final navigator = Navigator.of(context);
+                      navigator.pop();
+                      navigator.pushNamed(AppRoutes.businessSettings);
+                    },
+                  ),
+                  _Item(
                     icon: CupertinoIcons.person_crop_circle,
                     title: 'Profile Settings',
                     showDivider: true,
