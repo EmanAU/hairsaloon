@@ -55,5 +55,9 @@ app.*.map.json
 
 # Excluded platform backups
 /.platform-backup/
-config.bat
-node_modules
+
+# Local secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
